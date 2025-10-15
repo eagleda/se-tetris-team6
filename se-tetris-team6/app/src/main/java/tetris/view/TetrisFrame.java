@@ -14,6 +14,9 @@ import javax.swing.JLayeredPane;
 import javax.swing.JPanel;
 import javax.swing.KeyStroke;
 
+import tetris.controller.GameController;
+
+
 public class TetrisFrame extends JFrame {
     private static final String FRAME_TITLE = "Tetris Game - Team 06";
     protected static final Dimension FRAME_SIZE = new Dimension(700, 900);
@@ -30,6 +33,9 @@ public class TetrisFrame extends JFrame {
 
     private static JPanel prevPanel;
     private static JPanel currPanel;
+
+      // <<< 1. Controller 참조 변수 추가
+    private GameController gameController;
 
     public TetrisFrame() {
         this.setTitle(FRAME_TITLE);
@@ -50,6 +56,10 @@ public class TetrisFrame extends JFrame {
         setupScoreboardPanel();
         setupPausePanel();
 
+         // <<< 2. GamePanel과 GameController 연결
+        // GamePanel이 생성된 이후에 Controller를 생성하고 연결해줍니다.
+        gameController = new GameController(gamePanel);
+
         // 시작 화면 설정
         this.setVisible(true);
         prevPanel = null;
@@ -66,6 +76,8 @@ public class TetrisFrame extends JFrame {
 
         mainPanel.gameButton.addActionListener(e -> {
             displayPanel(gamePanel);
+             // 2. Controller에게 게임 시작을 명령
+            gameController.startGame();
         });
         mainPanel.settingButton.addActionListener(e -> {
             displayPanel(settingPanel);
