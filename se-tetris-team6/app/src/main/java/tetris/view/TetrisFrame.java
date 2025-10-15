@@ -1,6 +1,5 @@
 package tetris.view;
 
-import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
@@ -37,7 +36,7 @@ public class TetrisFrame extends JFrame implements KeyListener {
         this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         this.setLocationRelativeTo(null);
 
-        // layeredPane 설정
+        // layeredPane 설정 (겹쳐서 배치 가능)
         layeredPane = new JLayeredPane();
         layeredPane.setPreferredSize(FRAME_SIZE);
         this.add(layeredPane);
@@ -56,29 +55,26 @@ public class TetrisFrame extends JFrame implements KeyListener {
         // 키 리스너 설정
         this.addKeyListener((KeyListener) this);
 
-        // 전역 키 설정 (포커스 무관하게 작동)
+        // 전역 키 바인딩 설정 (포커스와 무관하게 동작)
         installRootKeyBindings();
     }
 
     private void setupMainPanel() {
         mainPanel = new MainPanel();
         layeredPane.add(mainPanel);
-        mainPanel.addButton("Game Start", Color.gray, e -> {
+
+        mainPanel.gameButton.addActionListener(e -> {
+            hidePanel(mainPanel);
             displayPanel(gamePanel);
-            hidePanel(mainPanel);
-            hidePanel(pausePanel);
         });
-        mainPanel.addButton("Setting", Color.gray, e -> {
+        mainPanel.settingButton.addActionListener(e -> {
+            hidePanel(mainPanel);
             displayPanel(settingPanel);
-            hidePanel(mainPanel);
-            hidePanel(pausePanel);
         });
-        mainPanel.addButton("Scoreboard", Color.gray, e -> {
+        mainPanel.scoreboardButton.addActionListener(e -> {
+            hidePanel(mainPanel);
             displayPanel(scoreboardPanel);
-            hidePanel(mainPanel);
-            hidePanel(pausePanel);
         });
-        mainPanel.layoutButtons();
     }
 
     private void setupGamePanel() {
@@ -98,6 +94,10 @@ public class TetrisFrame extends JFrame implements KeyListener {
         // 버튼 기능 추가
         pausePanel.continueButton.addActionListener(e -> {
             hidePanel(pausePanel);
+        });
+        pausePanel.goMainButton.addActionListener(e -> {
+            hidePanel(pausePanel);
+            displayPanel(mainPanel);
         });
         pausePanel.exitButton.addActionListener(e -> {
             this.dispatchEvent(new WindowEvent(this, WindowEvent.WINDOW_CLOSING));
@@ -124,6 +124,7 @@ public class TetrisFrame extends JFrame implements KeyListener {
         this.requestFocusInWindow();
     }
 
+    // 전역 키 설정
     private void installRootKeyBindings() {
         InputMap im = this.getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
         ActionMap am = this.getRootPane().getActionMap();

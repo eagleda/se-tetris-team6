@@ -1,61 +1,80 @@
 package tetris.view;
 
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.Dimension;
-import java.awt.event.ActionListener;
-import java.util.ArrayList;
+import java.awt.Font;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
 
 import javax.swing.JButton;
 import javax.swing.JPanel;
-import javax.swing.SpringLayout;
 
 public class MainPanel extends JPanel {
-    private static final Dimension BUTTON_SIZE = new Dimension(120, 50);
+    private static final Dimension BUTTON_SIZE = new Dimension(150, 80);
     private static final int BUTTON_MARGIN_Y = 30;
 
-    protected final ArrayList<JButton> buttons = new ArrayList<>();
-    private final SpringLayout layout;
+    public JButton gameButton;
+    public JButton settingButton;
+    public JButton scoreboardButton;
 
     public MainPanel() {
         this.setSize(TetrisFrame.FRAME_SIZE);
         this.setBackground(Color.black);
         this.setOpaque(true);
         this.setVisible(false);
-        layout = new SpringLayout();
-        this.setLayout(layout);
-    }
+        // layout = new SpringLayout();
+        // this.setLayout(layout);
+        this.setLayout(new GridBagLayout());
 
-    // 버튼 추가
-    public void addButton(String text, Color color, ActionListener action) {
-        JButton button = new JButton();
-        button.setText(text);
-        button.setBackground(color);
-        button.setFocusable(false);
-        button.setPreferredSize(BUTTON_SIZE);
-        button.addActionListener(action);
-        buttons.add(button);
-        this.add(button);
-    }
-
-    // 버튼 위치 조정
-    public void layoutButtons() {
-        if (!buttons.isEmpty()) {
-            // 첫 번째 버튼을 패널 크기의 1/5(가로), 1/8(세로) 위치에 배치
-            JButton firstButton = buttons.get(0);
-            int xPosition = this.getWidth() / 5;
-            int yPosition = this.getHeight() / 8;
-            layout.putConstraint(SpringLayout.WEST, firstButton, xPosition, SpringLayout.WEST, this);
-            layout.putConstraint(SpringLayout.NORTH, firstButton, yPosition, SpringLayout.NORTH, this);
-
-            // 나머지 버튼들을 첫 번째 버튼 아래에 배치
-            JButton prevButton = firstButton;
-            for (int i = 1; i < buttons.size(); i++) {
-                JButton nextButton = buttons.get(i);
-                layout.putConstraint(SpringLayout.WEST, nextButton, xPosition, SpringLayout.WEST, this);
-                layout.putConstraint(SpringLayout.NORTH, nextButton, BUTTON_MARGIN_Y, SpringLayout.SOUTH, prevButton);
-                prevButton = nextButton;
+        // GridBagLayout 설정
+        GridBagConstraints gbc = new GridBagConstraints() {
+            {
+                gridx = 0;
+                gridy = 0;
+                weightx = 1.0;
+                weighty = 1.0;
+                anchor = GridBagConstraints.CENTER;
             }
+        };
+
+        // 버튼 생성
+        gameButton = new JButton() {
+            {
+                setText("Game");
+                setFont(new Font("SansSerif", Font.BOLD, 18));
+                setPreferredSize(BUTTON_SIZE);
+            }
+        };
+        settingButton = new JButton() {
+            {
+                setText("Setting");
+                setFont(new Font("SansSerif", Font.BOLD, 18));
+                setPreferredSize(BUTTON_SIZE);
+            }
+        };
+        scoreboardButton = new JButton() {
+            {
+                setText("Scoreboard");
+                setFont(new Font("SansSerif", Font.BOLD, 18));
+                setPreferredSize(BUTTON_SIZE);
+            }
+        };
+
+        // Add Components to GridBagLayout
+        for (int i = 0; i < 2; i++) {
+            addComponentVertical(new EmptySpace(), gbc);
+        }
+        addComponentVertical(gameButton, gbc);
+        addComponentVertical(settingButton, gbc);
+        addComponentVertical(scoreboardButton, gbc);
+        for (int i = 0; i < 8; i++) {
+            addComponentVertical(new EmptySpace(), gbc);
         }
     }
 
+    private void addComponentVertical(Component component, GridBagConstraints gbc) {
+        this.add(component, gbc);
+        gbc.gridy++;
+    }
 }

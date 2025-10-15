@@ -13,15 +13,15 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 
 public class PausePanel extends JPanel {
-    private final static Dimension PreferredSize = new Dimension(160, 80);
+    private final static Dimension BUTTON_SIZE = new Dimension(150, 80);
 
     public JButton continueButton;
+    public JButton goMainButton;
     public JButton exitButton;
 
     public PausePanel() {
         this.setSize(TetrisFrame.FRAME_SIZE);
-        this.setBackground(new Color(0, 0, 0, 150));
-        this.setOpaque(false);
+        this.setBackground(Color.gray);
         this.setVisible(false);
         this.setLayout(new GridBagLayout());
 
@@ -41,7 +41,16 @@ public class PausePanel extends JPanel {
                 setText("Pause Panel");
                 setFont(new Font("SansSerif", Font.BOLD, 24));
                 setForeground(Color.WHITE);
-                setPreferredSize(PreferredSize);
+                setPreferredSize(BUTTON_SIZE);
+            }
+        };
+
+        goMainButton = new JButton() {
+            {
+                setText("Main");
+                setFont(new Font("SansSerif", Font.BOLD, 18));
+                setPreferredSize(BUTTON_SIZE);
+
             }
         };
 
@@ -49,14 +58,16 @@ public class PausePanel extends JPanel {
             {
                 setText("Continue");
                 setFont(new Font("SansSerif", Font.BOLD, 18));
-                setPreferredSize(PreferredSize);
+                setPreferredSize(BUTTON_SIZE);
+
             }
         };
         exitButton = new JButton() {
             {
                 setText("Exit");
                 setFont(new Font("SansSerif", Font.BOLD, 18));
-                setPreferredSize(PreferredSize);
+                setPreferredSize(BUTTON_SIZE);
+
             }
         };
 
@@ -66,6 +77,7 @@ public class PausePanel extends JPanel {
         }
         addComponentVertical(textLabel, gbc); // 텍스트 라벨
         addComponentVertical(continueButton, gbc); // 재게 버튼
+        addComponentVertical(goMainButton, gbc); // 메인 버튼
         addComponentVertical(exitButton, gbc); // 게임 종료 버튼
         for (int i = 0; i < 3; i++) { // 빈 공간
             addComponentVertical(new EmptySpace(), gbc);
