@@ -2,18 +2,15 @@ package tetris.view;
 
 import java.awt.Color;
 import java.awt.Component;
-import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
+import java.awt.Insets;
 
 import javax.swing.JButton;
 import javax.swing.JPanel;
 
 public class MainPanel extends JPanel {
-    private static final Dimension BUTTON_SIZE = new Dimension(150, 80);
-    private static final int BUTTON_MARGIN_Y = 30;
-
     public JButton gameButton;
     public JButton settingButton;
     public JButton scoreboardButton;
@@ -35,6 +32,8 @@ public class MainPanel extends JPanel {
                 weightx = 1.0;
                 weighty = 1.0;
                 anchor = GridBagConstraints.CENTER;
+                fill = GridBagConstraints.BOTH;
+                insets = new Insets(10, 200, 10, 200);
             }
         };
 
@@ -43,21 +42,18 @@ public class MainPanel extends JPanel {
             {
                 setText("Game");
                 setFont(new Font("SansSerif", Font.BOLD, 18));
-                setPreferredSize(BUTTON_SIZE);
             }
         };
         settingButton = new JButton() {
             {
                 setText("Setting");
                 setFont(new Font("SansSerif", Font.BOLD, 18));
-                setPreferredSize(BUTTON_SIZE);
             }
         };
         scoreboardButton = new JButton() {
             {
                 setText("Scoreboard");
                 setFont(new Font("SansSerif", Font.BOLD, 18));
-                setPreferredSize(BUTTON_SIZE);
             }
         };
 

@@ -3,7 +3,6 @@ package tetris.view;
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
-import java.awt.event.KeyListener;
 import java.awt.event.WindowEvent;
 
 import javax.swing.AbstractAction;
@@ -15,7 +14,7 @@ import javax.swing.JLayeredPane;
 import javax.swing.JPanel;
 import javax.swing.KeyStroke;
 
-public class TetrisFrame extends JFrame implements KeyListener {
+public class TetrisFrame extends JFrame {
     private static final String FRAME_TITLE = "Tetris Game - Team 06";
     protected static final Dimension FRAME_SIZE = new Dimension(700, 900);
 
@@ -28,6 +27,9 @@ public class TetrisFrame extends JFrame implements KeyListener {
     protected static SettingPanel settingPanel;
     protected static ScoreboardPanel scoreboardPanel;
     protected static PausePanel pausePanel;
+
+    private static JPanel prevPanel;
+    private static JPanel currPanel;
 
     public TetrisFrame() {
         this.setTitle(FRAME_TITLE);
@@ -50,10 +52,9 @@ public class TetrisFrame extends JFrame implements KeyListener {
 
         // 시작 화면 설정
         this.setVisible(true);
+        prevPanel = null;
+        currPanel = mainPanel;
         displayPanel(mainPanel);
-
-        // 키 리스너 설정
-        this.addKeyListener((KeyListener) this);
 
         // 전역 키 바인딩 설정 (포커스와 무관하게 동작)
         installRootKeyBindings();
@@ -61,42 +62,47 @@ public class TetrisFrame extends JFrame implements KeyListener {
 
     private void setupMainPanel() {
         mainPanel = new MainPanel();
+        mainPanel.setVisible(false);
         layeredPane.add(mainPanel);
 
         mainPanel.gameButton.addActionListener(e -> {
-            hidePanel(mainPanel);
+            // hidePanel(mainPanel);
             displayPanel(gamePanel);
         });
         mainPanel.settingButton.addActionListener(e -> {
-            hidePanel(mainPanel);
+            // hidePanel(mainPanel);
             displayPanel(settingPanel);
         });
         mainPanel.scoreboardButton.addActionListener(e -> {
-            hidePanel(mainPanel);
+            // hidePanel(mainPanel);
             displayPanel(scoreboardPanel);
         });
     }
 
     private void setupGamePanel() {
         gamePanel = new GamePanel();
+        gamePanel.setVisible(false);
         layeredPane.add(gamePanel, JLayeredPane.DEFAULT_LAYER);
     }
 
     private void setupSettingPanel() {
         settingPanel = new SettingPanel();
+        settingPanel.setVisible(false);
         layeredPane.add(settingPanel, JLayeredPane.DEFAULT_LAYER);
     }
 
     private void setupPausePanel() {
         pausePanel = new PausePanel();
+        pausePanel.setVisible(false);
         layeredPane.add(pausePanel, JLayeredPane.DEFAULT_LAYER);
 
         // 버튼 기능 추가
         pausePanel.continueButton.addActionListener(e -> {
-            hidePanel(pausePanel);
+            // hidePanel(pausePanel);
+            displayPanel(prevPanel);
         });
         pausePanel.goMainButton.addActionListener(e -> {
-            hidePanel(pausePanel);
+            // hidePanel(pausePanel);
             displayPanel(mainPanel);
         });
         pausePanel.exitButton.addActionListener(e -> {
@@ -106,22 +112,18 @@ public class TetrisFrame extends JFrame implements KeyListener {
 
     private void setupScoreboardPanel() {
         scoreboardPanel = new ScoreboardPanel();
+        scoreboardPanel.setVisible(false);
         layeredPane.add(scoreboardPanel, JLayeredPane.DEFAULT_LAYER);
     }
 
     private void displayPanel(JPanel panel) {
+        prevPanel = currPanel;
+        currPanel = panel;
+        prevPanel.setVisible(false);
         panel.setVisible(true);
-        layeredPane.moveToFront(panel);
-        panel.setFocusable(true);
         panel.requestFocusInWindow();
+        layeredPane.moveToFront(panel);
         layeredPane.repaint();
-    }
-
-    private void hidePanel(JPanel panel) {
-        panel.setVisible(false);
-        panel.setFocusable(false);
-        layeredPane.repaint();
-        this.requestFocusInWindow();
     }
 
     // 전역 키 설정
@@ -134,10 +136,11 @@ public class TetrisFrame extends JFrame implements KeyListener {
         am.put("togglePausePanel", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                if (!pausePanel.isVisible())
+                if (!pausePanel.isVisible()) {
                     displayPanel(pausePanel);
-                else
-                    hidePanel(pausePanel);
+                } else {
+                    displayPanel(prevPanel);
+                }
             }
         });
 
@@ -147,20 +150,8 @@ public class TetrisFrame extends JFrame implements KeyListener {
             @Override
             public void actionPerformed(ActionEvent e) {
                 displayPanel(mainPanel);
-                hidePanel(pausePanel);
             }
         });
     }
 
-    @Override
-    public void keyPressed(KeyEvent e) {
-    }
-
-    @Override
-    public void keyTyped(KeyEvent e) {
-    }
-
-    @Override
-    public void keyReleased(KeyEvent e) {
-    }
 }

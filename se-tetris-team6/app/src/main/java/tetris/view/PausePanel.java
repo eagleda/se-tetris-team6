@@ -2,19 +2,17 @@ package tetris.view;
 
 import java.awt.Color;
 import java.awt.Component;
-import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
+import java.awt.Insets;
 
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 
 public class PausePanel extends JPanel {
-    private final static Dimension BUTTON_SIZE = new Dimension(150, 80);
-
     public JButton continueButton;
     public JButton goMainButton;
     public JButton exitButton;
@@ -33,6 +31,8 @@ public class PausePanel extends JPanel {
                 weightx = 1.0;
                 weighty = 1.0;
                 anchor = GridBagConstraints.CENTER;
+                fill = GridBagConstraints.BOTH;
+                insets = new Insets(30, 200, 30, 200);
             }
         };
 
@@ -41,7 +41,7 @@ public class PausePanel extends JPanel {
                 setText("Pause Panel");
                 setFont(new Font("SansSerif", Font.BOLD, 24));
                 setForeground(Color.WHITE);
-                setPreferredSize(BUTTON_SIZE);
+                setHorizontalAlignment(JLabel.CENTER);
             }
         };
 
@@ -49,8 +49,6 @@ public class PausePanel extends JPanel {
             {
                 setText("Main");
                 setFont(new Font("SansSerif", Font.BOLD, 18));
-                setPreferredSize(BUTTON_SIZE);
-
             }
         };
 
@@ -58,16 +56,12 @@ public class PausePanel extends JPanel {
             {
                 setText("Continue");
                 setFont(new Font("SansSerif", Font.BOLD, 18));
-                setPreferredSize(BUTTON_SIZE);
-
             }
         };
         exitButton = new JButton() {
             {
                 setText("Exit");
                 setFont(new Font("SansSerif", Font.BOLD, 18));
-                setPreferredSize(BUTTON_SIZE);
-
             }
         };
 
