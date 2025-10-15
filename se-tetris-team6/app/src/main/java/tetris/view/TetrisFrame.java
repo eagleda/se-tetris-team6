@@ -38,7 +38,7 @@ public class TetrisFrame extends JFrame {
         this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         this.setLocationRelativeTo(null);
 
-        // layeredPane 설정 (겹쳐서 배치 가능)
+        // layeredPane 설정 (패널을 겹쳐서 배치 가능)
         layeredPane = new JLayeredPane();
         layeredPane.setPreferredSize(FRAME_SIZE);
         this.add(layeredPane);
@@ -62,47 +62,38 @@ public class TetrisFrame extends JFrame {
 
     private void setupMainPanel() {
         mainPanel = new MainPanel();
-        mainPanel.setVisible(false);
         layeredPane.add(mainPanel);
 
         mainPanel.gameButton.addActionListener(e -> {
-            // hidePanel(mainPanel);
             displayPanel(gamePanel);
         });
         mainPanel.settingButton.addActionListener(e -> {
-            // hidePanel(mainPanel);
             displayPanel(settingPanel);
         });
         mainPanel.scoreboardButton.addActionListener(e -> {
-            // hidePanel(mainPanel);
             displayPanel(scoreboardPanel);
         });
     }
 
     private void setupGamePanel() {
         gamePanel = new GamePanel();
-        gamePanel.setVisible(false);
         layeredPane.add(gamePanel, JLayeredPane.DEFAULT_LAYER);
     }
 
     private void setupSettingPanel() {
         settingPanel = new SettingPanel();
-        settingPanel.setVisible(false);
         layeredPane.add(settingPanel, JLayeredPane.DEFAULT_LAYER);
     }
 
     private void setupPausePanel() {
         pausePanel = new PausePanel();
-        pausePanel.setVisible(false);
         layeredPane.add(pausePanel, JLayeredPane.DEFAULT_LAYER);
 
         // 버튼 기능 추가
         pausePanel.continueButton.addActionListener(e -> {
-            // hidePanel(pausePanel);
             displayPanel(prevPanel);
         });
         pausePanel.goMainButton.addActionListener(e -> {
-            // hidePanel(pausePanel);
             displayPanel(mainPanel);
         });
         pausePanel.exitButton.addActionListener(e -> {
@@ -112,7 +103,6 @@ public class TetrisFrame extends JFrame {
 
     private void setupScoreboardPanel() {
         scoreboardPanel = new ScoreboardPanel();
-        scoreboardPanel.setVisible(false);
         layeredPane.add(scoreboardPanel, JLayeredPane.DEFAULT_LAYER);
     }
 
