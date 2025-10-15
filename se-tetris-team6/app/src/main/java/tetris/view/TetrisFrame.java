@@ -2,19 +2,26 @@ package tetris.view;
 
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
+import java.awt.event.WindowEvent;
 
+import javax.swing.AbstractAction;
+import javax.swing.ActionMap;
+import javax.swing.InputMap;
+import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JLayeredPane;
 import javax.swing.JPanel;
+import javax.swing.KeyStroke;
 
 public class TetrisFrame extends JFrame implements KeyListener {
     private static final String FRAME_TITLE = "Tetris Game - Team 06";
     protected static final Dimension FRAME_SIZE = new Dimension(700, 900);
 
     // 프레임 레이아웃
-    private JLayeredPane layeredPane;
+    private final JLayeredPane layeredPane;
 
     // 패널 참조
     protected static MainPanel mainPanel;
@@ -48,6 +55,9 @@ public class TetrisFrame extends JFrame implements KeyListener {
 
         // 키 리스너 설정
         this.addKeyListener((KeyListener) this);
+
+        // 전역 키 설정 (포커스 무관하게 작동)
+        installRootKeyBindings();
     }
 
     private void setupMainPanel() {
@@ -84,6 +94,14 @@ public class TetrisFrame extends JFrame implements KeyListener {
     private void setupPausePanel() {
         pausePanel = new PausePanel();
         layeredPane.add(pausePanel, JLayeredPane.DEFAULT_LAYER);
+
+        // 버튼 기능 추가
+        pausePanel.continueButton.addActionListener(e -> {
+            hidePanel(pausePanel);
+        });
+        pausePanel.exitButton.addActionListener(e -> {
+            this.dispatchEvent(new WindowEvent(this, WindowEvent.WINDOW_CLOSING));
+        });
     }
 
     private void setupScoreboardPanel() {
@@ -97,40 +115,51 @@ public class TetrisFrame extends JFrame implements KeyListener {
         panel.setFocusable(true);
         panel.requestFocusInWindow();
         layeredPane.repaint();
-        this.requestFocusInWindow();
     }
 
     private void hidePanel(JPanel panel) {
         panel.setVisible(false);
         panel.setFocusable(false);
         layeredPane.repaint();
+        this.requestFocusInWindow();
+    }
+
+    private void installRootKeyBindings() {
+        InputMap im = this.getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
+        ActionMap am = this.getRootPane().getActionMap();
+
+        // PausePanel 토글
+        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "togglePausePanel");
+        am.put("togglePausePanel", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (!pausePanel.isVisible())
+                    displayPanel(pausePanel);
+                else
+                    hidePanel(pausePanel);
+            }
+        });
+
+        // MainPanel 복귀
+        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_HOME, 0), "goMainPanel");
+        am.put("goMainPanel", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                displayPanel(mainPanel);
+                hidePanel(pausePanel);
+            }
+        });
     }
 
     @Override
     public void keyPressed(KeyEvent e) {
-        switch (e.getKeyCode()) {
-            case KeyEvent.VK_ESCAPE -> { // esc키 -> 중단 화면
-                if (!pausePanel.isVisible()) {
-                    displayPanel(pausePanel);
-                } else {
-                    hidePanel(pausePanel);
-                }
-            }
-            case KeyEvent.VK_HOME -> { // home키 -> 메인 화면
-                displayPanel(mainPanel);
-                hidePanel(pausePanel);
-            }
-        }
-
     }
 
     @Override
     public void keyTyped(KeyEvent e) {
-        // 필요시 구현
     }
 
     @Override
     public void keyReleased(KeyEvent e) {
-        // 필요시 구현
     }
 }
