@@ -15,8 +15,10 @@ import javax.swing.JPanel;
 import javax.swing.KeyStroke;
 
 public class TetrisFrame extends JFrame {
-    private static final String FRAME_TITLE = "Tetris Game - Team 06";
-    protected static final Dimension FRAME_SIZE = new Dimension(700, 900);
+    public static TetrisFrame instance;
+
+    protected static final String FRAME_TITLE = "Tetris Game - Team 06";
+    protected static Dimension FRAME_SIZE = new Dimension(700, 900);
 
     // 프레임 레이아웃
     private final JLayeredPane layeredPane;
@@ -32,6 +34,8 @@ public class TetrisFrame extends JFrame {
     private static JPanel currPanel;
 
     public TetrisFrame() {
+        instance = this;
+
         this.setTitle(FRAME_TITLE);
         this.setSize(FRAME_SIZE);
         this.setResizable(false);
@@ -144,4 +148,10 @@ public class TetrisFrame extends JFrame {
         });
     }
 
+    public void changeResolution(Dimension newSize) {
+        FRAME_SIZE = newSize;
+        layeredPane.setPreferredSize(newSize);
+        layeredPane.setBounds(0, 0, newSize.width, newSize.height);
+
+    }
 }

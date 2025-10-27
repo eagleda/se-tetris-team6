@@ -43,9 +43,12 @@ public class GamePanel extends JPanel implements KeyListener {
         };
         this.add(rightPanel, BorderLayout.EAST);
 
+        board.drawBoard();
+
         addKeyListener(this);
     }
 
+    // 디버깅
     @Override
     public void keyPressed(KeyEvent e) {
         switch (e.getKeyCode()) {
@@ -55,6 +58,10 @@ public class GamePanel extends JPanel implements KeyListener {
             case KeyEvent.VK_RIGHT -> board.moveBlock(1, 0);
             case KeyEvent.VK_SPACE -> board.start(new Block());
             case KeyEvent.VK_ENTER -> upcoming.drawBoard(new Block());
+        }
+        int idx = e.getKeyChar() - '0';
+        if (1 <= idx && idx < 10) {
+            board.deleteLine(20 - idx);
         }
     }
 

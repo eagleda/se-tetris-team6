@@ -45,10 +45,9 @@ public class Upcoming extends JPanel {
 
         board = new int[HEIGHT][WIDTH];
         clearBoard();
-        drawBoard(null);
     }
 
-    // upcomingBlock이 null이면 빈 보드를 그림
+    // board에 다음 블록 그리기
     public void drawBoard(Block upcomingBlock) {
         clearBoard();
 
@@ -107,6 +106,7 @@ public class Upcoming extends JPanel {
         pane.repaint();
     }
 
+    // board 초기화
     private void clearBoard() {
         for (int r = 0; r < HEIGHT; r++)
             for (int c = 0; c < WIDTH; c++)

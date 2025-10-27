@@ -16,9 +16,11 @@ import tetris.model.Block;
 public class Board extends JPanel {
     private static final int WIDTH = 10;
     private static final int HEIGHT = 20;
-    public static final char BORDER_CHAR = 'X';
-    public static final char BLOCK_CHAR = 'O';
-    public static final char EMPTY_CHAR = ' ';
+
+    private static final char BORDER_CHAR = 'X';
+    private static final char BLOCK_CHAR = 'O';
+    private static final char EMPTY_CHAR = ' ';
+    private static final char ITEM_CHAR = 'I';
 
     public JTextPane pane;
 
@@ -26,6 +28,7 @@ public class Board extends JPanel {
     private int x = 3, y = 0;
 
     private int[][] board;
+    private Color[][] colorBoard; // 각 셀의 색상 정보 저장
     private SimpleAttributeSet styleSet;
 
     public Board() {
@@ -52,12 +55,12 @@ public class Board extends JPanel {
         StyleConstants.setAlignment(styleSet, StyleConstants.ALIGN_CENTER);
 
         board = new int[HEIGHT][WIDTH];
+        colorBoard = new Color[HEIGHT][WIDTH]; // 색상 배열 초기화
         block = null;
-
-        drawBoard();
     }
 
     public void start(Block activeBlock) {
+        fixBlock();
         x = 3;
         y = 0;
         block = activeBlock;
@@ -83,30 +86,73 @@ public class Board extends JPanel {
         drawBoard();
     }
 
-    // 이동 전 블록 지우기
+    // 이동 전 블록 지우기 (임시 배치된 것만 지움)
     public void eraseBlock() {
         for (int j = 0; j < block.height(); j++) {
             for (int i = 0; i < block.width(); i++) {
                 int bx = x + i;
                 int by = y + j;
                 if (by >= 0 && by < HEIGHT && bx >= 0 && bx < WIDTH) {
-                    board[by][bx] = 0;
+                    // 현재 움직이는 블록만 지우고, 고정된 블록은 유지
+                    if (board[by][bx] == 1 && colorBoard[by][bx] == null) {
+                        board[by][bx] = 0;
+                    }
                 }
             }
         }
     }
 
-    // 현재 블록 그리기
+    // 현재 블록 그리기 (임시 배치, 색상은 저장 안 함)
     public void placeBlock() {
         for (int j = 0; j < block.height(); j++) {
             for (int i = 0; i < block.width(); i++) {
                 int bx = x + i;
                 int by = y + j;
                 if (by >= 0 && by < HEIGHT && bx >= 0 && bx < WIDTH) {
-                    board[by][bx] = block.getShape(i, j);
+                    if (block.getShape(i, j) == 1) {
+                        board[by][bx] = 1;
+                        // 임시 배치는 색상 저장 안 함 (null 유지)
+                    }
                 }
             }
         }
+    }
+
+    // 블록을 보드에 고정 (색상 저장)
+    public void fixBlock() {
+        if (block == null)
+            return;
+        for (int j = 0; j < block.height(); j++) {
+            for (int i = 0; i < block.width(); i++) {
+                int bx = x + i;
+                int by = y + j;
+                if (by >= 0 && by < HEIGHT && bx >= 0 && bx < WIDTH) {
+                    if (block.getShape(i, j) == 1) {
+                        board[by][bx] = 1;
+                        colorBoard[by][bx] = block.getColor(); // 색상 저장
+                    }
+                }
+            }
+        }
+        block = null; // 블록 고정 후 null로 설정
+        drawBoard();
+    }
+
+    public void deleteLine(int height) {
+        if (height < 0 || height >= HEIGHT)
+            return;
+
+        // 보드 데이터 이동: 지정한 행을 지우고 위쪽을 아래로 당김
+        for (int r = height; r > 0; r--) {
+            System.arraycopy(board[r - 1], 0, board[r], 0, WIDTH);
+            System.arraycopy(colorBoard[r - 1], 0, colorBoard[r], 0, WIDTH); // 색상도 이동
+        }
+        for (int c = 0; c < WIDTH; c++) {
+            board[0][c] = 0;
+            colorBoard[0][c] = null;
+        }
+
+        drawBoard();
     }
 
     // 보드 그리기
@@ -133,10 +179,26 @@ public class Board extends JPanel {
         StyledDocument doc = pane.getStyledDocument();
         doc.setParagraphAttributes(0, doc.getLength(), styleSet, false);
 
+        int rowStride = WIDTH + 3;
+
+        // 1. 고정된 블록 색상 적용 (colorBoard에 색상 정보 있음)
+        for (int r = 0; r < HEIGHT; r++) {
+            for (int c = 0; c < WIDTH; c++) {
+                if (board[r][c] == 1 && colorBoard[r][c] != null) {
+                    int offset = (r + 1) * rowStride + 1 + c;
+                    if (offset >= 0 && offset < doc.getLength()) {
+                        SimpleAttributeSet fixedStyle = new SimpleAttributeSet();
+                        StyleConstants.setForeground(fixedStyle, colorBoard[r][c]);
+                        doc.setCharacterAttributes(offset, 1, fixedStyle, false);
+                    }
+                }
+            }
+        }
+
+        // 2. 현재 움직이는 블록 색상 적용
         if (block != null) {
             SimpleAttributeSet blockStyles = new SimpleAttributeSet();
             StyleConstants.setForeground(blockStyles, block.getColor());
-            int rowStride = WIDTH + 3;
             for (int j = 0; j < block.height(); j++) {
                 for (int i = 0; i < block.width(); i++) {
                     if (block.getShape(i, j) == 1) {
