@@ -104,6 +104,7 @@ public class TetrisFrame extends JFrame {
 
     private void setupGamePanel() {
         gamePanel = new GamePanel();
+        gamePanel.bindGameModel(gameModel);
         layeredPane.add(gamePanel, JLayeredPane.DEFAULT_LAYER);
     }
 
@@ -120,15 +121,11 @@ public class TetrisFrame extends JFrame {
 
         // 버튼 기능 추가
         pausePanel.continueButton.addActionListener(e -> {
-            if (gameModel.getCurrentState() == GameState.PAUSED) {
-                gameModel.changeState(GameState.PLAYING);
-            }
+            gameModel.resumeGame();
         });
         pausePanel.goMainButton.addActionListener(e -> {
             displayPanel(mainPanel);
-            if (gameModel.getCurrentState() != GameState.MENU) {
-                gameModel.changeState(GameState.MENU);
-            }
+            gameModel.quitToMenu();
         });
         pausePanel.exitButton.addActionListener(e -> {
             this.dispatchEvent(new WindowEvent(this, WindowEvent.WINDOW_CLOSING));
@@ -183,9 +180,9 @@ public class TetrisFrame extends JFrame {
                     return;
                 }
                 if (state == GameState.PLAYING) {
-                    gameModel.changeState(GameState.PAUSED);
+                    gameModel.pauseGame();
                 } else if (state == GameState.PAUSED) {
-                    gameModel.changeState(GameState.PLAYING);
+                    gameModel.resumeGame();
                 }
             }
         });
@@ -196,9 +193,7 @@ public class TetrisFrame extends JFrame {
             @Override
             public void actionPerformed(ActionEvent e) {
                 displayPanel(mainPanel);
-                if (gameModel.getCurrentState() != GameState.MENU) {
-                    gameModel.changeState(GameState.MENU);
-                }
+                gameModel.quitToMenu();
             }
         });
     }

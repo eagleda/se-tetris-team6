@@ -74,6 +74,13 @@ public final class Board {
         return canPlace(shape, spawnX, spawnY);
     }
 
+    /** 전체 격자를 비웁니다. */
+    public void clear() {
+        for (int y = 0; y < H; y++) {
+            Arrays.fill(grid[y], 0);
+        }
+    }
+
     // 내부 유틸
     private boolean isFullRow(int y) {
         for (int x = 0; x < W; x++) if (grid[y][x] == 0) return false;

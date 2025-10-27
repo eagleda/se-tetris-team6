@@ -135,6 +135,50 @@ public final class GameModel implements GameClock.Listener {
         }
     }
 
+    private boolean isPlayingState() {
+        return currentState == GameState.PLAYING;
+    }
+
+    private boolean ensureActiveBlockPresent() {
+        if (activeBlock == null) {
+            spawnIfNeeded();
+        }
+        return activeBlock != null;
+    }
+
+    private boolean canActiveBlockMove(int dx, int dy) {
+        if (activeBlock == null) {
+            return false;
+        }
+        return board.canPlace(
+            activeBlock.getShape(),
+            activeBlock.getX() + dx,
+            activeBlock.getY() + dy
+        );
+    }
+
+    private void resetInputAxes() {
+        inputState.setLeft(false);
+        inputState.setRight(false);
+        inputState.setSoftDrop(false);
+        inputState.clearOneShotInputs();
+    }
+
+    private void resetGameplayState() {
+        resetInputAxes();
+        board.clear();
+        scoreData.reset();
+        activeBlock = null;
+        stopClockCompletely();
+    }
+
+    private void stopClockCompletely() {
+        if (clockStarted) {
+            clock.stop();
+            clockStarted = false;
+        }
+    }
+
     public void stepGameplay() {
         if (activeBlock == null) {
             return;
@@ -243,5 +287,203 @@ public final class GameModel implements GameClock.Listener {
     @Override
     public void onLockDelayTimeout() {
         // TODO: 블록 잠금 및 새 블록 스폰
+    }
+
+    // === 외부 제어 진입점 ===
+
+    public void pauseGame() {
+        if (currentState == GameState.PLAYING) {
+            changeState(GameState.PAUSED);
+        }
+    }
+
+    public void resumeGame() {
+        if (currentState == GameState.PAUSED) {
+            changeState(GameState.PLAYING);
+        }
+    }
+
+    public void quitToMenu() {
+        if (currentState != GameState.MENU) {
+            stopClockCompletely();
+            changeState(GameState.MENU);
+        }
+    }
+
+    public void restartGame() {
+        resetGameplayState();
+        changeState(GameState.PLAYING);
+    }
+
+    public void moveBlockLeft() {
+        if (!isPlayingState() || !ensureActiveBlockPresent()) {
+            return;
+        }
+        if (canActiveBlockMove(-1, 0)) {
+            activeBlock.moveBy(-1, 0);
+        }
+    }
+
+    public void moveBlockRight() {
+        if (!isPlayingState() || !ensureActiveBlockPresent()) {
+            return;
+        }
+        if (canActiveBlockMove(1, 0)) {
+            activeBlock.moveBy(1, 0);
+        }
+    }
+
+    public void moveBlockDown() {
+        if (!isPlayingState() || !ensureActiveBlockPresent()) {
+            return;
+        }
+        if (canActiveBlockMove(0, 1)) {
+            activeBlock.moveBy(0, 1);
+        }
+    }
+
+    public void rotateBlockClockwise() {
+        if (!isPlayingState() || !ensureActiveBlockPresent()) {
+            return;
+        }
+        BlockShape rotated = activeBlock.getShape().rotatedCW();
+        if (board.canPlace(rotated, activeBlock.getX(), activeBlock.getY())) {
+            activeBlock.setShape(rotated);
+        }
+    }
+
+    public void rotateBlockCounterClockwise() {
+        if (!isPlayingState() || !ensureActiveBlockPresent()) {
+            return;
+        }
+        BlockShape rotated = activeBlock.getShape()
+            .rotatedCW()
+            .rotatedCW()
+            .rotatedCW();
+        if (board.canPlace(rotated, activeBlock.getX(), activeBlock.getY())) {
+            activeBlock.setShape(rotated);
+        }
+    }
+
+    public void hardDropBlock() {
+        if (!isPlayingState() || !ensureActiveBlockPresent()) {
+            return;
+        }
+        while (canActiveBlockMove(0, 1)) {
+            activeBlock.moveBy(0, 1);
+        }
+    }
+
+    public void holdCurrentBlock() {
+        if (!isPlayingState()) {
+            return;
+        }
+        inputState.pressHold();
+    }
+
+    // === 상태별 보조 동작 ===
+
+    public void navigateMenuUp() {
+        if (currentState == GameState.MENU) {
+            // TODO: 메뉴 항목 위로 이동
+        }
+    }
+
+    public void navigateMenuDown() {
+        if (currentState == GameState.MENU) {
+            // TODO: 메뉴 항목 아래로 이동
+        }
+    }
+
+    public void selectCurrentMenuItem() {
+        if (currentState == GameState.MENU) {
+            // TODO: 메뉴 항목 선택
+        }
+    }
+
+    public void handleMenuBack() {
+        if (currentState == GameState.MENU) {
+            // TODO: 메뉴 뒤로가기 처리
+        } else {
+            changeState(GameState.MENU);
+        }
+    }
+
+    public void proceedFromGameOver() {
+        if (currentState == GameState.GAME_OVER) {
+            changeState(GameState.NAME_INPUT);
+        }
+    }
+
+    public void navigateSettingsUp() {
+        if (currentState == GameState.SETTINGS) {
+            // TODO: 설정 항목 위로 이동
+        }
+    }
+
+    public void navigateSettingsDown() {
+        if (currentState == GameState.SETTINGS) {
+            // TODO: 설정 항목 아래로 이동
+        }
+    }
+
+    public void selectCurrentSetting() {
+        if (currentState == GameState.SETTINGS) {
+            // TODO: 설정 선택 또는 값 변경
+        }
+    }
+
+    public void exitSettings() {
+        if (currentState == GameState.SETTINGS) {
+            changeState(GameState.MENU);
+        }
+    }
+
+    public void resetAllSettings() {
+        if (currentState == GameState.SETTINGS) {
+            // TODO: 설정 초기화
+        }
+    }
+
+    public void exitScoreboard() {
+        if (currentState == GameState.SCOREBOARD) {
+            changeState(GameState.MENU);
+        }
+    }
+
+    public void scrollScoreboardUp() {
+        if (currentState == GameState.SCOREBOARD) {
+            // TODO: 스코어보드 스크롤 업
+        }
+    }
+
+    public void scrollScoreboardDown() {
+        if (currentState == GameState.SCOREBOARD) {
+            // TODO: 스코어보드 스크롤 다운
+        }
+    }
+
+    public void confirmNameInput() {
+        if (currentState == GameState.NAME_INPUT) {
+            processNameEntry();
+        }
+    }
+
+    public void deleteCharacterFromName() {
+        if (currentState == GameState.NAME_INPUT) {
+            // TODO: 이름 글자 삭제
+        }
+    }
+
+    public void cancelNameInput() {
+        if (currentState == GameState.NAME_INPUT) {
+            changeState(GameState.MENU);
+        }
+    }
+
+    public void addCharacterToName(char character) {
+        if (currentState == GameState.NAME_INPUT) {
+            // TODO: 이름 글자 추가
+        }
     }
 }

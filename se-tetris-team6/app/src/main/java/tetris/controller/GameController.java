@@ -46,24 +46,28 @@ public class GameController {
 
         switch (e.getKeyCode()) {
             case KeyEvent.VK_LEFT:
-                // gameModel.moveBlockLeft();
-                System.out.println("Controller: 왼쪽 키 입력 감지");
+                gameModel.moveBlockLeft();
                 break;
             case KeyEvent.VK_RIGHT:
-                // gameModel.moveBlockRight();
-                System.out.println("Controller: 오른쪽 키 입력 감지");
+                gameModel.moveBlockRight();
                 break;
             case KeyEvent.VK_DOWN:
-                // gameModel.moveBlockDown();
-                System.out.println("Controller: 아래쪽 키 입력 감지");
+                gameModel.moveBlockDown();
                 break;
             case KeyEvent.VK_UP: // 보통 회전 키로 사용
-                // gameModel.rotateBlock();
-                System.out.println("Controller: 위쪽 키(회전) 입력 감지");
+                gameModel.rotateBlockClockwise();
                 break;
             case KeyEvent.VK_SPACE:
-                // gameModel.hardDrop();
-                System.out.println("Controller: 스페이스 바(하드 드롭) 입력 감지");
+                gameModel.hardDropBlock();
+                break;
+            case KeyEvent.VK_C:
+                gameModel.holdCurrentBlock();
+                break;
+            case KeyEvent.VK_P:
+                gameModel.pauseGame();
+                break;
+            case KeyEvent.VK_R:
+                gameModel.restartGame();
                 break;
         }
         
