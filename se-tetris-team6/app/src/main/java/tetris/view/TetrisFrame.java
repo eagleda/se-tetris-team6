@@ -13,8 +13,11 @@ import javax.swing.JFrame;
 import javax.swing.JLayeredPane;
 import javax.swing.JPanel;
 import javax.swing.KeyStroke;
+import javax.swing.SwingUtilities;
 
 import tetris.controller.GameController;
+import tetris.domain.GameModel;
+import tetris.domain.model.GameState;
 
 
 public class TetrisFrame extends JFrame {
@@ -34,7 +37,7 @@ public class TetrisFrame extends JFrame {
     private static JPanel prevPanel;
     private static JPanel currPanel;
 
-      // <<< 1. Controller 참조 변수 추가
+    private final GameModel gameModel;
     private GameController gameController;
 
     public TetrisFrame() {
@@ -49,6 +52,8 @@ public class TetrisFrame extends JFrame {
         layeredPane.setPreferredSize(FRAME_SIZE);
         this.add(layeredPane);
 
+        this.gameModel = new GameModel();
+
         // 각 패널 설정
         setupMainPanel();
         setupGamePanel();
@@ -56,9 +61,19 @@ public class TetrisFrame extends JFrame {
         setupScoreboardPanel();
         setupPausePanel();
 
-         // <<< 2. GamePanel과 GameController 연결
-        // GamePanel이 생성된 이후에 Controller를 생성하고 연결해줍니다.
-        gameController = new GameController(gamePanel);
+        gameModel.bindUiBridge(new GameModel.UiBridge() {
+            @Override
+            public void showPauseOverlay() {
+                SwingUtilities.invokeLater(() -> showPauseOverlayPanel());
+            }
+
+            @Override
+            public void hidePauseOverlay() {
+                SwingUtilities.invokeLater(() -> hidePauseOverlayPanel());
+            }
+        });
+
+        gameController = new GameController(gamePanel, gameModel);
 
         // 시작 화면 설정
         this.setVisible(true);
@@ -99,14 +114,21 @@ public class TetrisFrame extends JFrame {
 
     private void setupPausePanel() {
         pausePanel = new PausePanel();
-        layeredPane.add(pausePanel, JLayeredPane.DEFAULT_LAYER);
+        pausePanel.setBounds(0, 0, FRAME_SIZE.width, FRAME_SIZE.height);
+        layeredPane.add(pausePanel, JLayeredPane.PALETTE_LAYER);
+        pausePanel.setVisible(false);
 
         // 버튼 기능 추가
         pausePanel.continueButton.addActionListener(e -> {
-            displayPanel(prevPanel);
+            if (gameModel.getCurrentState() == GameState.PAUSED) {
+                gameModel.changeState(GameState.PLAYING);
+            }
         });
         pausePanel.goMainButton.addActionListener(e -> {
             displayPanel(mainPanel);
+            if (gameModel.getCurrentState() != GameState.MENU) {
+                gameModel.changeState(GameState.MENU);
+            }
         });
         pausePanel.exitButton.addActionListener(e -> {
             this.dispatchEvent(new WindowEvent(this, WindowEvent.WINDOW_CLOSING));
@@ -121,10 +143,28 @@ public class TetrisFrame extends JFrame {
     private void displayPanel(JPanel panel) {
         prevPanel = currPanel;
         currPanel = panel;
-        prevPanel.setVisible(false);
+        if (prevPanel != null) {
+            prevPanel.setVisible(false);
+        }
         panel.setVisible(true);
         panel.requestFocusInWindow();
         layeredPane.moveToFront(panel);
+        layeredPane.repaint();
+    }
+
+    private void showPauseOverlayPanel() {
+        pausePanel.setVisible(true);
+        layeredPane.moveToFront(pausePanel);
+        pausePanel.requestFocusInWindow();
+        layeredPane.repaint();
+    }
+
+    private void hidePauseOverlayPanel() {
+        pausePanel.setVisible(false);
+        if (currPanel != null) {
+            layeredPane.moveToFront(currPanel);
+            currPanel.requestFocusInWindow();
+        }
         layeredPane.repaint();
     }
 
@@ -138,10 +178,14 @@ public class TetrisFrame extends JFrame {
         am.put("togglePausePanel", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                if (!pausePanel.isVisible()) {
-                    displayPanel(pausePanel);
-                } else {
-                    displayPanel(prevPanel);
+                GameState state = gameModel.getCurrentState();
+                if (state == null) {
+                    return;
+                }
+                if (state == GameState.PLAYING) {
+                    gameModel.changeState(GameState.PAUSED);
+                } else if (state == GameState.PAUSED) {
+                    gameModel.changeState(GameState.PLAYING);
                 }
             }
         });
@@ -152,6 +196,9 @@ public class TetrisFrame extends JFrame {
             @Override
             public void actionPerformed(ActionEvent e) {
                 displayPanel(mainPanel);
+                if (gameModel.getCurrentState() != GameState.MENU) {
+                    gameModel.changeState(GameState.MENU);
+                }
             }
         });
     }

@@ -1,7 +1,10 @@
 package tetris.controller;
 
+import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
-import java.awt.event.KeyAdapter; 
+
+import tetris.domain.GameModel;
+import tetris.domain.model.GameState;
 import tetris.view.GamePanel;
 
 /**
@@ -11,12 +14,12 @@ import tetris.view.GamePanel;
 public class GameController {
 
     private final GamePanel gamePanel; // View 참조
-    // private final GameModel gameModel; // Model 참조 (추후 생성)
+    private final GameModel gameModel; // Model 참조
 
     // 생성자에서 View와 Model을 주입받습니다.
-    public GameController(GamePanel gamePanel /*, GameModel gameModel */) {
+    public GameController(GamePanel gamePanel, GameModel gameModel) {
         this.gamePanel = gamePanel;
-        // this.gameModel = gameModel;
+        this.gameModel = gameModel;
 
         // GamePanel의 KeyListener가 보내는 이벤트를 Controller가 처리하도록 위임합니다.
         // 이 방법 대신, GamePanel 생성자에서 직접 KeyListener를 추가할 수도 있습니다.
@@ -71,8 +74,7 @@ public class GameController {
     // 게임 시작, 게임 오버 등 로직을 처리할 메소드들을 추가할 수 있습니다.
     public void startGame() {
         System.out.println("Controller: 게임을 시작합니다.");
-        // gameModel.initGame();
-        // gamePanel.repaint();
+        gameModel.changeState(GameState.PLAYING);
     }
 }
 

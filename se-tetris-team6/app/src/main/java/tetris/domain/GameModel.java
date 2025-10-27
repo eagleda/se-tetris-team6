@@ -28,12 +28,27 @@ import tetris.domain.model.GameClock;
  */
 public final class GameModel implements GameClock.Listener {
 
+    /**
+     * UI 계층과의 최소 연결 지점.
+     * 뷰에서 필요한 오버레이 제어만 위임받습니다.
+     */
+    public interface UiBridge {
+        void showPauseOverlay();
+        void hidePauseOverlay();
+    }
+
+    private static final UiBridge NO_OP_UI_BRIDGE = new UiBridge() {
+        @Override public void showPauseOverlay() { /* no-op */ }
+        @Override public void hidePauseOverlay() { /* no-op */ }
+    };
+
     private final Board board = new Board();
     private final ScoreData scoreData = new ScoreData();
     private final InputState inputState = new InputState();
     private final GameClock clock = new GameClock(this);
     private final Map<GameState, GameHandler> handlers = new EnumMap<>(GameState.class);
 
+    private UiBridge uiBridge = NO_OP_UI_BRIDGE;
     private GameState currentState;
     private GameHandler currentHandler;
     private Block activeBlock;
@@ -121,15 +136,71 @@ public final class GameModel implements GameClock.Listener {
     }
 
     public void stepGameplay() {
-        // TODO: 입력 처리와 충돌 검사를 구현
+        if (activeBlock == null) {
+            return;
+        }
+
+        // 현재 위치가 더 이상 유효하지 않다면 즉시 충돌로 간주하고 처리 중단
+        if (!board.canPlace(activeBlock.getShape(), activeBlock.getX(), activeBlock.getY())) {
+            changeState(GameState.GAME_OVER);
+            return;
+        }
+
+        clock.setSoftDrop(inputState.isSoftDrop());
+
+        int dx = 0;
+        if (inputState.isLeft() && !inputState.isRight()) {
+            dx = -1;
+        } else if (inputState.isRight() && !inputState.isLeft()) {
+            dx = 1;
+        }
+
+        if (dx != 0) {
+            int targetX = activeBlock.getX() + dx;
+            if (board.canPlace(activeBlock.getShape(), targetX, activeBlock.getY())) {
+                activeBlock.moveBy(dx, 0);
+            }
+        }
+
+        boolean rotateCW = inputState.popRotateCW();
+        boolean rotateCCW = inputState.popRotateCCW();
+
+        if (rotateCW) {
+            BlockShape rotated = activeBlock.getShape().rotatedCW();
+            if (board.canPlace(rotated, activeBlock.getX(), activeBlock.getY())) {
+                activeBlock.setShape(rotated);
+            }
+        }
+
+        if (rotateCCW) {
+            BlockShape rotated = activeBlock.getShape()
+                .rotatedCW()
+                .rotatedCW()
+                .rotatedCW();
+            if (board.canPlace(rotated, activeBlock.getX(), activeBlock.getY())) {
+                activeBlock.setShape(rotated);
+            }
+        }
+
+        // 아직 구현되지 않은 입력은 소비만 하여 중복 처리를 막는다.
+        inputState.popHardDrop();
+        inputState.popHold();
+    }
+
+    public void bindUiBridge(UiBridge bridge) {
+        this.uiBridge = Objects.requireNonNull(bridge, "bridge");
+    }
+
+    public void clearUiBridge() {
+        uiBridge = NO_OP_UI_BRIDGE;
     }
 
     public void showPauseOverlay() {
-        // TODO: ViewModel 또는 이벤트를 통해 일시정지 UI 표시
+        uiBridge.showPauseOverlay();
     }
 
     public void hidePauseOverlay() {
-        // TODO: 일시정지 UI 숨김 처리
+        uiBridge.hidePauseOverlay();
     }
 
     public void computeFinalScore() {
