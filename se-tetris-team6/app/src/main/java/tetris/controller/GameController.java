@@ -96,7 +96,7 @@ public class GameController {
         }
 
         // 키 입력 시간 기록
-        lastKeyPressTime.put(keyCode, currentTime);
+        lastKeyPressTime.put(keyCode, System.currentTimeMillis());
     
     }
 
