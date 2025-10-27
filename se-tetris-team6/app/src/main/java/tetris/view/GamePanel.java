@@ -14,11 +14,15 @@ import tetris.view.GameComponents.Scoreboard;
 import tetris.view.GameComponents.Upcoming;
 
 public class GamePanel extends JPanel implements KeyListener {
+    public static GamePanel instance;
+
     public Board board;
     public Upcoming upcoming;
     public Scoreboard scoreboard;
 
     public GamePanel() {
+        instance = this;
+
         this.setSize(TetrisFrame.FRAME_SIZE);
         this.setBackground(Color.LIGHT_GRAY);
         this.setOpaque(true);
@@ -46,6 +50,38 @@ public class GamePanel extends JPanel implements KeyListener {
         board.drawBoard();
 
         addKeyListener(this);
+    }
+
+    /* 아래 메서드 호출로 블록 이동을 화면에 표시 */
+
+    // 화면에 블록 배치
+    public void setActiveBlock(Block activeBlock, int offsetX, int offsetY) {
+        board.start(activeBlock, offsetX, offsetY);
+    }
+
+    // 다음 블록 화면에 출력
+    public void showNextBlock(Block nextBlock) {
+        upcoming.drawBoard(nextBlock);
+    }
+
+    // 현재 활성화 블록 고정
+    public void fixActiveBlock() {
+        board.fixBlock();
+    }
+
+    // 블록 한 칸 아래로 이동
+    public void moveBlockDown() {
+        board.moveBlock(0, 1);
+    }
+
+    // 블록 한 칸 좌측 이동
+    public void moveBlockLeft() {
+        board.moveBlock(-1, 0);
+    }
+
+    // 블록 한 칸 우측 이동
+    public void moveBlockRight() {
+        board.moveBlock(1, 0);
     }
 
     @Override

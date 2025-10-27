@@ -59,10 +59,10 @@ public class Board extends JPanel {
         block = null;
     }
 
-    public void start(Block activeBlock) {
+    public void start(Block activeBlock, int offsetX, int offsetY) {
         fixBlock();
-        x = 3;
-        y = 0;
+        x = offsetX;
+        y = offsetY;
         block = activeBlock;
         placeBlock();
         drawBoard();
