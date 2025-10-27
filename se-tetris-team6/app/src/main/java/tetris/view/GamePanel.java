@@ -48,9 +48,14 @@ public class GamePanel extends JPanel implements KeyListener {
         addKeyListener(this);
     }
 
-    // 디버깅
     @Override
     public void keyPressed(KeyEvent e) {
+        // Controller.handleKeyPress(e.getKeyCode());
+        switch (e.getKeyCode()) {
+            case KeyEvent.VK_ESCAPE -> TetrisFrame.instance.togglePausePanel();
+        }
+
+        // 디버깅 (나중에 제거)
         switch (e.getKeyCode()) {
             case KeyEvent.VK_UP -> board.moveBlock(0, -1);
             case KeyEvent.VK_DOWN -> board.moveBlock(0, 1);

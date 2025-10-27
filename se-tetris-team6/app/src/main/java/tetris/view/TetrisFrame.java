@@ -1,5 +1,6 @@
 package tetris.view;
 
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
@@ -14,21 +15,23 @@ import javax.swing.JLayeredPane;
 import javax.swing.JPanel;
 import javax.swing.KeyStroke;
 
+import tetris.view.SettingComponent.ResolutionPanel;
+
 public class TetrisFrame extends JFrame {
     public static TetrisFrame instance;
 
-    protected static final String FRAME_TITLE = "Tetris Game - Team 06";
-    protected static Dimension FRAME_SIZE = new Dimension(700, 900);
+    public static final String FRAME_TITLE = "Tetris Game - Team 06";
+    public static Dimension FRAME_SIZE = ResolutionPanel.RESOLUTIONS[0];
 
     // 프레임 레이아웃
     private final JLayeredPane layeredPane;
 
     // 패널 참조
-    protected static MainPanel mainPanel;
-    protected static GamePanel gamePanel;
-    protected static SettingPanel settingPanel;
-    protected static ScoreboardPanel scoreboardPanel;
-    protected static PausePanel pausePanel;
+    public static MainPanel mainPanel;
+    public static GamePanel gamePanel;
+    public static SettingPanel settingPanel;
+    public static ScoreboardPanel scoreboardPanel;
+    public static PausePanel pausePanel;
 
     private static JPanel prevPanel;
     private static JPanel currPanel;
@@ -59,9 +62,6 @@ public class TetrisFrame extends JFrame {
         prevPanel = null;
         currPanel = mainPanel;
         displayPanel(mainPanel);
-
-        // 전역 키 바인딩 설정 (포커스와 무관하게 동작)
-        installRootKeyBindings();
     }
 
     private void setupMainPanel() {
@@ -110,7 +110,7 @@ public class TetrisFrame extends JFrame {
         layeredPane.add(scoreboardPanel, JLayeredPane.DEFAULT_LAYER);
     }
 
-    private void displayPanel(JPanel panel) {
+    public void displayPanel(JPanel panel) {
         prevPanel = currPanel;
         currPanel = panel;
         prevPanel.setVisible(false);
@@ -120,38 +120,39 @@ public class TetrisFrame extends JFrame {
         layeredPane.repaint();
     }
 
-    // 전역 키 설정
-    private void installRootKeyBindings() {
-        InputMap im = this.getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
-        ActionMap am = this.getRootPane().getActionMap();
-
-        // PausePanel 토글
-        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "togglePausePanel");
-        am.put("togglePausePanel", new AbstractAction() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                if (!pausePanel.isVisible()) {
-                    displayPanel(pausePanel);
-                } else {
-                    displayPanel(prevPanel);
-                }
-            }
-        });
-
-        // MainPanel 복귀
-        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_HOME, 0), "goMainPanel");
-        am.put("goMainPanel", new AbstractAction() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                displayPanel(mainPanel);
-            }
-        });
+    public void togglePausePanel() {
+        if (!pausePanel.isVisible()) {
+            displayPanel(pausePanel);
+        } else {
+            displayPanel(prevPanel);
+        }
     }
 
     public void changeResolution(Dimension newSize) {
+        // 1. FRAME_SIZE 전역 변수 업데이트
         FRAME_SIZE = newSize;
+
+        // 2. 프레임 크기 변경
+        this.setSize(newSize);
+
+        // 3. layeredPane 크기 조정
         layeredPane.setPreferredSize(newSize);
         layeredPane.setBounds(0, 0, newSize.width, newSize.height);
 
+        // 4. 모든 자식 패널 크기 조정
+        for (Component component : layeredPane.getComponents()) {
+            if (component instanceof JPanel panel) {
+                panel.setSize(newSize);
+                panel.setBounds(0, 0, newSize.width, newSize.height);
+                panel.revalidate();
+            }
+        }
+
+        // 5. 프레임을 화면 중앙으로 재배치
+        this.setLocationRelativeTo(null);
+
+        // 6. 레이아웃 갱신
+        this.revalidate();
+        this.repaint();
     }
 }

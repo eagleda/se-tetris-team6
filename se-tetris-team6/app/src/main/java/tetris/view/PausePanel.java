@@ -7,12 +7,14 @@ import java.awt.Graphics;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 
-public class PausePanel extends JPanel {
+public class PausePanel extends JPanel implements KeyListener {
     public JButton continueButton;
     public JButton goMainButton;
     public JButton exitButton;
@@ -76,6 +78,8 @@ public class PausePanel extends JPanel {
         for (int i = 0; i < 3; i++) { // 빈 공간
             addComponentVertical(new EmptySpace(), gbc);
         }
+
+        addKeyListener(this);
     }
 
     @Override
@@ -86,5 +90,20 @@ public class PausePanel extends JPanel {
     private void addComponentVertical(Component component, GridBagConstraints gbc) {
         this.add(component, gbc);
         gbc.gridy++;
+    }
+
+    @Override
+    public void keyPressed(KeyEvent e) {
+        switch (e.getKeyCode()) {
+            case KeyEvent.VK_ESCAPE -> TetrisFrame.instance.togglePausePanel();
+        }
+    }
+
+    @Override
+    public void keyReleased(KeyEvent e) {
+    }
+
+    @Override
+    public void keyTyped(KeyEvent e) {
     }
 }
