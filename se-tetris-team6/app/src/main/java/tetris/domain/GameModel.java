@@ -18,7 +18,7 @@ import tetris.domain.model.Block;
 import tetris.domain.model.GameState;
 import tetris.domain.model.InputState;
 import tetris.domain.model.ScoreData;
-import tetris.model.GameClock;
+import tetris.domain.model.GameClock;
 
 /**
  * 게임 핵심 도메인 모델.
