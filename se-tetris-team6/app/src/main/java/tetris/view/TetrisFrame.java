@@ -21,45 +21,44 @@ import tetris.domain.model.GameState;
 
 
 public class TetrisFrame extends JFrame {
+
+    private GameModel gameModel;
+
     private static final String FRAME_TITLE = "Tetris Game - Team 06";
     protected static final Dimension FRAME_SIZE = new Dimension(700, 900);
 
     // 프레임 레이아웃
-    private final JLayeredPane layeredPane;
+    private JLayeredPane layeredPane;
 
     // 패널 참조
-    protected static MainPanel mainPanel;
-    protected static GamePanel gamePanel;
-    protected static SettingPanel settingPanel;
-    protected static ScoreboardPanel scoreboardPanel;
-    protected static PausePanel pausePanel;
+    //모든 패널과 모델/컨트롤러를 인스턴스 변수로 변경 (static 제거)
+    protected MainPanel mainPanel;
+    protected GamePanel gamePanel;
+    protected SettingPanel settingPanel;
+    protected ScoreboardPanel scoreboardPanel;
+    protected PausePanel pausePanel;
 
-    private static JPanel prevPanel;
     private static JPanel currPanel;
 
     private final GameModel gameModel;
     private GameController gameController;
 
-    public TetrisFrame() {
-        this.setTitle(FRAME_TITLE);
-        this.setSize(FRAME_SIZE);
-        this.setResizable(false);
-        this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        this.setLocationRelativeTo(null);
 
-        // layeredPane 설정 (패널을 겹쳐서 배치 가능)
-        layeredPane = new JLayeredPane();
-        layeredPane.setPreferredSize(FRAME_SIZE);
-        this.add(layeredPane);
+    public TetrisFrame() {
+        super(FRAME_TITLE);
+        initializeModelsAndControllers();
+        initializeFrame();
+        // 전역 키 바인딩 설정 (포커스와 무관하게 동작)
+        installRootKeyBindings();
 
         this.gameModel = new GameModel();
 
         // 각 패널 설정
         setupMainPanel();
-        setupGamePanel();
         setupSettingPanel();
         setupScoreboardPanel();
         setupPausePanel();
+        setupGamePanel();
 
         gameModel.bindUiBridge(new GameModel.UiBridge() {
             @Override
@@ -85,14 +84,30 @@ public class TetrisFrame extends JFrame {
         prevPanel = null;
         currPanel = mainPanel;
         displayPanel(mainPanel);
+        this.setVisible(true);
 
-        // 전역 키 바인딩 설정 (포커스와 무관하게 동작)
-        installRootKeyBindings();
+    }
+    
+    private void initializeModelsAndControllers() {
+        gameModel = new GameModel();
+        gameController = new GameController(gameModel);
+    }
+
+    private void initializeFrame() {
+        setSize(FRAME_SIZE);
+        setResizable(false);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLocationRelativeTo(null);
+
+        layeredPane = new JLayeredPane();
+        layeredPane.setPreferredSize(FRAME_SIZE);
+        this.add(layeredPane);
     }
 
     private void setupMainPanel() {
         mainPanel = new MainPanel();
-        layeredPane.add(mainPanel);
+        mainPanel.setVisible(false); // 초기에 모든 패널은 보이지 않도록 설정
+        layeredPane.add(mainPanel, JLayeredPane.DEFAULT_LAYER);
 
         mainPanel.gameButton.addActionListener(e -> {
             displayPanel(gamePanel);
@@ -115,6 +130,7 @@ public class TetrisFrame extends JFrame {
 
     private void setupSettingPanel() {
         settingPanel = new SettingPanel();
+        settingPanel.setVisible(false);
         layeredPane.add(settingPanel, JLayeredPane.DEFAULT_LAYER);
     }
 
@@ -135,10 +151,12 @@ public class TetrisFrame extends JFrame {
         pausePanel.exitButton.addActionListener(e -> {
             this.dispatchEvent(new WindowEvent(this, WindowEvent.WINDOW_CLOSING));
         });
+        pausePanel.exitButton.addActionListener(e -> this.dispatchEvent(new WindowEvent(this, WindowEvent.WINDOW_CLOSING)));
     }
 
     private void setupScoreboardPanel() {
         scoreboardPanel = new ScoreboardPanel();
+        scoreboardPanel.setVisible(false);
         layeredPane.add(scoreboardPanel, JLayeredPane.DEFAULT_LAYER);
     }
 
