@@ -313,12 +313,17 @@ public final class GameModel implements GameClock.Listener {
         System.out.println("[LOG] GameModel.onGravityTick()");
         System.out.printf("[LOG] before move: y=%d%n", activeBlock.getY());
         if (canActiveBlockMove(0, 1)) {
-           activeBlock.moveBy(0, 1);
+            activeBlock.moveBy(0, 1);
             System.out.printf("[LOG] moved:   y=%d%n", activeBlock.getY());
         } else {
             System.out.println("[LOG] cannot move further, locking");
             lockActiveBlock();
+            if (!spawnNewBlock()) {
+                changeState(GameState.GAME_OVER);
+                return;
+            }
         }
+        uiBridge.refreshBoard();
 
         if (!isPlayingState()) {
             return;
