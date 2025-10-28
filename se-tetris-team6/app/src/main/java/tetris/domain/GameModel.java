@@ -318,7 +318,12 @@ public final class GameModel implements GameClock.Listener {
         } else {
             System.out.println("[LOG] cannot move further, locking");
             lockActiveBlock();
+            if (!spawnNewBlock()) {
+                changeState(GameState.GAME_OVER);
+                return;
+            }
         }
+        uiBridge.refreshBoard();
 
         if (!isPlayingState()) {
             return;
