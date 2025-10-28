@@ -5,7 +5,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
+import tetris.domain.BlockGenerator;
 import tetris.domain.BlockKind;
+import tetris.domain.RandomBlockGenerator;
 import tetris.domain.handler.GameHandler;
 import tetris.domain.handler.GameOverHandler;
 import tetris.domain.handler.GamePlayHandler;
@@ -19,6 +21,7 @@ import tetris.domain.model.GameState;
 import tetris.domain.model.InputState;
 import tetris.domain.model.ScoreData;
 import tetris.domain.model.GameClock;
+import tetris.domain.model.ScoreRuleEngine;
 
 /**
  * 게임 핵심 도메인 모델.
@@ -48,6 +51,8 @@ public final class GameModel implements GameClock.Listener {
     private final ScoreData scoreData = new ScoreData();
     private final InputState inputState = new InputState();
     private final GameClock clock = new GameClock(this);
+    private final ScoreRuleEngine scoreEngine;
+    private BlockGenerator blockGenerator;
     private final Map<GameState, GameHandler> handlers = new EnumMap<>(GameState.class);
 
     private UiBridge uiBridge = NO_OP_UI_BRIDGE;
@@ -57,6 +62,12 @@ public final class GameModel implements GameClock.Listener {
     private boolean clockStarted;
 
     public GameModel() {
+        this(new RandomBlockGenerator());
+    }
+
+    public GameModel(BlockGenerator generator) {
+        this.scoreEngine = new ScoreRuleEngine(scoreData, null);
+        setBlockGenerator(generator);
         registerHandlers();
         changeState(GameState.MENU);
     }
@@ -116,6 +127,14 @@ public final class GameModel implements GameClock.Listener {
 
     public void setActiveBlock(Block block) {
         this.activeBlock = block;
+    }
+
+    public void setBlockGenerator(BlockGenerator generator) {
+        this.blockGenerator = Objects.requireNonNull(generator, "generator");
+    }
+
+    public BlockGenerator getBlockGenerator() {
+        return blockGenerator;
     }
 
     public void spawnIfNeeded() {
@@ -185,7 +204,9 @@ public final class GameModel implements GameClock.Listener {
     }
 
     private boolean spawnNewBlock() {
-        Block next = Block.spawn(BlockKind.T, Board.W / 2 - 1, 0);
+        BlockGenerator generator = Objects.requireNonNull(blockGenerator, "blockGenerator");
+        BlockKind nextKind = Objects.requireNonNull(generator.nextBlock(), "nextBlock");
+        Block next = Block.spawn(nextKind, Board.W / 2 - 1, 0);
         if (!board.canSpawn(next.getShape(), next.getX(), next.getY())) {
             return false;
         }
@@ -203,8 +224,7 @@ public final class GameModel implements GameClock.Listener {
         activeBlock = null;
         int cleared = board.clearLines();
         if (cleared > 0) {
-            scoreData.addClearedLines(cleared);
-            scoreData.addScore(cleared * 100);
+            scoreEngine.onLinesCleared(cleared);
         }
     }
 
@@ -311,10 +331,13 @@ public final class GameModel implements GameClock.Listener {
     @Override
     public void onGravityTick() {
         System.out.println("[LOG] GameModel.onGravityTick()");
-        System.out.printf("[LOG] before move: y=%d%n", activeBlock.getY());
+        System.out.printf("[LOG] before move: x=%d, y=%d%n",
+            activeBlock.getX(), activeBlock.getY());
         if (canActiveBlockMove(0, 1)) {
             activeBlock.moveBy(0, 1);
-            System.out.printf("[LOG] moved:   y=%d%n", activeBlock.getY());
+            scoreEngine.onBlockDescend();
+            System.out.printf("[LOG] moved:   x=%d, y=%d%n",
+                activeBlock.getX(), activeBlock.getY());
         } else {
             System.out.println("[LOG] cannot move further, locking");
             lockActiveBlock();
@@ -334,6 +357,7 @@ public final class GameModel implements GameClock.Listener {
 
         if (canActiveBlockMove(0, 1)) {
             activeBlock.moveBy(0, 1);
+            scoreEngine.onBlockDescend();
         } else {
             lockActiveBlock();
             if (!spawnNewBlock()) {
@@ -379,6 +403,7 @@ public final class GameModel implements GameClock.Listener {
         }
         if (canActiveBlockMove(-1, 0)) {
             activeBlock.moveBy(-1, 0);
+            uiBridge.refreshBoard();
         }
     }
 
@@ -388,6 +413,7 @@ public final class GameModel implements GameClock.Listener {
         }
         if (canActiveBlockMove(1, 0)) {
             activeBlock.moveBy(1, 0);
+            uiBridge.refreshBoard();
         }
     }
 
@@ -397,6 +423,8 @@ public final class GameModel implements GameClock.Listener {
         }
         if (canActiveBlockMove(0, 1)) {
             activeBlock.moveBy(0, 1);
+            scoreEngine.onBlockDescend();
+            uiBridge.refreshBoard();
         }
     }
 
@@ -431,7 +459,9 @@ public final class GameModel implements GameClock.Listener {
         }
         while (canActiveBlockMove(0, 1)) {
             activeBlock.moveBy(0, 1);
+            scoreEngine.onBlockDescend();
         }
+        uiBridge.refreshBoard();
     }
 
     public void holdCurrentBlock() {

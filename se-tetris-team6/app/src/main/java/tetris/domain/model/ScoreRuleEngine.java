@@ -43,6 +43,7 @@ public final class ScoreRuleEngine {
         if (clearedLines <= 0) {
             return;
         }
+        System.out.println("Lines cleared: " + clearedLines);
         int base = switch (clearedLines) {
             case 1 -> 100;
             case 2 -> 300;
