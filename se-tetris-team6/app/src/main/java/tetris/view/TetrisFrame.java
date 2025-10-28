@@ -1,6 +1,5 @@
 package tetris.view;
 
-import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.KeyboardFocusManager;
 import java.awt.event.ActionEvent;
@@ -17,6 +16,8 @@ import javax.swing.JPanel;
 import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
 
+import org.checkerframework.checker.nullness.qual.NonNull;
+
 import tetris.controller.GameController;
 import tetris.domain.GameModel;
 import tetris.domain.model.GameState;
@@ -26,7 +27,7 @@ public class TetrisFrame extends JFrame {
     private GameModel gameModel;
 
     private static final String FRAME_TITLE = "Tetris Game - Team 06";
-    protected static Dimension FRAME_SIZE = new Dimension(700, 900);
+    protected static final Dimension FRAME_SIZE = new Dimension(700, 900);
 
     // 프레임 레이아웃
     private JLayeredPane layeredPane;
@@ -78,11 +79,11 @@ public class TetrisFrame extends JFrame {
 
         gameController = new GameController(gameModel);
 
-        // // 시작 화면 설정
+        // 시작 화면 설정
         this.setVisible(true);
-        // prevPanel = null;
-        // currPanel = mainPanel;
         displayPanel(mainPanel);
+        this.setVisible(true);
+
     }
 
     private void initializeModelsAndControllers() {
@@ -103,7 +104,6 @@ public class TetrisFrame extends JFrame {
 
     private void setupMainPanel() {
         mainPanel = new MainPanel();
-        mainPanel.setVisible(false); // 초기에 모든 패널은 보이지 않도록 설정
         layeredPane.add(mainPanel, JLayeredPane.DEFAULT_LAYER);
 
         mainPanel.gameButton.addActionListener(e -> {
@@ -132,11 +132,11 @@ public class TetrisFrame extends JFrame {
 
     private void setupPausePanel() {
         pausePanel = new PausePanel();
-        layeredPane.add(pausePanel, JLayeredPane.DEFAULT_LAYER);
+        pausePanel.setBounds(0, 0, FRAME_SIZE.width, FRAME_SIZE.height);
+        layeredPane.add(pausePanel, JLayeredPane.PALETTE_LAYER);
 
         // 버튼 기능 추가
         pausePanel.continueButton.addActionListener(e -> {
-            displayPanel(gamePanel);
             gameModel.resumeGame();
         });
         pausePanel.goMainButton.addActionListener(e -> {
@@ -146,9 +146,8 @@ public class TetrisFrame extends JFrame {
         pausePanel.exitButton.addActionListener(e -> {
             this.dispatchEvent(new WindowEvent(this, WindowEvent.WINDOW_CLOSING));
         });
-        pausePanel.exitButton.addActionListener(e -> {
-            this.dispatchEvent(new WindowEvent(this, WindowEvent.WINDOW_CLOSING));
-        });
+        pausePanel.exitButton
+                .addActionListener(e -> this.dispatchEvent(new WindowEvent(this, WindowEvent.WINDOW_CLOSING)));
     }
 
     private void setupScoreboardPanel() {
@@ -157,12 +156,6 @@ public class TetrisFrame extends JFrame {
     }
 
     public void displayPanel(JPanel panel) {
-        // if (panel != null)
-        // System.out.println("보여줄 panel: " + panel.getName());
-        // if (prevPanel != null)
-        // System.out.println("prevPanel: " + prevPanel.getName());
-        // if (currPanel != null)
-        // System.out.println("currPanel: " + currPanel.getName());
         prevPanel = currPanel;
         currPanel = panel;
         if (prevPanel != null)
@@ -178,13 +171,7 @@ public class TetrisFrame extends JFrame {
     }
 
     private void hidePauseOverlayPanel() {
-        // displayPanel(prevPanel);
-        pausePanel.setVisible(false);
-        if (currPanel != null) {
-            layeredPane.moveToFront(currPanel);
-            currPanel.requestFocusInWindow();
-        }
-        layeredPane.repaint();
+        displayPanel(prevPanel);
     }
 
     // showPauseOverlayPanel, hidePauseOverlayPanel 대체 가능
@@ -194,35 +181,6 @@ public class TetrisFrame extends JFrame {
         } else {
             displayPanel(prevPanel);
         }
-    }
-
-    // 화면 크기 변경
-    public void changeResolution(Dimension newSize) {
-        // 1. FRAME_SIZE 전역 변수 업데이트
-        FRAME_SIZE = newSize;
-
-        // 2. 프레임 크기 변경
-        this.setSize(newSize);
-
-        // 3. layeredPane 크기 조정
-        layeredPane.setPreferredSize(newSize);
-        layeredPane.setBounds(0, 0, newSize.width, newSize.height);
-
-        // 4. 모든 자식 패널 크기 조정
-        for (Component component : layeredPane.getComponents()) {
-            if (component instanceof JPanel panel) {
-                panel.setSize(newSize);
-                panel.setBounds(0, 0, newSize.width, newSize.height);
-                panel.revalidate();
-            }
-        }
-
-        // 5. 프레임을 화면 중앙으로 재배치
-        this.setLocationRelativeTo(null);
-
-        // 6. 레이아웃 갱신
-        this.revalidate();
-        this.repaint();
     }
 
     // 전역 키 설정
