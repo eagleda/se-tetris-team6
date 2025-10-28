@@ -37,10 +37,10 @@ public class TetrisFrame extends JFrame {
     protected SettingPanel settingPanel;
     protected ScoreboardPanel scoreboardPanel;
     protected PausePanel pausePanel;
-
+    private static JPanel prevPanel;
     private static JPanel currPanel;
 
-    private final GameModel gameModel;
+    
     private GameController gameController;
 
 

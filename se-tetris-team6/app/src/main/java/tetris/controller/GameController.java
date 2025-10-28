@@ -1,7 +1,8 @@
 package tetris.controller;
 
-import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.util.HashMap;
+import java.util.Map;
 
 import tetris.domain.GameModel;
 import tetris.domain.model.GameState;
@@ -16,20 +17,27 @@ public class GameController {
     private final GamePanel gamePanel; // View 참조
     private final GameModel gameModel; // Model 참조
 
-    // 생성자에서 View와 Model을 주입받습니다.
-    public GameController(GamePanel gamePanel, GameModel gameModel) {
-        this.gamePanel = gamePanel;
-        this.gameModel = gameModel;
-
-     // 키 반복 입력 제어를 위한 상태 추적
+    // 키 반복 입력 제어를 위한 상태 추적
     private Map<Integer, Long> lastKeyPressTime;
     private static final long KEY_REPEAT_DELAY = 100; // 100ms
     private static final long MOVEMENT_REPEAT_DELAY = 150; // 이동키는 조금 더 느리게
 
-     // 게임 일시정지 토글을 위한 상태
+    // 게임 일시정지 토글을 위한 상태
     private boolean pauseKeyPressed = false;
 
+    // 키 바인딩 맵
+    private Map<String, Integer> keyBindings;
+
+    // 생성자에서 View와 Model을 주입받습니다.
+    public GameController(GamePanel gamePanel, GameModel gameModel) {
+        this.gamePanel = gamePanel;
+        this.gameModel = gameModel;
+        this.lastKeyPressTime = new HashMap<>();
+        initializeDefaultKeyBindings();
+    }
+
     public GameController(GameModel gameModel) {
+        this.gamePanel = null;
         this.gameModel = gameModel;
         this.lastKeyPressTime = new HashMap<>();
         initializeDefaultKeyBindings();
@@ -41,7 +49,7 @@ public class GameController {
      */
     private void initializeDefaultKeyBindings() {
         keyBindings = new HashMap<>();
-        
+
         // 게임 플레이 키
         keyBindings.put("MOVE_LEFT", KeyEvent.VK_LEFT);
         keyBindings.put("MOVE_RIGHT", KeyEvent.VK_RIGHT);
@@ -50,62 +58,62 @@ public class GameController {
         keyBindings.put("ROTATE_CCW", KeyEvent.VK_Z);           // 반시계방향 회전 (추가)
         keyBindings.put("HARD_DROP", KeyEvent.VK_SPACE);        // 하드 드롭
         keyBindings.put("HOLD", KeyEvent.VK_C);                 // 홀드 기능 (추가)
-        
+
         // 게임 제어 키
         keyBindings.put("PAUSE", KeyEvent.VK_P);                // 일시정지/재개
         keyBindings.put("QUIT_GAME", KeyEvent.VK_Q);            // 게임 종료
         keyBindings.put("RESTART", KeyEvent.VK_R);              // 게임 재시작
-        
+
         // 메뉴 네비게이션 키
         keyBindings.put("MENU_UP", KeyEvent.VK_UP);
         keyBindings.put("MENU_DOWN", KeyEvent.VK_DOWN);
         keyBindings.put("MENU_SELECT", KeyEvent.VK_ENTER);
         keyBindings.put("MENU_BACK", KeyEvent.VK_ESCAPE);
-        
+
         // 설정 화면 키
         keyBindings.put("SETTINGS_RESET", KeyEvent.VK_DELETE);  // 설정 초기화
     }
 
     /**
      * 키보드 입력을 처리하는 메소드
-     * @param e KeyEvent
+     * @param keyCode 키 코드
      */
     public void handleKeyPress(int keyCode) {
-    
-        if (gameModel.getGameState() != GameState.PLAYING) {
+        long currentTime = System.currentTimeMillis();
+
+        // 키 반복 입력 무시
+        if (shouldIgnoreKeyRepeat(keyCode, currentTime)) {
             return;
         }
 
-        switch (keyCode) {
-            case KeyEvent.VK_LEFT:
-                gameModel.moveBlockLeft();
+        GameState currentState = gameModel.getCurrentState();
+
+        switch (currentState) {
+            case PLAYING:
+                handleGamePlayInput(keyCode);
                 break;
-            case KeyEvent.VK_RIGHT:
-                gameModel.moveBlockRight();
+            case PAUSED:
+                handlePausedInput(keyCode);
                 break;
-            case KeyEvent.VK_DOWN:
-                gameModel.moveBlockDown();
+            case GAME_OVER:
+                handleGameOverInput(keyCode);
                 break;
-            case KeyEvent.VK_UP: // 보통 회전 키로 사용
-                gameModel.rotateBlockClockwise();
+            case SETTINGS:
+                handleSettingsInput(keyCode);
                 break;
-            case KeyEvent.VK_SPACE:
-                gameModel.hardDropBlock();
+            case SCOREBOARD:
+                handleScoreboardInput(keyCode);
                 break;
-            case KeyEvent.VK_C:
-                gameModel.holdCurrentBlock();
+            case NAME_INPUT:
+                handleNameInputInput(keyCode);
                 break;
-            case KeyEvent.VK_P:
-                gameModel.pauseGame();
-                break;
-            case KeyEvent.VK_R:
-                gameModel.restartGame();
+            default:
+                // 기본 처리
                 break;
         }
 
         // 키 입력 시간 기록
-        lastKeyPressTime.put(keyCode, System.currentTimeMillis());
-    
+        lastKeyPressTime.put(keyCode, currentTime);
     }
 
     /**
@@ -121,48 +129,42 @@ public class GameController {
             }
             return;
         }
-        
+
         // 게임 종료 키
         if (keyCode == keyBindings.get("QUIT_GAME")) {
             gameModel.quitToMenu();
             System.out.println("Controller: 메뉴로 돌아가기");
             return;
         }
-        
+
         // 블록 조작 키들
         if (keyCode == keyBindings.get("MOVE_LEFT")) {
             gameModel.moveBlockLeft();
             System.out.println("Controller: 블록 왼쪽 이동");
-        } 
-        else if (keyCode == keyBindings.get("MOVE_RIGHT")) {
+        } else if (keyCode == keyBindings.get("MOVE_RIGHT")) {
             gameModel.moveBlockRight();
             System.out.println("Controller: 블록 오른쪽 이동");
-        } 
-        else if (keyCode == keyBindings.get("MOVE_DOWN")) {
+        } else if (keyCode == keyBindings.get("MOVE_DOWN")) {
             gameModel.moveBlockDown();
             System.out.println("Controller: 블록 아래로 이동 (소프트 드롭)");
-        } 
-        else if (keyCode == keyBindings.get("ROTATE_CW")) {
+        } else if (keyCode == keyBindings.get("ROTATE_CW")) {
             gameModel.rotateBlockClockwise();
             System.out.println("Controller: 블록 시계방향 회전");
-        } 
-        else if (keyCode == keyBindings.get("ROTATE_CCW")) {
+        } else if (keyCode == keyBindings.get("ROTATE_CCW")) {
             gameModel.rotateBlockCounterClockwise();
             System.out.println("Controller: 블록 반시계방향 회전");
-        } 
-        else if (keyCode == keyBindings.get("HARD_DROP")) {
+        } else if (keyCode == keyBindings.get("HARD_DROP")) {
             gameModel.hardDropBlock();
             System.out.println("Controller: 하드 드롭 (즉시 하강)");
-        } 
-        else if (keyCode == keyBindings.get("HOLD")) {
+        } else if (keyCode == keyBindings.get("HOLD")) {
             gameModel.holdCurrentBlock();
             System.out.println("Controller: 블록 홀드");
-        }
-        else if (keyCode == keyBindings.get("RESTART")) {
+        } else if (keyCode == keyBindings.get("RESTART")) {
             gameModel.restartGame();
             System.out.println("Controller: 게임 재시작");
         }
     }
+
     /**
      * 일시정지 상태에서의 키 입력 처리
      */
@@ -173,21 +175,13 @@ public class GameController {
                 pauseKeyPressed = true;
                 System.out.println("Controller: 게임 재개");
             }
-        } 
-        else if (keyCode == keyBindings.get("QUIT_GAME")) {
+        } else if (keyCode == keyBindings.get("QUIT_GAME")) {
             gameModel.quitToMenu();
             System.out.println("Controller: 메뉴로 돌아가기");
-        }
-        else if (keyCode == keyBindings.get("RESTART")) {
+        } else if (keyCode == keyBindings.get("RESTART")) {
             gameModel.restartGame();
             System.out.println("Controller: 게임 재시작");
         }
-    }
-
-    // 게임 시작, 게임 오버 등 로직을 처리할 메소드들을 추가할 수 있습니다.
-    public void startGame() {
-        System.out.println("[LOG] GameController.startGame()");
-        gameModel.changeState(GameState.PLAYING);
     }
 
     /**
@@ -197,12 +191,10 @@ public class GameController {
         if (keyCode == keyBindings.get("MENU_SELECT") || keyCode == KeyEvent.VK_ENTER) {
             gameModel.proceedFromGameOver();
             System.out.println("Controller: 게임 오버 화면에서 진행");
-        } 
-        else if (keyCode == keyBindings.get("RESTART")) {
+        } else if (keyCode == keyBindings.get("RESTART")) {
             gameModel.restartGame();
             System.out.println("Controller: 게임 재시작");
-        } 
-        else if (keyCode == keyBindings.get("QUIT_GAME")) {
+        } else if (keyCode == keyBindings.get("QUIT_GAME")) {
             gameModel.quitToMenu();
             System.out.println("Controller: 메뉴로 돌아가기");
         }
@@ -215,20 +207,16 @@ public class GameController {
         if (keyCode == keyBindings.get("MENU_UP")) {
             gameModel.navigateSettingsUp();
             System.out.println("Controller: 설정 메뉴 위로 이동");
-        } 
-        else if (keyCode == keyBindings.get("MENU_DOWN")) {
+        } else if (keyCode == keyBindings.get("MENU_DOWN")) {
             gameModel.navigateSettingsDown();
             System.out.println("Controller: 설정 메뉴 아래로 이동");
-        } 
-        else if (keyCode == keyBindings.get("MENU_SELECT")) {
+        } else if (keyCode == keyBindings.get("MENU_SELECT")) {
             gameModel.selectCurrentSetting();
             System.out.println("Controller: 설정 항목 선택/변경");
-        } 
-        else if (keyCode == keyBindings.get("MENU_BACK")) {
+        } else if (keyCode == keyBindings.get("MENU_BACK")) {
             gameModel.exitSettings();
             System.out.println("Controller: 설정 화면 나가기");
-        } 
-        else if (keyCode == keyBindings.get("SETTINGS_RESET")) {
+        } else if (keyCode == keyBindings.get("SETTINGS_RESET")) {
             gameModel.resetAllSettings();
             System.out.println("Controller: 모든 설정 초기화");
         }
@@ -241,12 +229,10 @@ public class GameController {
         if (keyCode == keyBindings.get("MENU_BACK") || keyCode == keyBindings.get("MENU_SELECT")) {
             gameModel.exitScoreboard();
             System.out.println("Controller: 스코어보드 나가기");
-        }
-        else if (keyCode == keyBindings.get("MENU_UP")) {
+        } else if (keyCode == keyBindings.get("MENU_UP")) {
             gameModel.scrollScoreboardUp();
             System.out.println("Controller: 스코어보드 위로 스크롤");
-        }
-        else if (keyCode == keyBindings.get("MENU_DOWN")) {
+        } else if (keyCode == keyBindings.get("MENU_DOWN")) {
             gameModel.scrollScoreboardDown();
             System.out.println("Controller: 스코어보드 아래로 스크롤");
         }
@@ -259,16 +245,13 @@ public class GameController {
         if (keyCode == KeyEvent.VK_ENTER) {
             gameModel.confirmNameInput();
             System.out.println("Controller: 이름 입력 완료");
-        } 
-        else if (keyCode == KeyEvent.VK_BACK_SPACE) {
+        } else if (keyCode == KeyEvent.VK_BACK_SPACE) {
             gameModel.deleteCharacterFromName();
             System.out.println("Controller: 이름에서 문자 삭제");
-        } 
-        else if (keyCode == KeyEvent.VK_ESCAPE) {
+        } else if (keyCode == KeyEvent.VK_ESCAPE) {
             gameModel.cancelNameInput();
             System.out.println("Controller: 이름 입력 취소");
-        }
-        else if (isValidNameCharacter(keyCode)) {
+        } else if (isValidNameCharacter(keyCode)) {
             char character = (char) keyCode;
             gameModel.addCharacterToName(character);
             System.out.println("Controller: 이름에 문자 추가 - " + character);
@@ -282,10 +265,10 @@ public class GameController {
         if (!lastKeyPressTime.containsKey(keyCode)) {
             return false;
         }
-        
+
         long lastTime = lastKeyPressTime.get(keyCode);
         long delay = getKeyRepeatDelay(keyCode);
-        
+
         return (currentTime - lastTime) < delay;
     }
 
@@ -294,12 +277,12 @@ public class GameController {
      */
     private long getKeyRepeatDelay(int keyCode) {
         // 이동 키들은 조금 더 느린 반복
-        if (keyCode == keyBindings.get("MOVE_LEFT") || 
-            keyCode == keyBindings.get("MOVE_RIGHT") || 
+        if (keyCode == keyBindings.get("MOVE_LEFT") ||
+            keyCode == keyBindings.get("MOVE_RIGHT") ||
             keyCode == keyBindings.get("MOVE_DOWN")) {
             return MOVEMENT_REPEAT_DELAY;
         }
-        
+
         // 회전, 드롭 등은 기본 지연
         return KEY_REPEAT_DELAY;
     }
@@ -308,14 +291,25 @@ public class GameController {
      * 이름 입력에 유효한 문자인지 확인
      */
     private boolean isValidNameCharacter(int keyCode) {
-        return (keyCode >= KeyEvent.VK_A && keyCode <= KeyEvent.VK_Z) || 
-        (keyCode >= KeyEvent.VK_0 && keyCode <= KeyEvent.VK_9) ||
-        keyCode == KeyEvent.VK_SPACE;
+        return (keyCode >= KeyEvent.VK_A && keyCode <= KeyEvent.VK_Z) ||
+               (keyCode >= KeyEvent.VK_0 && keyCode <= KeyEvent.VK_9) ||
+               keyCode == KeyEvent.VK_SPACE;
     }
 
-    // KeyListener 관련 메소드 제거
-    // @Override public void keyPressed(KeyEvent e) {}
-    // @Override public void keyReleased(KeyEvent e) {}
-    // @Override public void keyTyped(KeyEvent e) {}
+    /**
+     * 게임 시작 메소드
+     */
+    public void startGame() {
+        System.out.println("[LOG] GameController.startGame()");
+        gameModel.changeState(GameState.PLAYING);
+    }
+
+    /**
+     * 키 릴리즈 처리 (일시정지 키 상태 초기화)
+     */
+    public void handleKeyRelease(int keyCode) {
+        if (keyCode == keyBindings.get("PAUSE")) {
+            pauseKeyPressed = false;
+        }
+    }
 }
-*/
