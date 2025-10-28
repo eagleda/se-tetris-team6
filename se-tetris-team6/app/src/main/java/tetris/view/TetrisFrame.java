@@ -13,9 +13,11 @@ import javax.swing.JFrame;
 import javax.swing.JLayeredPane;
 import javax.swing.JPanel;
 import javax.swing.KeyStroke;
+import javax.swing.SwingUtilities;
 
 import tetris.controller.GameController;
 import tetris.domain.GameModel;
+import tetris.domain.model.GameState;
 
 
 public class TetrisFrame extends JFrame {
@@ -38,7 +40,7 @@ public class TetrisFrame extends JFrame {
 
     private static JPanel currPanel;
 
-      // <<< 1. Controller 참조 변수 추가
+    private final GameModel gameModel;
     private GameController gameController;
 
 
@@ -49,6 +51,8 @@ public class TetrisFrame extends JFrame {
         // 전역 키 바인딩 설정 (포커스와 무관하게 동작)
         installRootKeyBindings();
 
+        this.gameModel = new GameModel();
+
         // 각 패널 설정
         setupMainPanel();
         setupSettingPanel();
@@ -56,7 +60,29 @@ public class TetrisFrame extends JFrame {
         setupPausePanel();
         setupGamePanel();
 
-        // 시작 화면을 MainPanel로 설정
+        gameModel.bindUiBridge(new GameModel.UiBridge() {
+            @Override
+            public void showPauseOverlay() {
+                SwingUtilities.invokeLater(() -> showPauseOverlayPanel());
+            }
+
+            @Override
+            public void hidePauseOverlay() {
+                SwingUtilities.invokeLater(() -> hidePauseOverlayPanel());
+            }
+
+            @Override
+            public void refreshBoard() {
+                SwingUtilities.invokeLater(() -> gamePanel.repaint());
+            }
+        });
+
+        gameController = new GameController(gamePanel, gameModel);
+
+        // 시작 화면 설정
+        this.setVisible(true);
+        prevPanel = null;
+        currPanel = mainPanel;
         displayPanel(mainPanel);
         this.setVisible(true);
 
@@ -97,9 +123,8 @@ public class TetrisFrame extends JFrame {
     }
 
     private void setupGamePanel() {
-        gamePanel = new GamePanel(gameModel, gameController);
-        gamePanel.setVisible(false);
-        gameModel.addPropertyChangeListener(gamePanel); // Model과 View 연결
+        gamePanel = new GamePanel();
+        gamePanel.bindGameModel(gameModel);
         layeredPane.add(gamePanel, JLayeredPane.DEFAULT_LAYER);
     }
 
@@ -111,14 +136,20 @@ public class TetrisFrame extends JFrame {
 
     private void setupPausePanel() {
         pausePanel = new PausePanel();
-        pausePanel.setVisible(false);
-        // [개선 3] PausePanel은 다른 패널 위에 겹쳐야 하므로 더 높은 레이어에 추가
+        pausePanel.setBounds(0, 0, FRAME_SIZE.width, FRAME_SIZE.height);
         layeredPane.add(pausePanel, JLayeredPane.PALETTE_LAYER);
+        pausePanel.setVisible(false);
 
-        pausePanel.continueButton.addActionListener(e -> togglePause());
+        // 버튼 기능 추가
+        pausePanel.continueButton.addActionListener(e -> {
+            gameModel.resumeGame();
+        });
         pausePanel.goMainButton.addActionListener(e -> {
-            togglePause(); // Pause 패널을 먼저 닫고
-            displayPanel(mainPanel); // Main으로 이동
+            displayPanel(mainPanel);
+            gameModel.quitToMenu();
+        });
+        pausePanel.exitButton.addActionListener(e -> {
+            this.dispatchEvent(new WindowEvent(this, WindowEvent.WINDOW_CLOSING));
         });
         pausePanel.exitButton.addActionListener(e -> this.dispatchEvent(new WindowEvent(this, WindowEvent.WINDOW_CLOSING)));
     }
@@ -129,34 +160,33 @@ public class TetrisFrame extends JFrame {
         layeredPane.add(scoreboardPanel, JLayeredPane.DEFAULT_LAYER);
     }
 
-    // [개선 3] 더 안정적이고 명확한 패널 전환 메소드
-    private void displayPanel(JPanel panelToShow) {
-        if (currentPanel != null) {
-            currentPanel.setVisible(false);
+    private void displayPanel(JPanel panel) {
+        prevPanel = currPanel;
+        currPanel = panel;
+        if (prevPanel != null) {
+            prevPanel.setVisible(false);
         }
-        panelToShow.setVisible(true);
-        panelToShow.requestFocusInWindow();
-        layeredPane.moveToFront(panelToShow);
-        currentPanel = panelToShow;
+        panel.setVisible(true);
+        panel.requestFocusInWindow();
+        layeredPane.moveToFront(panel);
+        layeredPane.repaint();
     }
 
-    // [개선 4] Pause 전용 토글 메소드
-    private void togglePause() {
-        // 게임이 실행 중일 때만 Pause가 동작하도록 방어 코드 추가
-        if (currentPanel == gamePanel || pausePanel.isVisible()) {
-            boolean isPaused = !pausePanel.isVisible();
-            pausePanel.setVisible(isPaused);
-            
-            if (isPaused) {
-                gameController.pauseGame();
-                layeredPane.moveToFront(pausePanel); // Pause 패널을 최상단으로
-            } else {
-                gameController.resumeGame();
-                gamePanel.requestFocusInWindow(); // 다시 게임 패널에 포커스
-            }
-        }
+    private void showPauseOverlayPanel() {
+        pausePanel.setVisible(true);
+        layeredPane.moveToFront(pausePanel);
+        pausePanel.requestFocusInWindow();
+        layeredPane.repaint();
     }
 
+    private void hidePauseOverlayPanel() {
+        pausePanel.setVisible(false);
+        if (currPanel != null) {
+            layeredPane.moveToFront(currPanel);
+            currPanel.requestFocusInWindow();
+        }
+        layeredPane.repaint();
+    }
 
     // 전역 키 설정
     private void installRootKeyBindings() {
@@ -168,10 +198,14 @@ public class TetrisFrame extends JFrame {
         am.put("togglePausePanel", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                if (!pausePanel.isVisible()) {
-                    displayPanel(pausePanel);
-                } else {
-                    displayPanel(prevPanel);
+                GameState state = gameModel.getCurrentState();
+                if (state == null) {
+                    return;
+                }
+                if (state == GameState.PLAYING) {
+                    gameModel.pauseGame();
+                } else if (state == GameState.PAUSED) {
+                    gameModel.resumeGame();
                 }
             }
         });
@@ -182,6 +216,7 @@ public class TetrisFrame extends JFrame {
             @Override
             public void actionPerformed(ActionEvent e) {
                 displayPanel(mainPanel);
+                gameModel.quitToMenu();
             }
         });
     }

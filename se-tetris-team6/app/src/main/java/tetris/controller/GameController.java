@@ -1,10 +1,11 @@
 package tetris.controller;
 
+import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
-import java.util.HashMap;
-import java.util.Map;
+
 import tetris.domain.GameModel;
 import tetris.domain.model.GameState;
+import tetris.view.GamePanel;
 
 /**
  * Controller 역할을 수행하는 클래스.
@@ -12,10 +13,13 @@ import tetris.domain.model.GameState;
  */
 public class GameController {
 
+    private final GamePanel gamePanel; // View 참조
     private final GameModel gameModel; // Model 참조
 
-    // 설정 가능한 키 바인딩 (기본값)
-    private Map<String, Integer> keyBindings;
+    // 생성자에서 View와 Model을 주입받습니다.
+    public GameController(GamePanel gamePanel, GameModel gameModel) {
+        this.gamePanel = gamePanel;
+        this.gameModel = gameModel;
 
      // 키 반복 입력 제어를 위한 상태 추적
     private Map<Integer, Long> lastKeyPressTime;
@@ -74,24 +78,28 @@ public class GameController {
 
         switch (keyCode) {
             case KeyEvent.VK_LEFT:
-                // gameModel.moveBlockLeft();
-                System.out.println("Controller: 왼쪽 키 입력 감지");
+                gameModel.moveBlockLeft();
                 break;
             case KeyEvent.VK_RIGHT:
-                // gameModel.moveBlockRight();
-                System.out.println("Controller: 오른쪽 키 입력 감지");
+                gameModel.moveBlockRight();
                 break;
             case KeyEvent.VK_DOWN:
-                // gameModel.moveBlockDown();
-                System.out.println("Controller: 아래쪽 키 입력 감지");
+                gameModel.moveBlockDown();
                 break;
             case KeyEvent.VK_UP: // 보통 회전 키로 사용
-                // gameModel.rotateBlock();
-                System.out.println("Controller: 위쪽 키(회전) 입력 감지");
+                gameModel.rotateBlockClockwise();
                 break;
             case KeyEvent.VK_SPACE:
-                // gameModel.hardDrop();
-                System.out.println("Controller: 스페이스 바(하드 드롭) 입력 감지");
+                gameModel.hardDropBlock();
+                break;
+            case KeyEvent.VK_C:
+                gameModel.holdCurrentBlock();
+                break;
+            case KeyEvent.VK_P:
+                gameModel.pauseGame();
+                break;
+            case KeyEvent.VK_R:
+                gameModel.restartGame();
                 break;
         }
 
@@ -176,27 +184,10 @@ public class GameController {
         }
     }
 
-    /**
-     * 메뉴에서의 키 입력 처리
-     */
-    private void handleMenuInput(int keyCode) {
-        if (keyCode == keyBindings.get("MENU_UP")) {
-            gameModel.navigateMenuUp();
-            System.out.println("Controller: 메뉴 위로 이동");
-        } 
-        else if (keyCode == keyBindings.get("MENU_DOWN")) {
-            gameModel.navigateMenuDown();
-            System.out.println("Controller: 메뉴 아래로 이동");
-        } 
-        else if (keyCode == keyBindings.get("MENU_SELECT")) {
-            gameModel.selectCurrentMenuItem();
-            System.out.println("Controller: 메뉴 항목 선택");
-        } 
-        else if (keyCode == keyBindings.get("MENU_BACK")) {
-            // 메인 메뉴에서는 프로그램 종료, 서브 메뉴에서는 뒤로가기
-            gameModel.handleMenuBack();
-            System.out.println("Controller: 메뉴 뒤로가기/종료");
-        }
+    // 게임 시작, 게임 오버 등 로직을 처리할 메소드들을 추가할 수 있습니다.
+    public void startGame() {
+        System.out.println("[LOG] GameController.startGame()");
+        gameModel.changeState(GameState.PLAYING);
     }
 
     /**
@@ -322,13 +313,9 @@ public class GameController {
         keyCode == KeyEvent.VK_SPACE;
     }
 
-    /**
-     * 키 해제 이벤트 처리 (키를 뗐을 때)
-     */
-    public void handleKeyRelease(int keyCode) {
-        // 일시정지 키 해제 처리
-        if (keyCode == keyBindings.get("PAUSE")) {
-            pauseKeyPressed = false;
-        }
-    }
+    // KeyListener 관련 메소드 제거
+    // @Override public void keyPressed(KeyEvent e) {}
+    // @Override public void keyReleased(KeyEvent e) {}
+    // @Override public void keyTyped(KeyEvent e) {}
 }
+*/
