@@ -14,7 +14,7 @@ public final class MenuHandler extends AbstractGameHandler {
 
     @Override
     public void enter(GameModel model) {
-        // TODO: 메뉴 화면 초기화 및 버튼 바인딩
+        model.getMenuState().reset();
     }
 
     @Override
