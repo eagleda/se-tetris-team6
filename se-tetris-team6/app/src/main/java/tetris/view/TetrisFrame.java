@@ -31,7 +31,7 @@ public class TetrisFrame extends JFrame {
     private JLayeredPane layeredPane;
 
     // 패널 참조
-    //모든 패널과 모델/컨트롤러를 인스턴스 변수로 변경 (static 제거)
+    // 모든 패널과 모델/컨트롤러를 인스턴스 변수로 변경 (static 제거)
     protected MainPanel mainPanel;
     protected GamePanel gamePanel;
     protected SettingPanel settingPanel;
@@ -40,9 +40,7 @@ public class TetrisFrame extends JFrame {
     private static JPanel prevPanel;
     private static JPanel currPanel;
 
-    
     private GameController gameController;
-
 
     public TetrisFrame() {
         super(FRAME_TITLE);
@@ -87,7 +85,7 @@ public class TetrisFrame extends JFrame {
         this.setVisible(true);
 
     }
-    
+
     private void initializeModelsAndControllers() {
         gameModel = new GameModel();
         gameController = new GameController(gameModel);
@@ -111,7 +109,7 @@ public class TetrisFrame extends JFrame {
 
         mainPanel.gameButton.addActionListener(e -> {
             displayPanel(gamePanel);
-             // 2. Controller에게 게임 시작을 명령
+            // 2. Controller에게 게임 시작을 명령
             gameController.startGame();
         });
         mainPanel.settingButton.addActionListener(e -> {
@@ -151,7 +149,8 @@ public class TetrisFrame extends JFrame {
         pausePanel.exitButton.addActionListener(e -> {
             this.dispatchEvent(new WindowEvent(this, WindowEvent.WINDOW_CLOSING));
         });
-        pausePanel.exitButton.addActionListener(e -> this.dispatchEvent(new WindowEvent(this, WindowEvent.WINDOW_CLOSING)));
+        pausePanel.exitButton
+                .addActionListener(e -> this.dispatchEvent(new WindowEvent(this, WindowEvent.WINDOW_CLOSING)));
     }
 
     private void setupScoreboardPanel() {
@@ -160,12 +159,10 @@ public class TetrisFrame extends JFrame {
         layeredPane.add(scoreboardPanel, JLayeredPane.DEFAULT_LAYER);
     }
 
-    private void displayPanel(JPanel panel) {
+    public void displayPanel(JPanel panel) {
         prevPanel = currPanel;
         currPanel = panel;
-        if (prevPanel != null) {
-            prevPanel.setVisible(false);
-        }
+        prevPanel.setVisible(false);
         panel.setVisible(true);
         panel.requestFocusInWindow();
         layeredPane.moveToFront(panel);
@@ -173,19 +170,20 @@ public class TetrisFrame extends JFrame {
     }
 
     private void showPauseOverlayPanel() {
-        pausePanel.setVisible(true);
-        layeredPane.moveToFront(pausePanel);
-        pausePanel.requestFocusInWindow();
-        layeredPane.repaint();
+        displayPanel(pausePanel);
     }
 
     private void hidePauseOverlayPanel() {
-        pausePanel.setVisible(false);
-        if (currPanel != null) {
-            layeredPane.moveToFront(currPanel);
-            currPanel.requestFocusInWindow();
+        displayPanel(prevPanel);
+    }
+
+    // showPauseOverlayPanel, hidePauseOverlayPanel 대체 가능
+    public void togglePausePanel() {
+        if (!pausePanel.equals(currPanel)) {
+            displayPanel(pausePanel);
+        } else {
+            displayPanel(prevPanel);
         }
-        layeredPane.repaint();
     }
 
     // 전역 키 설정
@@ -221,16 +219,16 @@ public class TetrisFrame extends JFrame {
         });
 
         KeyboardFocusManager.getCurrentKeyboardFocusManager()
-            .addKeyEventDispatcher(event -> {
-                if (gameController == null) {
+                .addKeyEventDispatcher(event -> {
+                    if (gameController == null) {
+                        return false;
+                    }
+                    if (event.getID() == KeyEvent.KEY_PRESSED) {
+                        gameController.handleKeyPress(event.getKeyCode());
+                    } else if (event.getID() == KeyEvent.KEY_RELEASED) {
+                        gameController.handleKeyRelease(event.getKeyCode());
+                    }
                     return false;
-                }
-                if (event.getID() == KeyEvent.KEY_PRESSED) {
-                    gameController.handleKeyPress(event.getKeyCode());
-                } else if (event.getID() == KeyEvent.KEY_RELEASED) {
-                    gameController.handleKeyRelease(event.getKeyCode());
-                }
-                return false;
-            });
+                });
     }
 }
