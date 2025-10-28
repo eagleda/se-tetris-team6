@@ -3,10 +3,12 @@ package tetris.controller;
 import java.awt.event.KeyEvent;
 import java.util.HashMap;
 import java.util.Map;
-
 import tetris.domain.GameModel;
 import tetris.domain.model.GameState;
 import tetris.view.GamePanel;
+
+
+// 이제부터 모델의 좌우 움직임이 안 되는 이유를 해결합니다.
 
 /**
  * Controller 역할을 수행하는 클래스.
