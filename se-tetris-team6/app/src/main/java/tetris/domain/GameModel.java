@@ -5,7 +5,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
+import tetris.domain.BlockGenerator;
 import tetris.domain.BlockKind;
+import tetris.domain.RandomBlockGenerator;
 import tetris.domain.handler.GameHandler;
 import tetris.domain.handler.GameOverHandler;
 import tetris.domain.handler.GamePlayHandler;
@@ -50,6 +52,7 @@ public final class GameModel implements GameClock.Listener {
     private final InputState inputState = new InputState();
     private final GameClock clock = new GameClock(this);
     private final ScoreRuleEngine scoreEngine;
+    private BlockGenerator blockGenerator;
     private final Map<GameState, GameHandler> handlers = new EnumMap<>(GameState.class);
 
     private UiBridge uiBridge = NO_OP_UI_BRIDGE;
@@ -59,7 +62,12 @@ public final class GameModel implements GameClock.Listener {
     private boolean clockStarted;
 
     public GameModel() {
+        this(new RandomBlockGenerator());
+    }
+
+    public GameModel(BlockGenerator generator) {
         this.scoreEngine = new ScoreRuleEngine(scoreData, null);
+        setBlockGenerator(generator);
         registerHandlers();
         changeState(GameState.MENU);
     }
@@ -119,6 +127,14 @@ public final class GameModel implements GameClock.Listener {
 
     public void setActiveBlock(Block block) {
         this.activeBlock = block;
+    }
+
+    public void setBlockGenerator(BlockGenerator generator) {
+        this.blockGenerator = Objects.requireNonNull(generator, "generator");
+    }
+
+    public BlockGenerator getBlockGenerator() {
+        return blockGenerator;
     }
 
     public void spawnIfNeeded() {
@@ -188,7 +204,9 @@ public final class GameModel implements GameClock.Listener {
     }
 
     private boolean spawnNewBlock() {
-        Block next = Block.spawn(BlockKind.T, Board.W / 2 - 1, 0);
+        BlockGenerator generator = Objects.requireNonNull(blockGenerator, "blockGenerator");
+        BlockKind nextKind = Objects.requireNonNull(generator.nextBlock(), "nextBlock");
+        Block next = Block.spawn(nextKind, Board.W / 2 - 1, 0);
         if (!board.canSpawn(next.getShape(), next.getX(), next.getY())) {
             return false;
         }
@@ -206,8 +224,7 @@ public final class GameModel implements GameClock.Listener {
         activeBlock = null;
         int cleared = board.clearLines();
         if (cleared > 0) {
-            scoreData.addClearedLines(cleared);
-            scoreData.addScore(cleared * 100);
+            scoreEngine.onLinesCleared(cleared);
         }
     }
 
