@@ -35,11 +35,13 @@ public final class GameModel implements GameClock.Listener {
     public interface UiBridge {
         void showPauseOverlay();
         void hidePauseOverlay();
+        void refreshBoard();
     }
 
     private static final UiBridge NO_OP_UI_BRIDGE = new UiBridge() {
         @Override public void showPauseOverlay() { /* no-op */ }
         @Override public void hidePauseOverlay() { /* no-op */ }
+        @Override public void refreshBoard() { /* no-op */ }
     };
 
     private final Board board = new Board();
@@ -75,6 +77,8 @@ public final class GameModel implements GameClock.Listener {
 
     public void changeState(GameState next) {
         Objects.requireNonNull(next, "next");
+        System.out.printf("[LOG] GameModel.changeState(%s -> %s)%n",
+            currentState, next);
         if (currentHandler != null) {
             currentHandler.exit(this);
         }
@@ -115,9 +119,10 @@ public final class GameModel implements GameClock.Listener {
     }
 
     public void spawnIfNeeded() {
-        if (activeBlock == null) {
-            activeBlock = Block.spawn(BlockKind.T, Board.W / 2 - 1, 0);
+        if (activeBlock == null && !spawnNewBlock()) {
+            changeState(GameState.GAME_OVER);
         }
+        uiBridge.refreshBoard();
     }
 
     public void resumeClock() {
@@ -176,6 +181,30 @@ public final class GameModel implements GameClock.Listener {
         if (clockStarted) {
             clock.stop();
             clockStarted = false;
+        }
+    }
+
+    private boolean spawnNewBlock() {
+        Block next = Block.spawn(BlockKind.T, Board.W / 2 - 1, 0);
+        if (!board.canSpawn(next.getShape(), next.getX(), next.getY())) {
+            return false;
+        }
+        activeBlock = next;
+        return true;
+    }
+
+    private void lockActiveBlock() {
+        if (activeBlock == null) {
+            return;
+        }
+        BlockShape shape = activeBlock.getShape();
+        int blockId = shape.kind().ordinal() + 1;
+        board.place(shape, activeBlock.getX(), activeBlock.getY(), blockId);
+        activeBlock = null;
+        int cleared = board.clearLines();
+        if (cleared > 0) {
+            scoreData.addClearedLines(cleared);
+            scoreData.addScore(cleared * 100);
         }
     }
 
@@ -281,7 +310,22 @@ public final class GameModel implements GameClock.Listener {
 
     @Override
     public void onGravityTick() {
-        // TODO: 중력 이동/충돌 처리
+        System.out.println("[LOG] GameModel.onGravityTick()");
+        if (!isPlayingState()) {
+            return;
+        }
+        if (!ensureActiveBlockPresent()) {
+            return;
+        }
+
+        if (canActiveBlockMove(0, 1)) {
+            activeBlock.moveBy(0, 1);
+        } else {
+            lockActiveBlock();
+            if (!spawnNewBlock()) {
+                changeState(GameState.GAME_OVER);
+            }
+        }
     }
 
     @Override
@@ -350,6 +394,7 @@ public final class GameModel implements GameClock.Listener {
         if (board.canPlace(rotated, activeBlock.getX(), activeBlock.getY())) {
             activeBlock.setShape(rotated);
         }
+        uiBridge.refreshBoard();
     }
 
     public void rotateBlockCounterClockwise() {
@@ -363,6 +408,7 @@ public final class GameModel implements GameClock.Listener {
         if (board.canPlace(rotated, activeBlock.getX(), activeBlock.getY())) {
             activeBlock.setShape(rotated);
         }
+        uiBridge.refreshBoard();
     }
 
     public void hardDropBlock() {
@@ -379,6 +425,7 @@ public final class GameModel implements GameClock.Listener {
             return;
         }
         inputState.pressHold();
+        uiBridge.refreshBoard();
     }
 
     // === 상태별 보조 동작 ===
@@ -387,18 +434,21 @@ public final class GameModel implements GameClock.Listener {
         if (currentState == GameState.MENU) {
             // TODO: 메뉴 항목 위로 이동
         }
+        uiBridge.refreshBoard();
     }
 
     public void navigateMenuDown() {
         if (currentState == GameState.MENU) {
             // TODO: 메뉴 항목 아래로 이동
         }
+        uiBridge.refreshBoard();
     }
 
     public void selectCurrentMenuItem() {
         if (currentState == GameState.MENU) {
             // TODO: 메뉴 항목 선택
         }
+        uiBridge.refreshBoard();
     }
 
     public void handleMenuBack() {
@@ -407,83 +457,97 @@ public final class GameModel implements GameClock.Listener {
         } else {
             changeState(GameState.MENU);
         }
+        uiBridge.refreshBoard();
     }
 
     public void proceedFromGameOver() {
         if (currentState == GameState.GAME_OVER) {
             changeState(GameState.NAME_INPUT);
         }
+        uiBridge.refreshBoard();
     }
 
     public void navigateSettingsUp() {
         if (currentState == GameState.SETTINGS) {
             // TODO: 설정 항목 위로 이동
         }
+        uiBridge.refreshBoard();
     }
 
     public void navigateSettingsDown() {
         if (currentState == GameState.SETTINGS) {
             // TODO: 설정 항목 아래로 이동
         }
+        uiBridge.refreshBoard();
     }
 
     public void selectCurrentSetting() {
         if (currentState == GameState.SETTINGS) {
             // TODO: 설정 선택 또는 값 변경
         }
+        uiBridge.refreshBoard();
     }
 
     public void exitSettings() {
         if (currentState == GameState.SETTINGS) {
             changeState(GameState.MENU);
         }
+        uiBridge.refreshBoard();
     }
 
     public void resetAllSettings() {
         if (currentState == GameState.SETTINGS) {
             // TODO: 설정 초기화
         }
+        uiBridge.refreshBoard();
     }
 
     public void exitScoreboard() {
         if (currentState == GameState.SCOREBOARD) {
             changeState(GameState.MENU);
         }
+        uiBridge.refreshBoard();
     }
 
     public void scrollScoreboardUp() {
         if (currentState == GameState.SCOREBOARD) {
             // TODO: 스코어보드 스크롤 업
         }
+        uiBridge.refreshBoard();
     }
 
     public void scrollScoreboardDown() {
         if (currentState == GameState.SCOREBOARD) {
             // TODO: 스코어보드 스크롤 다운
         }
+        uiBridge.refreshBoard();
     }
 
     public void confirmNameInput() {
         if (currentState == GameState.NAME_INPUT) {
             processNameEntry();
         }
+        uiBridge.refreshBoard();
     }
 
     public void deleteCharacterFromName() {
         if (currentState == GameState.NAME_INPUT) {
             // TODO: 이름 글자 삭제
         }
+        uiBridge.refreshBoard();
     }
 
     public void cancelNameInput() {
         if (currentState == GameState.NAME_INPUT) {
             changeState(GameState.MENU);
         }
+        uiBridge.refreshBoard();
     }
 
     public void addCharacterToName(char character) {
         if (currentState == GameState.NAME_INPUT) {
             // TODO: 이름 글자 추가
         }
+        uiBridge.refreshBoard();
     }
 }

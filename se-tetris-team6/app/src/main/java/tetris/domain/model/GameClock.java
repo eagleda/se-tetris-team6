@@ -84,6 +84,7 @@ public final class GameClock {
         if (running) {
             return;
         }
+        System.out.println("[LOG] GameClock.start()");
         gravityTimer.start();
         running = true;
     }
@@ -109,6 +110,7 @@ public final class GameClock {
         if (running) {
             return;
         }
+        System.out.println("[LOG] GameClock.resume()");
         gravityTimer.start();
         if (lockDelayTimer != null && !lockDelayTimer.isRunning()) {
             lockDelayTimer.start();

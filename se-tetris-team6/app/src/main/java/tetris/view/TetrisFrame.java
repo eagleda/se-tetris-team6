@@ -71,6 +71,11 @@ public class TetrisFrame extends JFrame {
             public void hidePauseOverlay() {
                 SwingUtilities.invokeLater(() -> hidePauseOverlayPanel());
             }
+
+            @Override
+            public void refreshBoard() {
+                SwingUtilities.invokeLater(() -> gamePanel.repaint());
+            }
         });
 
         gameController = new GameController(gamePanel, gameModel);

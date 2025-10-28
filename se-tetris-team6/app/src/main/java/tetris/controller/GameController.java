@@ -77,7 +77,7 @@ public class GameController {
 
     // 게임 시작, 게임 오버 등 로직을 처리할 메소드들을 추가할 수 있습니다.
     public void startGame() {
-        System.out.println("Controller: 게임을 시작합니다.");
+        System.out.println("[LOG] GameController.startGame()");
         gameModel.changeState(GameState.PLAYING);
     }
 }

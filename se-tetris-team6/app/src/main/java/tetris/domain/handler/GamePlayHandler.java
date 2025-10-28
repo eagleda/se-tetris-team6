@@ -15,6 +15,7 @@ public final class GamePlayHandler extends AbstractGameHandler {
 
     @Override
     public void enter(GameModel model) {
+        System.out.println("[LOG] GamePlayHandler.enter()");
         model.spawnIfNeeded();
         model.resumeClock();
     }
