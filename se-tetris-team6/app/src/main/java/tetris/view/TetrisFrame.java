@@ -21,13 +21,14 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 import tetris.controller.GameController;
 import tetris.domain.GameModel;
 import tetris.domain.model.GameState;
+import tetris.view.GameComponent.GamePanel;
 
 public class TetrisFrame extends JFrame {
 
     private GameModel gameModel;
 
     private static final String FRAME_TITLE = "Tetris Game - Team 06";
-    protected static final Dimension FRAME_SIZE = new Dimension(700, 900);
+    public static Dimension FRAME_SIZE = new Dimension(700, 900);
 
     // 프레임 레이아웃
     private JLayeredPane layeredPane;

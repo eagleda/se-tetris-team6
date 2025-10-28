@@ -1,4 +1,4 @@
-package tetris.view;
+package tetris.view.GameComponent;
 
 import java.awt.Color;
 import java.awt.Graphics;
@@ -10,6 +10,7 @@ import javax.swing.JPanel;
 import tetris.domain.Board;
 import tetris.domain.GameModel;
 import tetris.domain.model.Block;
+import tetris.view.TetrisFrame;
 import tetris.domain.BlockShape;
 
 public class GamePanel extends JPanel {
@@ -19,14 +20,14 @@ public class GamePanel extends JPanel {
     private static final Color BACKGROUND_COLOR = new Color(18, 18, 18);
     private static final Color GRID_COLOR = new Color(48, 48, 48, 180);
     private static final Color[] BLOCK_COLORS = {
-        new Color(30, 30, 30),     // 0: 빈 칸
-        new Color(0, 240, 240),    // I
-        new Color(0, 0, 240),      // J
-        new Color(240, 160, 0),    // L
-        new Color(240, 240, 0),    // O
-        new Color(0, 240, 0),      // S
-        new Color(160, 0, 240),    // T
-        new Color(240, 0, 0)       // Z
+            new Color(30, 30, 30), // 0: 빈 칸
+            new Color(0, 240, 240), // I
+            new Color(0, 0, 240), // J
+            new Color(240, 160, 0), // L
+            new Color(240, 240, 0), // O
+            new Color(0, 240, 0), // S
+            new Color(160, 0, 240), // T
+            new Color(240, 0, 0) // Z
     };
 
     private GameModel gameModel;
@@ -116,7 +117,8 @@ public class GamePanel extends JPanel {
         }
     }
 
-    private void drawGridLines(Graphics2D g2, int cellSize, int originX, int originY, int boardWidthPx, int boardHeightPx) {
+    private void drawGridLines(Graphics2D g2, int cellSize, int originX, int originY, int boardWidthPx,
+            int boardHeightPx) {
         g2.setColor(GRID_COLOR);
         for (int x = 0; x <= BOARD_COLS; x++) {
             int px = originX + x * cellSize;
