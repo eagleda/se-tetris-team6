@@ -11,7 +11,7 @@ import javax.swing.text.SimpleAttributeSet;
 import javax.swing.text.StyleConstants;
 import javax.swing.text.StyledDocument;
 
-import tetris.model.Block;
+import tetris.domain.model.Block;
 
 public class Board extends JPanel {
     private static final int WIDTH = 10;
@@ -59,7 +59,7 @@ public class Board extends JPanel {
         block = null;
     }
 
-    public void start(Block activeBlock, int offsetX, int offsetY) {
+    public void generateBlock(Block activeBlock, int offsetX, int offsetY) {
         fixBlock();
         x = offsetX;
         y = offsetY;

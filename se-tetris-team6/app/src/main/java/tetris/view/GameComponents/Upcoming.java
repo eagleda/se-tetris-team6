@@ -11,7 +11,7 @@ import javax.swing.text.SimpleAttributeSet;
 import javax.swing.text.StyleConstants;
 import javax.swing.text.StyledDocument;
 
-import tetris.model.Block;
+import tetris.domain.model.Block;
 
 public class Upcoming extends JPanel {
     private static final int WIDTH = 5;
