@@ -5,9 +5,6 @@ import java.util.HashMap;
 import java.util.Map;
 import tetris.domain.GameModel;
 import tetris.domain.model.GameState;
-import tetris.view.GamePanel;
-
-
 // 이제부터 모델의 좌우 움직임이 안 되는 이유를 해결합니다.
 
 /**
@@ -16,7 +13,6 @@ import tetris.view.GamePanel;
  */
 public class GameController {
 
-    private final GamePanel gamePanel; // View 참조
     private final GameModel gameModel; // Model 참조
 
     // 키 반복 입력 제어를 위한 상태 추적
@@ -31,15 +27,7 @@ public class GameController {
     private Map<String, Integer> keyBindings;
 
     // 생성자에서 View와 Model을 주입받습니다.
-    public GameController(GamePanel gamePanel, GameModel gameModel) {
-        this.gamePanel = gamePanel;
-        this.gameModel = gameModel;
-        this.lastKeyPressTime = new HashMap<>();
-        initializeDefaultKeyBindings();
-    }
-
     public GameController(GameModel gameModel) {
-        this.gamePanel = null;
         this.gameModel = gameModel;
         this.lastKeyPressTime = new HashMap<>();
         initializeDefaultKeyBindings();
