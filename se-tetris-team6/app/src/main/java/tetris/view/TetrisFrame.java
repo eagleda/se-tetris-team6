@@ -1,6 +1,7 @@
 package tetris.view;
 
 import java.awt.Dimension;
+import java.awt.KeyboardFocusManager;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.WindowEvent;
@@ -18,7 +19,6 @@ import javax.swing.SwingUtilities;
 import tetris.controller.GameController;
 import tetris.domain.GameModel;
 import tetris.domain.model.GameState;
-
 
 public class TetrisFrame extends JFrame {
 
@@ -77,7 +77,7 @@ public class TetrisFrame extends JFrame {
             }
         });
 
-        gameController = new GameController(gamePanel, gameModel);
+        gameController = new GameController(gameModel);
 
         // 시작 화면 설정
         this.setVisible(true);
@@ -219,6 +219,18 @@ public class TetrisFrame extends JFrame {
                 gameModel.quitToMenu();
             }
         });
-    }
 
+        KeyboardFocusManager.getCurrentKeyboardFocusManager()
+            .addKeyEventDispatcher(event -> {
+                if (gameController == null) {
+                    return false;
+                }
+                if (event.getID() == KeyEvent.KEY_PRESSED) {
+                    gameController.handleKeyPress(event.getKeyCode());
+                } else if (event.getID() == KeyEvent.KEY_RELEASED) {
+                    gameController.handleKeyRelease(event.getKeyCode());
+                }
+                return false;
+            });
+    }
 }

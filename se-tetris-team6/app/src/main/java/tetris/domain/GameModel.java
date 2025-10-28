@@ -311,10 +311,12 @@ public final class GameModel implements GameClock.Listener {
     @Override
     public void onGravityTick() {
         System.out.println("[LOG] GameModel.onGravityTick()");
-        System.out.printf("[LOG] before move: y=%d%n", activeBlock.getY());
+        System.out.printf("[LOG] before move: x=%d, y=%d%n",
+            activeBlock.getX(), activeBlock.getY());
         if (canActiveBlockMove(0, 1)) {
             activeBlock.moveBy(0, 1);
-            System.out.printf("[LOG] moved:   y=%d%n", activeBlock.getY());
+            System.out.printf("[LOG] moved:   x=%d, y=%d%n",
+                activeBlock.getX(), activeBlock.getY());
         } else {
             System.out.println("[LOG] cannot move further, locking");
             lockActiveBlock();
@@ -379,6 +381,7 @@ public final class GameModel implements GameClock.Listener {
         }
         if (canActiveBlockMove(-1, 0)) {
             activeBlock.moveBy(-1, 0);
+            uiBridge.refreshBoard();
         }
     }
 
@@ -388,6 +391,7 @@ public final class GameModel implements GameClock.Listener {
         }
         if (canActiveBlockMove(1, 0)) {
             activeBlock.moveBy(1, 0);
+            uiBridge.refreshBoard();
         }
     }
 
@@ -397,6 +401,7 @@ public final class GameModel implements GameClock.Listener {
         }
         if (canActiveBlockMove(0, 1)) {
             activeBlock.moveBy(0, 1);
+            uiBridge.refreshBoard();
         }
     }
 
@@ -432,6 +437,7 @@ public final class GameModel implements GameClock.Listener {
         while (canActiveBlockMove(0, 1)) {
             activeBlock.moveBy(0, 1);
         }
+        uiBridge.refreshBoard();
     }
 
     public void holdCurrentBlock() {
