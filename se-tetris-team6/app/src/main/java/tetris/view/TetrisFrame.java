@@ -326,7 +326,7 @@ public class TetrisFrame extends JFrame {
                     mainPanel.focusButton(1);
             }
         });
-        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_UP, 0), "clickFocusButton");
+        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), "clickFocusButton");
         am.put("clickFocusButton", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
