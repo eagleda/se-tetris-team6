@@ -23,6 +23,10 @@ public class SettingPanel extends JPanel {
     public JTextField keyMoveRightField;
     public JTextField keyRotateField;
     public JTextField keySoftDropField;
+    public JButton captureMoveLeftButton;
+    public JButton captureMoveRightButton;
+    public JButton captureRotateButton;
+    public JButton captureSoftDropButton;
     public JButton resetScoresButton;
     public JButton resetDefaultsButton;
     public JButton saveButton;
@@ -58,24 +62,32 @@ public class SettingPanel extends JPanel {
         keysRow.setOpaque(false);
         keysRow.add(new JLabel("Key bindings (use key names, e.g. LEFT, RIGHT, UP, DOWN, SPACE):"));
 
-        JPanel row1 = new JPanel(new FlowLayout(FlowLayout.LEFT));
+    JPanel row1 = new JPanel(new FlowLayout(FlowLayout.LEFT));
         row1.setOpaque(false);
         row1.add(new JLabel("Move Left:"));
         keyMoveLeftField = new JTextField(8);
-        row1.add(keyMoveLeftField);
+    row1.add(keyMoveLeftField);
+    captureMoveLeftButton = new JButton("Capture");
+    row1.add(captureMoveLeftButton);
         row1.add(new JLabel("Move Right:"));
         keyMoveRightField = new JTextField(8);
-        row1.add(keyMoveRightField);
+    row1.add(keyMoveRightField);
+    captureMoveRightButton = new JButton("Capture");
+    row1.add(captureMoveRightButton);
         keysRow.add(row1);
 
-        JPanel row2 = new JPanel(new FlowLayout(FlowLayout.LEFT));
+    JPanel row2 = new JPanel(new FlowLayout(FlowLayout.LEFT));
         row2.setOpaque(false);
         row2.add(new JLabel("Rotate:"));
         keyRotateField = new JTextField(8);
-        row2.add(keyRotateField);
+    row2.add(keyRotateField);
+    captureRotateButton = new JButton("Capture");
+    row2.add(captureRotateButton);
         row2.add(new JLabel("Soft Drop:"));
         keySoftDropField = new JTextField(8);
-        row2.add(keySoftDropField);
+    row2.add(keySoftDropField);
+    captureSoftDropButton = new JButton("Capture");
+    row2.add(captureSoftDropButton);
         keysRow.add(row2);
 
         this.add(keysRow);
@@ -90,5 +102,40 @@ public class SettingPanel extends JPanel {
         actions.add(resetDefaultsButton);
         actions.add(saveButton);
         this.add(actions);
+        // install capture behavior: controller will attach listeners, but provide a default capturing helper
+        installCaptureHandlers();
+    }
+
+    private void installCaptureHandlers() {
+        // Generic capture installer
+        installCapture(captureMoveLeftButton, keyMoveLeftField);
+        installCapture(captureMoveRightButton, keyMoveRightField);
+        installCapture(captureRotateButton, keyRotateField);
+        installCapture(captureSoftDropButton, keySoftDropField);
+    }
+
+    private void installCapture(JButton button, JTextField targetField) {
+        button.addActionListener(e -> {
+            button.setText("Press a key...");
+            button.setEnabled(false);
+
+            java.awt.KeyEventDispatcher dispatcher = new java.awt.KeyEventDispatcher() {
+                @Override
+                public boolean dispatchKeyEvent(java.awt.event.KeyEvent evt) {
+                    if (evt.getID() == java.awt.event.KeyEvent.KEY_PRESSED) {
+                        int code = evt.getKeyCode();
+                        targetField.setText(tetris.util.KeyMapper.keyCodeToName(code));
+                        // restore button
+                        button.setText("Capture");
+                        button.setEnabled(true);
+                        java.awt.KeyboardFocusManager.getCurrentKeyboardFocusManager().removeKeyEventDispatcher(this);
+                        return true; // consume
+                    }
+                    return false;
+                }
+            };
+
+            java.awt.KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(dispatcher);
+        });
     }
 }
