@@ -106,7 +106,7 @@ public class SettingPanel extends JPanel {
         row2.add(captureSoftDropButton);
         keysRow.add(row2);
 
-        addToLayout(keysRow, 0, 2, 1, 2, GridBagConstraints.BOTH, GridBagConstraints.WEST);
+        addToLayout(keysRow, 0, 2, 1, 1, GridBagConstraints.BOTH, GridBagConstraints.WEST);
 
         // Action buttons
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT));
@@ -120,7 +120,7 @@ public class SettingPanel extends JPanel {
         actions.add(saveButton);
         actions.add(backToMainButton);
 
-        addToLayout(keysRow, 0, 2, 1, 2, GridBagConstraints.BOTH, GridBagConstraints.WEST);
+        addToLayout(actions, 0, 3, 1, 1, GridBagConstraints.BOTH, GridBagConstraints.WEST);
 
         // install capture behavior: controller will attach listeners, but provide a
         // default capturing helper
