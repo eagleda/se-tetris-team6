@@ -40,12 +40,19 @@ public final class GameModel {
         void showPauseOverlay();
         void hidePauseOverlay();
         void refreshBoard();
+        /** Show the Game Over overlay. If canEnterName is true the UI should
+         * provide a name entry flow to persist to the leaderboard. */
+        void showGameOverOverlay(tetris.domain.score.Score score, boolean canEnterName);
+        /** Show a dedicated name-entry overlay (optional). */
+        void showNameEntryOverlay(tetris.domain.score.Score score);
     }
 
     private static final UiBridge NO_OP_UI_BRIDGE = new UiBridge() {
         @Override public void showPauseOverlay() { /* no-op */ }
         @Override public void hidePauseOverlay() { /* no-op */ }
         @Override public void refreshBoard() { /* no-op */ }
+        @Override public void showGameOverOverlay(tetris.domain.score.Score score, boolean canEnterName) { /* no-op */ }
+        @Override public void showNameEntryOverlay(tetris.domain.score.Score score) { /* no-op */ }
     };
 
     private final Board board = new Board();
@@ -53,6 +60,7 @@ public final class GameModel {
     private final tetris.domain.engine.GameplayEngine gameplayEngine;
     private final ScoreRepository scoreRepository;
     private final ScoreRuleEngine scoreEngine;
+    private final tetris.domain.leaderboard.LeaderboardRepository leaderboardRepository;
     private final SettingService settingService;
     private BlockGenerator blockGenerator;
     private final Map<GameState, GameHandler> handlers = new EnumMap<>(GameState.class);
@@ -67,8 +75,10 @@ public final class GameModel {
     }
 
     public GameModel(BlockGenerator generator, ScoreRepository scoreRepository) {
-        this.scoreRepository = Objects.requireNonNull(scoreRepository, "scoreRepository");
-        this.scoreEngine = new ScoreRuleEngine(scoreRepository);
+    this.scoreRepository = Objects.requireNonNull(scoreRepository, "scoreRepository");
+    this.scoreEngine = new ScoreRuleEngine(scoreRepository);
+    // lightweight leaderboard for game-over name saving
+    this.leaderboardRepository = new tetris.data.leaderboard.InMemoryLeaderboardRepository();
         // lightweight setting service used by handlers that expect model-level setting operations
         this.settingService = new SettingService(new PreferencesSettingRepository(), scoreRepository);
         setBlockGenerator(generator);
@@ -132,6 +142,10 @@ public final class GameModel {
 
     public ScoreRuleEngine getScoreEngine() {
         return scoreEngine;
+    }
+
+    public tetris.domain.leaderboard.LeaderboardRepository getLeaderboardRepository() {
+        return leaderboardRepository;
     }
 
     public Block getActiveBlock() {
@@ -230,11 +244,28 @@ public final class GameModel {
     }
 
     public void computeFinalScore() {
-        // TODO: 남은 보너스 계산 등 최종 점수 확정
+        // Currently scoring is applied during gameplay via ScoreRuleEngine.
+        // If there are end-of-game bonuses they should be computed here.
+        // For now, this is a no-op placeholder to leave the final Score in repository.
     }
 
     public void showGameOverScreen() {
-        // TODO: GameOver 화면에 필요한 데이터 전달
+        // Prepare data for UI and determine whether name entry should be allowed.
+        tetris.domain.score.Score finalScore = scoreRepository.load();
+        boolean qualifies = false;
+        try {
+            var top = leaderboardRepository.loadTop(10);
+            if (top.size() < 10) {
+                qualifies = true;
+            } else {
+                int lastPoints = top.get(top.size() - 1).getPoints();
+                qualifies = finalScore.getPoints() > lastPoints;
+            }
+        } catch (Exception ex) {
+            // if leaderboard not available or any error, conservatively allow name entry
+            qualifies = true;
+        }
+        uiBridge.showGameOverOverlay(finalScore, qualifies);
     }
 
     public void loadSettings() {
