@@ -3,6 +3,8 @@ package tetris.controller;
 import java.awt.event.KeyEvent;
 import java.util.HashMap;
 import java.util.Map;
+import tetris.domain.BlockGenerator;
+import tetris.domain.GameDifficulty;
 import tetris.domain.GameModel;
 import tetris.domain.model.GameState;
 // 이제부터 모델의 좌우 움직임이 안 되는 이유를 해결합니다.
@@ -31,6 +33,7 @@ public class GameController {
         this.gameModel = gameModel;
         this.lastKeyPressTime = new HashMap<>();
         initializeDefaultKeyBindings();
+        applyDifficulty(GameDifficulty.NORMAL);
     }
 
     /**
@@ -42,6 +45,16 @@ public class GameController {
         for (java.util.Map.Entry<String, Integer> e : updated.entrySet()) {
             if (e.getValue() == null) continue;
             keyBindings.put(e.getKey(), e.getValue());
+        }
+    }
+
+    public void applyDifficulty(GameDifficulty difficulty) {
+        if (difficulty == null) {
+            difficulty = GameDifficulty.NORMAL;
+        }
+        BlockGenerator generator = gameModel.getBlockGenerator();
+        if (generator != null) {
+            generator.setDifficulty(difficulty);
         }
     }
 

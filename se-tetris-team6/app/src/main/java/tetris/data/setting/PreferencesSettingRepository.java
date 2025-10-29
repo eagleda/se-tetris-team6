@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.prefs.Preferences;
 
+import tetris.domain.GameDifficulty;
 import tetris.domain.setting.Setting;
 import tetris.domain.setting.SettingRepository;
 
@@ -28,6 +29,7 @@ public class PreferencesSettingRepository implements SettingRepository {
     // keys
     private static final String KEY_SCREEN = "screenSize";
     private static final String KEY_COLORBLIND = "colorBlind";
+    private static final String KEY_DIFFICULTY = "difficulty";
     private static final String KEY_PREFIX_KB = "kb."; // e.g. kb.MOVE_LEFT
 
     private static final String[] ACTIONS = { "MOVE_LEFT", "MOVE_RIGHT", "ROTATE", "SOFT_DROP", "HARD_DROP", "HOLD" };
@@ -48,10 +50,18 @@ public class PreferencesSettingRepository implements SettingRepository {
 
         s.setColorBlindMode(prefs.getBoolean(KEY_COLORBLIND, Setting.defaults().isColorBlindMode()));
 
+        String difficulty = prefs.get(KEY_DIFFICULTY, Setting.defaults().getDifficulty().name());
+        try {
+            s.setDifficulty(GameDifficulty.valueOf(difficulty));
+        } catch (IllegalArgumentException e) {
+            s.setDifficulty(Setting.defaults().getDifficulty());
+        }
+
         Map<String, Integer> kb = new HashMap<>();
         for (String a : ACTIONS) {
-            int defaultCode = Setting.defaults().getKeyBinding(a);
-            int v = prefs.getInt(KEY_PREFIX_KB + a, defaultCode);
+            Integer defaultCode = Setting.defaults().getKeyBinding(a);
+            int fallback = defaultCode != null ? defaultCode : 0;
+            int v = prefs.getInt(KEY_PREFIX_KB + a, fallback);
             kb.put(a, v);
         }
         s.setKeyBindings(kb);
@@ -64,6 +74,9 @@ public class PreferencesSettingRepository implements SettingRepository {
             prefs.put(KEY_SCREEN, settings.getScreenSize().name());
         }
         prefs.putBoolean(KEY_COLORBLIND, settings.isColorBlindMode());
+        if (settings.getDifficulty() != null) {
+            prefs.put(KEY_DIFFICULTY, settings.getDifficulty().name());
+        }
         for (Map.Entry<String, Integer> e : settings.getKeyBindings().entrySet()) {
             prefs.putInt(KEY_PREFIX_KB + e.getKey(), e.getValue());
         }

@@ -3,6 +3,7 @@ package tetris.domain.setting;
 import java.util.HashMap;
 import java.util.Map;
 
+import tetris.domain.GameDifficulty;
 import tetris.domain.score.ScoreRepository;
 
 /**
@@ -33,6 +34,10 @@ public class SettingService {
 
     public void setColorBlindMode(boolean enabled) {
         getSettings().setColorBlindMode(enabled);
+    }
+
+    public void setDifficulty(GameDifficulty difficulty) {
+        getSettings().setDifficulty(difficulty);
     }
 
     public void setKeyBinding(String action, String keyName) {

@@ -4,6 +4,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
+import tetris.domain.GameDifficulty;
+
 /**
  * Simple settings model representing UI and control preferences.
  */
@@ -16,6 +18,7 @@ public class Setting {
     private ScreenSize screenSize;
     private Map<String, Integer> keyBindings;
     private boolean colorBlindMode;
+    private GameDifficulty difficulty;
 
     public Setting() {
         this.keyBindings = new HashMap<>();
@@ -25,13 +28,14 @@ public class Setting {
         Setting s = new Setting();
         s.screenSize = ScreenSize.MEDIUM;
         s.colorBlindMode = false;
-    Map<String, Integer> kb = new HashMap<>();
-    kb.put("MOVE_LEFT", java.awt.event.KeyEvent.VK_LEFT);
-    kb.put("MOVE_RIGHT", java.awt.event.KeyEvent.VK_RIGHT);
-    kb.put("ROTATE", java.awt.event.KeyEvent.VK_UP);
-    kb.put("SOFT_DROP", java.awt.event.KeyEvent.VK_DOWN);
-    kb.put("HARD_DROP", java.awt.event.KeyEvent.VK_SPACE);
-    kb.put("HOLD", java.awt.event.KeyEvent.VK_C);
+        s.difficulty = GameDifficulty.NORMAL;
+        Map<String, Integer> kb = new HashMap<>();
+        kb.put("MOVE_LEFT", java.awt.event.KeyEvent.VK_LEFT);
+        kb.put("MOVE_RIGHT", java.awt.event.KeyEvent.VK_RIGHT);
+        kb.put("ROTATE", java.awt.event.KeyEvent.VK_UP);
+        kb.put("SOFT_DROP", java.awt.event.KeyEvent.VK_DOWN);
+        kb.put("HARD_DROP", java.awt.event.KeyEvent.VK_SPACE);
+        kb.put("HOLD", java.awt.event.KeyEvent.VK_C);
         s.keyBindings = kb;
         return s;
     }
@@ -66,5 +70,13 @@ public class Setting {
 
     public void setColorBlindMode(boolean colorBlindMode) {
         this.colorBlindMode = colorBlindMode;
+    }
+
+    public GameDifficulty getDifficulty() {
+        return difficulty != null ? difficulty : GameDifficulty.NORMAL;
+    }
+
+    public void setDifficulty(GameDifficulty difficulty) {
+        this.difficulty = difficulty != null ? difficulty : GameDifficulty.NORMAL;
     }
 }
