@@ -1,0 +1,191 @@
+package tetris.view.GameComponent;
+
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Font;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+
+import javax.swing.BorderFactory;
+import javax.swing.JPanel;
+import javax.swing.JTextPane;
+
+import tetris.domain.BlockKind;
+import tetris.domain.BlockShape;
+import tetris.domain.GameModel;
+import tetris.domain.model.Block;
+
+public class NextBlockPanel extends JPanel {
+    private static final int BOARD_COLS = 5;
+    private static final int BOARD_ROWS = 5;
+    private static final Color BACKGROUND_COLOR = new Color(18, 18, 18);
+    private static final Color GRID_COLOR = new Color(48, 48, 48, 180);
+    private static final Color[] BLOCK_COLORS = {
+            new Color(30, 30, 30), // 0: 빈 칸
+            new Color(0, 240, 240), // I
+            new Color(0, 0, 240), // J
+            new Color(240, 160, 0), // L
+            new Color(240, 240, 0), // O
+            new Color(0, 240, 0), // S
+            new Color(160, 0, 240), // T
+            new Color(240, 0, 0) // Z
+    };
+
+    private GameModel gameModel;
+
+    public NextBlockPanel() {
+        // 패널 레이아웃 및 외형 설정
+        setLayout(new BorderLayout());
+        setOpaque(true);
+        setBackground(Color.BLACK);
+
+<<<<<<< HEAD
+        // 테두리
+        setBorder(BorderFactory.createLineBorder(Color.DARK_GRAY, 2));
+
+        JTextPane text = new JTextPane();
+        text.setText("Next");
+        text.setEditable(false);
+        text.setOpaque(false);
+        text.setForeground(Color.WHITE);
+        text.setFont(new Font("SansSerif", Font.BOLD, 14));
+        text.setFocusable(false);
+        add(text, BorderLayout.NORTH);
+=======
+        // 빨간 테두리: 패널이 할당된 영역을 감싸도록 표시
+        setBorder(BorderFactory.createLineBorder(Color.RED, 3));
+
+        // 중앙 텍스트
+        JTextPane text = new JTextPane();
+        text.setText("NextBlockPanel");
+        text.setEditable(false);
+        text.setOpaque(false); // 배경은 패널 배경을 사용
+        text.setForeground(Color.WHITE);
+        text.setFont(new Font("SansSerif", Font.BOLD, 16));
+        text.setFocusable(false);
+
+        add(text, BorderLayout.CENTER);
+>>>>>>> 870d0047cfb1dc8314fb9ed388606a46b54b486f
+    }
+
+    public void bindGameModel(GameModel model) {
+        this.gameModel = model;
+        repaint();
+    }
+
+    @Override
+    protected void paintComponent(Graphics g) {
+        super.paintComponent(g);
+
+<<<<<<< HEAD
+        if (gameModel == null) return;
+
+=======
+>>>>>>> 870d0047cfb1dc8314fb9ed388606a46b54b486f
+        Graphics2D g2 = (Graphics2D) g.create();
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+        int cellSize = Math.min(getWidth() / BOARD_COLS, getHeight() / BOARD_ROWS);
+        cellSize = (int) (0.9 * cellSize);
+        if (cellSize <= 0) {
+            g2.dispose();
+            return;
+        }
+
+        int boardWidthPx = cellSize * BOARD_COLS;
+        int boardHeightPx = cellSize * BOARD_ROWS;
+        int originX = (getWidth() - boardWidthPx) / 2;
+        int originY = (getHeight() - boardHeightPx) / 2;
+
+        g2.setColor(BACKGROUND_COLOR);
+        g2.fillRect(originX, originY, boardWidthPx, boardHeightPx);
+
+<<<<<<< HEAD
+        BlockKind kind = gameModel.getNextBlockKind();
+        if (kind == null) {
+            g2.dispose();
+            return;
+        }
+
+        Block preview = Block.spawn(kind, 2, 2);
+        if (preview == null) {
+            g2.dispose();
+            return;
+        }
+
+        BlockShape shape = preview.getShape();
+        int colorIndex = shape.kind().ordinal() + 1;
+        g2.setColor(colorFor(colorIndex));
+
+=======
+        drawNextBlock(g2, cellSize, originX, originY);
+        drawGridLines(g2, cellSize, originX, originY, boardWidthPx, boardHeightPx);
+    }
+
+    private void drawGridLines(Graphics2D g2, int cellSize, int originX, int originY, int boardWidthPx,
+            int boardHeightPx) {
+        g2.setColor(GRID_COLOR);
+        for (int x = 0; x <= BOARD_COLS; x++) {
+            int px = originX + x * cellSize;
+            g2.drawLine(px, originY, px, originY + boardHeightPx);
+        }
+        for (int y = 0; y <= BOARD_ROWS; y++) {
+            int py = originY + y * cellSize;
+            g2.drawLine(originX, py, originX + boardWidthPx, py);
+        }
+    }
+
+    private void drawNextBlock(Graphics2D g2, int cellSize, int originX, int originY) {
+        if (gameModel == null) {
+            return;
+        }
+
+        // TODO - GameModel.getNextBlock() 메서드 구현 후 아래 코드와 교체
+        // Block next = gameModel.getNextBlock();
+        BlockKind kind = gameModel.getActiveBlock().getShape().kind();
+        Block next = Block.spawn(kind, 2, 2);
+
+        if (next == null) {
+            return;
+        }
+
+        BlockShape shape = next.getShape();
+        int colorIndex = shape.kind().ordinal() + 1;
+        g2.setColor(colorFor(colorIndex));
+
+        // 블록을 5x5 영역의 가운데에 배치
+>>>>>>> 870d0047cfb1dc8314fb9ed388606a46b54b486f
+        int offsetX = (BOARD_COLS - shape.width()) / 2;
+        int offsetY = (BOARD_ROWS - shape.height()) / 2;
+        for (int sy = 0; sy < shape.height(); sy++) {
+            for (int sx = 0; sx < shape.width(); sx++) {
+                if (!shape.filled(sx, sy))
+                    continue;
+                int boardX = offsetX + sx;
+                int boardY = offsetY + sy;
+                if (boardX < 0 || boardX >= BOARD_COLS || boardY < 0 || boardY >= BOARD_ROWS)
+                    continue;
+                int px = originX + boardX * cellSize;
+                int py = originY + boardY * cellSize;
+                g2.fillRect(px, py, cellSize, cellSize);
+            }
+        }
+<<<<<<< HEAD
+
+        g2.dispose();
+=======
+>>>>>>> 870d0047cfb1dc8314fb9ed388606a46b54b486f
+    }
+
+    private Color colorFor(int value) {
+        if (value <= 0) {
+            return BLOCK_COLORS[0];
+        }
+        int idx = value % BLOCK_COLORS.length;
+        if (idx == 0) {
+            idx = BLOCK_COLORS.length - 1;
+        }
+        return BLOCK_COLORS[idx];
+    }
+}

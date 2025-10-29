@@ -11,6 +11,10 @@ public final class RandomBlockGenerator implements BlockGenerator {
 
     private final BlockKind[] kinds = BlockKind.values();
     private final Random random;
+    // maintain a lookahead so peekNext() can report the upcoming kind without
+    // disturbing the sequence used by nextBlock(). This implements a 1-slot
+    // preview buffer (sufficient for simple UI preview).
+    private BlockKind nextKind;
 
     public RandomBlockGenerator() {
         this(new Random());
@@ -18,10 +22,22 @@ public final class RandomBlockGenerator implements BlockGenerator {
 
     public RandomBlockGenerator(Random random) {
         this.random = Objects.requireNonNull(random, "random");
+        this.nextKind = kinds[this.random.nextInt(kinds.length)];
     }
 
     @Override
     public BlockKind nextBlock() {
-        return kinds[random.nextInt(kinds.length)];
+        BlockKind current = nextKind != null ? nextKind : kinds[random.nextInt(kinds.length)];
+        // advance buffer
+        nextKind = kinds[random.nextInt(kinds.length)];
+        return current;
+    }
+
+    @Override
+    public BlockKind peekNext() {
+        if (nextKind == null) {
+            nextKind = kinds[random.nextInt(kinds.length)];
+        }
+        return nextKind;
     }
 }
