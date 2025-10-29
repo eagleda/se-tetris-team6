@@ -21,6 +21,8 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 
 import tetris.controller.GameController;
 import tetris.controller.ScoreController;
+import tetris.controller.GameOverController;
+import tetris.view.GameComponent.GameOverPanel;
 import tetris.domain.GameModel;
 import tetris.domain.model.GameState;
 import tetris.view.GameComponent.GameLayout;
@@ -42,6 +44,8 @@ public class TetrisFrame extends JFrame {
     protected SettingPanel settingPanel;
     protected ScoreboardPanel scoreboardPanel;
     protected PausePanel pausePanel;
+    protected GameOverPanel gameOverPanel;
+    private GameOverController gameOverController;
     private static JPanel prevPanel;
     private static JPanel currPanel;
 
@@ -60,6 +64,7 @@ public class TetrisFrame extends JFrame {
         setupSettingPanel();
         setupScoreboardPanel();
         setupPausePanel();
+    setupGameOverPanel();
         setupGameLayout();
 
         gameModel.bindUiBridge(new GameModel.UiBridge() {
@@ -80,6 +85,26 @@ public class TetrisFrame extends JFrame {
                         gameLayout.repaint();
                 });
             }
+
+            @Override
+            public void showGameOverOverlay(tetris.domain.score.Score score, boolean canEnterName) {
+                SwingUtilities.invokeLater(() -> {
+                    if (gameOverController != null) {
+                        gameOverController.show(score, canEnterName);
+                        layeredPane.moveToFront(gameOverPanel);
+                    }
+                });
+            }
+
+            @Override
+            public void showNameEntryOverlay(tetris.domain.score.Score score) {
+                SwingUtilities.invokeLater(() -> {
+                    if (gameOverController != null) {
+                        gameOverController.show(score, true);
+                        layeredPane.moveToFront(gameOverPanel);
+                    }
+                });
+            }
         });
 
         scoreController = new ScoreController(
@@ -92,6 +117,18 @@ public class TetrisFrame extends JFrame {
         displayPanel(mainPanel);
         this.setVisible(true);
 
+    }
+
+    private void setupGameOverPanel() {
+        gameOverPanel = new GameOverPanel();
+        gameOverPanel.setBounds(0, 0, FRAME_SIZE.width, FRAME_SIZE.height);
+        layeredPane.add(gameOverPanel, JLayeredPane.PALETTE_LAYER);
+        // create controller
+        gameOverController = new GameOverController(
+                gameModel.getScoreRepository(),
+                gameModel.getLeaderboardRepository(),
+                gameOverPanel,
+                this);
     }
 
     private void initializeModelsAndControllers() {
@@ -124,7 +161,8 @@ public class TetrisFrame extends JFrame {
             displayPanel(settingPanel);
         });
         mainPanel.scoreboardButton.addActionListener(e -> {
-            displayPanel(scoreboardPanel);
+            // ensure leaderboard is refreshed before showing
+            showScoreboardPanel();
         });
     }
 
@@ -179,6 +217,15 @@ public class TetrisFrame extends JFrame {
         }
         prevPanel = currPanel;
         currPanel = panel;
+        // If we're about to show the scoreboard, refresh its contents from the leaderboard repo
+        if (panel == scoreboardPanel) {
+            try {
+                var top = gameModel.getLeaderboardRepository().loadTop(10);
+                scoreboardPanel.renderLeaderboard(top);
+            } catch (Exception ex) {
+                // ignore; show existing content
+            }
+        }
         // if (prevPanel != null)
         // prevPanel.setVisible(false);
         panel.setVisible(true);
@@ -210,6 +257,18 @@ public class TetrisFrame extends JFrame {
      */
     public void showMainPanel() {
         displayPanel(mainPanel);
+    }
+
+    /** Convenience to show the scoreboard panel. */
+    public void showScoreboardPanel() {
+        // refresh leaderboard contents before showing
+        try {
+            var top = gameModel.getLeaderboardRepository().loadTop(10);
+            scoreboardPanel.renderLeaderboard(top);
+        } catch (Exception ex) {
+            // ignore and show what we have
+        }
+        displayPanel(scoreboardPanel);
     }
 
     // 전역 키 설정

@@ -38,6 +38,8 @@ public class GameplayEngine implements GameClock.Listener {
             @Override public void showPauseOverlay() {}
             @Override public void hidePauseOverlay() {}
             @Override public void refreshBoard() {}
+            @Override public void showGameOverOverlay(tetris.domain.score.Score score, boolean canEnterName) {}
+            @Override public void showNameEntryOverlay(tetris.domain.score.Score score) {}
         } : uiBridge;
         this.clock = new GameClock(this);
     }
