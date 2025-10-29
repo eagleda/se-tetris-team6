@@ -357,19 +357,7 @@ public class TetrisFrame extends JFrame {
     public void applyScreenSize(tetris.domain.setting.Setting.ScreenSize size) {
         if (size == null)
             return;
-        switch (size) {
-            case SMALL:
-                changeResolution(new Dimension(560, 720));
-                break;
-            case MEDIUM:
-                changeResolution(new Dimension(700, 900));
-                break;
-            case LARGE:
-                changeResolution(new Dimension(900, 1200));
-                break;
-            default:
-                break;
-        }
+        changeResolution(size.getDimension());
     }
 
     // 화면 크기 변경 메서드 추가

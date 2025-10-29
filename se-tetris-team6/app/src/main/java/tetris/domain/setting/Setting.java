@@ -1,5 +1,6 @@
 package tetris.domain.setting;
 
+import java.awt.Dimension;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -12,7 +13,19 @@ import tetris.domain.GameDifficulty;
 public class Setting {
 
     public enum ScreenSize {
-        SMALL, MEDIUM, LARGE
+        SMALL(new Dimension(560, 720)),
+        MEDIUM(new Dimension(700, 900)),
+        LARGE(new Dimension(780, 1000));
+
+        private final Dimension dimension;
+
+        ScreenSize(Dimension d) {
+            this.dimension = d;
+        }
+
+        public Dimension getDimension() {
+            return new Dimension(dimension);
+        }
     }
 
     private ScreenSize screenSize;
