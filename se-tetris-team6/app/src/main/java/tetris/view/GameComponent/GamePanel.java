@@ -1,15 +1,19 @@
-package tetris.view;
+package tetris.view.GameComponent;
 
 import java.awt.Color;
+import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 
+import javax.swing.BorderFactory;
 import javax.swing.JPanel;
 
 import tetris.domain.Board;
 import tetris.domain.GameModel;
 import tetris.domain.model.Block;
+import tetris.domain.model.GameState;
+import tetris.view.TetrisFrame;
 import tetris.domain.BlockShape;
 
 public class GamePanel extends JPanel {
@@ -19,23 +23,25 @@ public class GamePanel extends JPanel {
     private static final Color BACKGROUND_COLOR = new Color(18, 18, 18);
     private static final Color GRID_COLOR = new Color(48, 48, 48, 180);
     private static final Color[] BLOCK_COLORS = {
-        new Color(30, 30, 30),     // 0: 빈 칸
-        new Color(0, 240, 240),    // I
-        new Color(0, 0, 240),      // J
-        new Color(240, 160, 0),    // L
-        new Color(240, 240, 0),    // O
-        new Color(0, 240, 0),      // S
-        new Color(160, 0, 240),    // T
-        new Color(240, 0, 0)       // Z
+            new Color(30, 30, 30), // 0: 빈 칸
+            new Color(0, 240, 240), // I
+            new Color(0, 0, 240), // J
+            new Color(240, 160, 0), // L
+            new Color(240, 240, 0), // O
+            new Color(0, 240, 0), // S
+            new Color(160, 0, 240), // T
+            new Color(240, 0, 0) // Z
     };
 
     private GameModel gameModel;
 
     public GamePanel() {
-        setSize(TetrisFrame.FRAME_SIZE);
         setBackground(BACKGROUND_COLOR);
         setOpaque(true);
         setVisible(false);
+
+        // 영역 경계선 표시
+        setBorder(BorderFactory.createLineBorder(Color.RED, 3));
     }
 
     public void bindGameModel(GameModel model) {
@@ -51,6 +57,7 @@ public class GamePanel extends JPanel {
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
         int cellSize = Math.min(getWidth() / BOARD_COLS, getHeight() / BOARD_ROWS);
+        cellSize = (int) (0.9 * cellSize); // 셀 크기 조정으로 화면 벗어남 방지
         if (cellSize <= 0) {
             g2.dispose();
             return;
@@ -64,16 +71,17 @@ public class GamePanel extends JPanel {
         g2.setColor(BACKGROUND_COLOR);
         g2.fillRect(originX, originY, boardWidthPx, boardHeightPx);
 
-        if (gameModel != null) {
-            drawLockedBlocks(g2, cellSize, originX, originY);
-            drawActiveBlock(g2, cellSize, originX, originY);
-        }
-
+        drawLockedBlocks(g2, cellSize, originX, originY);
+        drawActiveBlock(g2, cellSize, originX, originY);
         drawGridLines(g2, cellSize, originX, originY, boardWidthPx, boardHeightPx);
         g2.dispose();
     }
 
     private void drawLockedBlocks(Graphics2D g2, int cellSize, int originX, int originY) {
+        if (gameModel == null) {
+            return;
+        }
+
         int[][] grid = gameModel.getBoard().gridView();
         for (int y = 0; y < grid.length; y++) {
             for (int x = 0; x < grid[y].length; x++) {
@@ -90,6 +98,10 @@ public class GamePanel extends JPanel {
     }
 
     private void drawActiveBlock(Graphics2D g2, int cellSize, int originX, int originY) {
+        if (gameModel == null) {
+            return;
+        }
+
         Block active = gameModel.getActiveBlock();
         if (active == null) {
             return;
@@ -116,7 +128,8 @@ public class GamePanel extends JPanel {
         }
     }
 
-    private void drawGridLines(Graphics2D g2, int cellSize, int originX, int originY, int boardWidthPx, int boardHeightPx) {
+    private void drawGridLines(Graphics2D g2, int cellSize, int originX, int originY, int boardWidthPx,
+            int boardHeightPx) {
         g2.setColor(GRID_COLOR);
         for (int x = 0; x <= BOARD_COLS; x++) {
             int px = originX + x * cellSize;

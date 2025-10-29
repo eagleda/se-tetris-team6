@@ -16,17 +16,21 @@ import javax.swing.JPanel;
 import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
 
+import org.checkerframework.checker.nullness.qual.NonNull;
+
 import tetris.controller.GameController;
 import tetris.controller.ScoreController;
 import tetris.domain.GameModel;
 import tetris.domain.model.GameState;
+import tetris.view.GameComponent.GameLayout;
+import tetris.view.GameComponent.GamePanel;
 
 public class TetrisFrame extends JFrame {
 
     private GameModel gameModel;
 
     private static final String FRAME_TITLE = "Tetris Game - Team 06";
-    protected static final Dimension FRAME_SIZE = new Dimension(700, 900);
+    public static Dimension FRAME_SIZE = new Dimension(700, 900);
 
     // 프레임 레이아웃
     private JLayeredPane layeredPane;
@@ -34,7 +38,8 @@ public class TetrisFrame extends JFrame {
     // 패널 참조
     // 모든 패널과 모델/컨트롤러를 인스턴스 변수로 변경 (static 제거)
     protected MainPanel mainPanel;
-    protected GamePanel gamePanel;
+    // protected GamePanel gamePanel;
+    protected GameLayout gameLayout;
     protected SettingPanel settingPanel;
     protected ScoreboardPanel scoreboardPanel;
     protected PausePanel pausePanel;
@@ -56,7 +61,7 @@ public class TetrisFrame extends JFrame {
         setupSettingPanel();
         setupScoreboardPanel();
         setupPausePanel();
-        setupGamePanel();
+        setupGameLayout();
 
         gameModel.bindUiBridge(new GameModel.UiBridge() {
             @Override
@@ -71,7 +76,8 @@ public class TetrisFrame extends JFrame {
 
             @Override
             public void refreshBoard() {
-                SwingUtilities.invokeLater(() -> gamePanel.repaint());
+                // SwingUtilities.invokeLater(() -> gamePanel.repaint());
+                SwingUtilities.invokeLater(() -> gameLayout.repaint());
             }
         });
 
@@ -83,8 +89,6 @@ public class TetrisFrame extends JFrame {
 
         // 시작 화면 설정
         this.setVisible(true);
-        prevPanel = null;
-        currPanel = mainPanel;
         displayPanel(mainPanel);
         this.setVisible(true);
 
@@ -109,13 +113,12 @@ public class TetrisFrame extends JFrame {
 
     private void setupMainPanel() {
         mainPanel = new MainPanel();
-        mainPanel.setVisible(false); // 초기에 모든 패널은 보이지 않도록 설정
         layeredPane.add(mainPanel, JLayeredPane.DEFAULT_LAYER);
 
         mainPanel.gameButton.addActionListener(e -> {
-            displayPanel(gamePanel);
-            // 2. Controller에게 게임 시작을 명령
-            gameController.startGame();
+            // displayPanel(gamePanel);
+            displayPanel(gameLayout);
+            gameController.startGame();// 2. Controller에게 게임 시작을 명령
         });
         mainPanel.settingButton.addActionListener(e -> {
             displayPanel(settingPanel);
@@ -125,15 +128,17 @@ public class TetrisFrame extends JFrame {
         });
     }
 
-    private void setupGamePanel() {
-        gamePanel = new GamePanel();
-        gamePanel.bindGameModel(gameModel);
-        layeredPane.add(gamePanel, JLayeredPane.DEFAULT_LAYER);
+    private void setupGameLayout() {
+        // gamePanel = new GamePanel();
+        // gamePanel.bindGameModel(gameModel);
+        gameLayout = new GameLayout();
+        gameLayout.bindGameModel(gameModel);
+        gameLayout.setBounds(0, 0, FRAME_SIZE.width, FRAME_SIZE.height);
+        layeredPane.add(gameLayout, JLayeredPane.DEFAULT_LAYER);
     }
 
     private void setupSettingPanel() {
         settingPanel = new SettingPanel();
-        settingPanel.setVisible(false);
         layeredPane.add(settingPanel, JLayeredPane.DEFAULT_LAYER);
         // create and bind setting controller so settings persist and apply at runtime
         new tetris.controller.SettingController(
@@ -148,7 +153,6 @@ public class TetrisFrame extends JFrame {
         pausePanel = new PausePanel();
         pausePanel.setBounds(0, 0, FRAME_SIZE.width, FRAME_SIZE.height);
         layeredPane.add(pausePanel, JLayeredPane.PALETTE_LAYER);
-        pausePanel.setVisible(false);
 
         // 버튼 기능 추가
         pausePanel.continueButton.addActionListener(e -> {
@@ -167,17 +171,21 @@ public class TetrisFrame extends JFrame {
 
     private void setupScoreboardPanel() {
         scoreboardPanel = new ScoreboardPanel();
-        scoreboardPanel.setVisible(false);
         layeredPane.add(scoreboardPanel, JLayeredPane.DEFAULT_LAYER);
     }
 
     public void displayPanel(JPanel panel) {
+        if (currPanel != null && currPanel != prevPanel) {
+            currPanel.setVisible(false);
+        }
         prevPanel = currPanel;
         currPanel = panel;
-        prevPanel.setVisible(false);
+        // if (prevPanel != null)
+        // prevPanel.setVisible(false);
         panel.setVisible(true);
         panel.requestFocusInWindow();
         layeredPane.moveToFront(panel);
+        layeredPane.revalidate();
         layeredPane.repaint();
     }
 
