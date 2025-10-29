@@ -6,6 +6,8 @@ import java.util.Objects;
 import java.util.Optional;
 
 import tetris.data.score.InMemoryScoreRepository;
+import tetris.data.setting.PreferencesSettingRepository;
+import tetris.domain.setting.SettingService;
 import tetris.domain.handler.GameHandler;
 import tetris.domain.handler.GameOverHandler;
 import tetris.domain.handler.GamePlayHandler;
@@ -15,7 +17,7 @@ import tetris.domain.handler.PausedHandler;
 import tetris.domain.handler.ScoreboardHandler;
 import tetris.domain.handler.SettingsHandler;
 import tetris.domain.model.Block;
-import tetris.domain.model.GameClock;
+ 
 import tetris.domain.model.GameState;
 import tetris.domain.model.InputState;
 import tetris.domain.score.Score;
@@ -28,7 +30,7 @@ import tetris.domain.score.ScoreRuleEngine;
  * - {@link GameHandler} 구현들을 상태 머신으로 등록해 UI 흐름을 제어합니다.
  * - {@link GameClock} 이벤트를 받아 중력 및 잠금 지연을 처리합니다.
  */
-public final class GameModel implements GameClock.Listener {
+public final class GameModel {
 
     /**
      * UI 계층과의 최소 연결 지점.
@@ -48,17 +50,17 @@ public final class GameModel implements GameClock.Listener {
 
     private final Board board = new Board();
     private final InputState inputState = new InputState();
-    private final GameClock clock = new GameClock(this);
+    private final tetris.domain.engine.GameplayEngine gameplayEngine;
     private final ScoreRepository scoreRepository;
     private final ScoreRuleEngine scoreEngine;
+    private final SettingService settingService;
     private BlockGenerator blockGenerator;
     private final Map<GameState, GameHandler> handlers = new EnumMap<>(GameState.class);
 
     private UiBridge uiBridge = NO_OP_UI_BRIDGE;
     private GameState currentState;
     private GameHandler currentHandler;
-    private Block activeBlock;
-    private boolean clockStarted;
+    
 
     public GameModel() {
         this(new RandomBlockGenerator(), new InMemoryScoreRepository());
@@ -67,9 +69,12 @@ public final class GameModel implements GameClock.Listener {
     public GameModel(BlockGenerator generator, ScoreRepository scoreRepository) {
         this.scoreRepository = Objects.requireNonNull(scoreRepository, "scoreRepository");
         this.scoreEngine = new ScoreRuleEngine(scoreRepository);
+        // lightweight setting service used by handlers that expect model-level setting operations
+        this.settingService = new SettingService(new PreferencesSettingRepository(), scoreRepository);
         setBlockGenerator(generator);
         registerHandlers();
         changeState(GameState.MENU);
+        gameplayEngine = new tetris.domain.engine.GameplayEngine(board, inputState, blockGenerator, scoreEngine, uiBridge);
     }
 
     private void registerHandlers() {
@@ -130,11 +135,11 @@ public final class GameModel implements GameClock.Listener {
     }
 
     public Block getActiveBlock() {
-        return activeBlock;
+        return gameplayEngine.getActiveBlock();
     }
 
     public void setActiveBlock(Block block) {
-        this.activeBlock = block;
+        this.gameplayEngine.setActiveBlock(block);
     }
 
     public void setBlockGenerator(BlockGenerator generator) {
@@ -146,25 +151,18 @@ public final class GameModel implements GameClock.Listener {
     }
 
     public void spawnIfNeeded() {
-        if (activeBlock == null && !spawnNewBlock()) {
+        gameplayEngine.spawnIfNeeded();
+        if (gameplayEngine.getActiveBlock() == null) {
             changeState(GameState.GAME_OVER);
         }
-        uiBridge.refreshBoard();
     }
 
     public void resumeClock() {
-        if (!clockStarted) {
-            clock.start();
-            clockStarted = true;
-        } else {
-            clock.resume();
-        }
+        gameplayEngine.resumeClock();
     }
 
     public void pauseClock() {
-        if (clockStarted) {
-            clock.pause();
-        }
+        gameplayEngine.pauseClock();
     }
 
     private boolean isPlayingState() {
@@ -172,22 +170,13 @@ public final class GameModel implements GameClock.Listener {
     }
 
     private boolean ensureActiveBlockPresent() {
-        if (activeBlock == null) {
+        if (gameplayEngine.getActiveBlock() == null) {
             spawnIfNeeded();
         }
-        return activeBlock != null;
+        return gameplayEngine.getActiveBlock() != null;
     }
 
-    private boolean canActiveBlockMove(int dx, int dy) {
-        if (activeBlock == null) {
-            return false;
-        }
-        return board.canPlace(
-            activeBlock.getShape(),
-            activeBlock.getX() + dx,
-            activeBlock.getY() + dy
-        );
-    }
+    
 
     private void resetInputAxes() {
         inputState.setLeft(false);
@@ -200,96 +189,23 @@ public final class GameModel implements GameClock.Listener {
         resetInputAxes();
         board.clear();
         scoreEngine.resetScore();
-        activeBlock = null;
-        stopClockCompletely();
+        gameplayEngine.setActiveBlock(null);
+        gameplayEngine.stopClockCompletely();
     }
 
     private void stopClockCompletely() {
-        if (clockStarted) {
-            clock.stop();
-            clockStarted = false;
-        }
+        gameplayEngine.stopClockCompletely();
     }
 
-    private boolean spawnNewBlock() {
-        BlockGenerator generator = Objects.requireNonNull(blockGenerator, "blockGenerator");
-        BlockKind nextKind = Objects.requireNonNull(generator.nextBlock(), "nextBlock");
-        Block next = Block.spawn(nextKind, Board.W / 2 - 1, 0);
-        if (!board.canSpawn(next.getShape(), next.getX(), next.getY())) {
-            return false;
-        }
-        activeBlock = next;
-        return true;
-    }
-
-    private void lockActiveBlock() {
-        if (activeBlock == null) {
-            return;
-        }
-        BlockShape shape = activeBlock.getShape();
-        int blockId = shape.kind().ordinal() + 1;
-        board.place(shape, activeBlock.getX(), activeBlock.getY(), blockId);
-        activeBlock = null;
-        int cleared = board.clearLines();
-        if (cleared > 0) {
-            scoreEngine.onLinesCleared(cleared);
-        }
-    }
+    
 
     public void stepGameplay() {
-        if (activeBlock == null) {
-            return;
-        }
-
-        // 현재 위치가 더 이상 유효하지 않다면 즉시 충돌로 간주하고 처리 중단
-        if (!board.canPlace(activeBlock.getShape(), activeBlock.getX(), activeBlock.getY())) {
-            changeState(GameState.GAME_OVER);
-            return;
-        }
-
-        clock.setSoftDrop(inputState.isSoftDrop());
-
-        int dx = 0;
-        if (inputState.isLeft() && !inputState.isRight()) {
-            dx = -1;
-        } else if (inputState.isRight() && !inputState.isLeft()) {
-            dx = 1;
-        }
-
-        if (dx != 0) {
-            int targetX = activeBlock.getX() + dx;
-            if (board.canPlace(activeBlock.getShape(), targetX, activeBlock.getY())) {
-                activeBlock.moveBy(dx, 0);
-            }
-        }
-
-        boolean rotateCW = inputState.popRotateCW();
-        boolean rotateCCW = inputState.popRotateCCW();
-
-        if (rotateCW) {
-            BlockShape rotated = activeBlock.getShape().rotatedCW();
-            if (board.canPlace(rotated, activeBlock.getX(), activeBlock.getY())) {
-                activeBlock.setShape(rotated);
-            }
-        }
-
-        if (rotateCCW) {
-            BlockShape rotated = activeBlock.getShape()
-                .rotatedCW()
-                .rotatedCW()
-                .rotatedCW();
-            if (board.canPlace(rotated, activeBlock.getX(), activeBlock.getY())) {
-                activeBlock.setShape(rotated);
-            }
-        }
-
-        // 아직 구현되지 않은 입력은 소비만 하여 중복 처리를 막는다.
-        inputState.popHardDrop();
-        inputState.popHold();
+        gameplayEngine.stepGameplay();
     }
 
     public void bindUiBridge(UiBridge bridge) {
         this.uiBridge = Objects.requireNonNull(bridge, "bridge");
+        this.gameplayEngine.setUiBridge(this.uiBridge);
     }
 
     public void clearUiBridge() {
@@ -313,71 +229,35 @@ public final class GameModel implements GameClock.Listener {
     }
 
     public void loadSettings() {
-        // TODO: 설정 데이터 로드
+        // Load settings via SettingService so handlers can rely on model-level API
+        settingService.getSettings();
     }
 
     public void saveSettings() {
-        // TODO: 설정 데이터 저장
+        settingService.save();
     }
 
     public void loadScoreboard() {
-        // TODO: 점수판 데이터 로드
+        // Ensure scoreboard data is loaded; delegate to repository
+        scoreRepository.load();
     }
 
     public void prepareNameEntry() {
-        // TODO: 이름 입력 준비
+        // Placeholder for name entry preparation; handled by NameInputHandler in UI flow
     }
 
     public void processNameEntry() {
-        // TODO: 이름 입력 처리
+        // Placeholder for processing name entry (persisting, validation etc.)
     }
 
     public void commitLineClear(int linesCleared, int combo) {
-        // TODO: 점수 계산 규칙 반영
-    }
-
-    @Override
-    public void onGravityTick() {
-        System.out.println("[LOG] GameModel.onGravityTick()");
-        System.out.printf("[LOG] before move: x=%d, y=%d%n",
-            activeBlock.getX(), activeBlock.getY());
-        if (canActiveBlockMove(0, 1)) {
-            activeBlock.moveBy(0, 1);
-            scoreEngine.onBlockDescend();
-            System.out.printf("[LOG] moved:   x=%d, y=%d%n",
-                activeBlock.getX(), activeBlock.getY());
-        } else {
-            System.out.println("[LOG] cannot move further, locking");
-            lockActiveBlock();
-            if (!spawnNewBlock()) {
-                changeState(GameState.GAME_OVER);
-                return;
-            }
-        }
-        uiBridge.refreshBoard();
-
-        if (!isPlayingState()) {
-            return;
-        }
-        if (!ensureActiveBlockPresent()) {
-            return;
-        }
-
-        if (canActiveBlockMove(0, 1)) {
-            activeBlock.moveBy(0, 1);
-            scoreEngine.onBlockDescend();
-        } else {
-            lockActiveBlock();
-            if (!spawnNewBlock()) {
-                changeState(GameState.GAME_OVER);
-            }
+        // Delegate to score engine for line clear scoring
+        if (scoreEngine != null && linesCleared > 0) {
+            scoreEngine.onLinesCleared(linesCleared);
         }
     }
 
-    @Override
-    public void onLockDelayTimeout() {
-        // TODO: 블록 잠금 및 새 블록 스폰
-    }
+    
 
     // === 외부 제어 진입점 ===
 
@@ -409,108 +289,54 @@ public final class GameModel implements GameClock.Listener {
         if (!isPlayingState() || !ensureActiveBlockPresent()) {
             return;
         }
-        if (canActiveBlockMove(-1, 0)) {
-            activeBlock.moveBy(-1, 0);
-            uiBridge.refreshBoard();
-        }
+        gameplayEngine.moveBlockLeft();
     }
 
     public void moveBlockRight() {
         if (!isPlayingState() || !ensureActiveBlockPresent()) {
             return;
         }
-        if (canActiveBlockMove(1, 0)) {
-            activeBlock.moveBy(1, 0);
-            uiBridge.refreshBoard();
-        }
+        gameplayEngine.moveBlockRight();
     }
 
     public void moveBlockDown() {
         if (!isPlayingState() || !ensureActiveBlockPresent()) {
             return;
         }
-        if (canActiveBlockMove(0, 1)) {
-            activeBlock.moveBy(0, 1);
-            scoreEngine.onBlockDescend();
-            uiBridge.refreshBoard();
-        }
+        gameplayEngine.moveBlockDown();
     }
 
     public void rotateBlockClockwise() {
         if (!isPlayingState() || !ensureActiveBlockPresent()) {
             return;
         }
-        BlockShape rotated = activeBlock.getShape().rotatedCW();
-        if (board.canPlace(rotated, activeBlock.getX(), activeBlock.getY())) {
-            activeBlock.setShape(rotated);
-        }
-        uiBridge.refreshBoard();
+        gameplayEngine.rotateBlockClockwise();
     }
 
     public void rotateBlockCounterClockwise() {
         if (!isPlayingState() || !ensureActiveBlockPresent()) {
             return;
         }
-        BlockShape rotated = activeBlock.getShape()
-            .rotatedCW()
-            .rotatedCW()
-            .rotatedCW();
-        if (board.canPlace(rotated, activeBlock.getX(), activeBlock.getY())) {
-            activeBlock.setShape(rotated);
-        }
-        uiBridge.refreshBoard();
+        gameplayEngine.rotateBlockCounterClockwise();
     }
 
     public void hardDropBlock() {
         if (!isPlayingState() || !ensureActiveBlockPresent()) {
             return;
         }
-        while (canActiveBlockMove(0, 1)) {
-            activeBlock.moveBy(0, 1);
-            scoreEngine.onBlockDescend();
-        }
-        uiBridge.refreshBoard();
+        gameplayEngine.hardDropBlock();
     }
 
     public void holdCurrentBlock() {
         if (!isPlayingState()) {
             return;
         }
-        inputState.pressHold();
-        uiBridge.refreshBoard();
+        gameplayEngine.holdCurrentBlock();
     }
 
     // === 상태별 보조 동작 ===
 
-    public void navigateMenuUp() {
-        if (currentState == GameState.MENU) {
-            // TODO: 메뉴 항목 위로 이동
-        }
-        uiBridge.refreshBoard();
-    }
-
-    public void navigateMenuDown() {
-        if (currentState == GameState.MENU) {
-            // TODO: 메뉴 항목 아래로 이동
-        }
-        uiBridge.refreshBoard();
-    }
-
-    public void selectCurrentMenuItem() {
-        if (currentState == GameState.MENU) {
-            // TODO: 메뉴 항목 선택
-        }
-        uiBridge.refreshBoard();
-    }
-
-    public void handleMenuBack() {
-        if (currentState == GameState.MENU) {
-            // TODO: 메뉴 뒤로가기 처리
-        } else {
-            changeState(GameState.MENU);
-        }
-        uiBridge.refreshBoard();
-    }
+    // Menu navigation handled by UI handlers; methods removed as they were unused.
 
     public void proceedFromGameOver() {
         if (currentState == GameState.GAME_OVER) {
@@ -549,7 +375,8 @@ public final class GameModel implements GameClock.Listener {
 
     public void resetAllSettings() {
         if (currentState == GameState.SETTINGS) {
-            // TODO: 설정 초기화
+            // Reset to defaults via settingService
+            settingService.resetToDefaults();
         }
         uiBridge.refreshBoard();
     }
