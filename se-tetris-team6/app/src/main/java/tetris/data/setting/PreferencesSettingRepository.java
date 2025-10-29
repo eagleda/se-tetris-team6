@@ -40,12 +40,10 @@ public class PreferencesSettingRepository implements SettingRepository {
 
         s.setColorBlindMode(prefs.getBoolean(KEY_COLORBLIND, Setting.defaults().isColorBlindMode()));
 
-        Map<String, String> kb = new HashMap<>();
+        Map<String, Integer> kb = new HashMap<>();
         for (String a : ACTIONS) {
-            String v = prefs.get(KEY_PREFIX_KB + a, null);
-            if (v == null) {
-                v = Setting.defaults().getKeyBinding(a);
-            }
+            int defaultCode = Setting.defaults().getKeyBinding(a);
+            int v = prefs.getInt(KEY_PREFIX_KB + a, defaultCode);
             kb.put(a, v);
         }
         s.setKeyBindings(kb);
@@ -58,8 +56,8 @@ public class PreferencesSettingRepository implements SettingRepository {
             prefs.put(KEY_SCREEN, settings.getScreenSize().name());
         }
         prefs.putBoolean(KEY_COLORBLIND, settings.isColorBlindMode());
-        for (Map.Entry<String, String> e : settings.getKeyBindings().entrySet()) {
-            prefs.put(KEY_PREFIX_KB + e.getKey(), e.getValue());
+        for (Map.Entry<String, Integer> e : settings.getKeyBindings().entrySet()) {
+            prefs.putInt(KEY_PREFIX_KB + e.getKey(), e.getValue());
         }
         try {
             prefs.flush();

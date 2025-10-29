@@ -13,7 +13,6 @@ import tetris.domain.setting.SettingService;
 import tetris.data.setting.PreferencesSettingRepository;
 import tetris.domain.score.ScoreRepository;
 import tetris.view.SettingPanel;
-import tetris.controller.GameController;
 import tetris.view.TetrisFrame;
 import tetris.util.KeyMapper;
 
@@ -84,22 +83,31 @@ public class SettingController {
         panel.sizeCombo.setSelectedItem(s.getScreenSize());
         panel.colorBlindCheckbox.setSelected(s.isColorBlindMode());
         // fill key fields
-        panel.keyMoveLeftField.setText(s.getKeyBinding("MOVE_LEFT"));
-        panel.keyMoveRightField.setText(s.getKeyBinding("MOVE_RIGHT"));
-        panel.keyRotateField.setText(s.getKeyBinding("ROTATE"));
-        panel.keySoftDropField.setText(s.getKeyBinding("SOFT_DROP"));
+        Integer ml = s.getKeyBinding("MOVE_LEFT");
+        Integer mr = s.getKeyBinding("MOVE_RIGHT");
+        Integer rot = s.getKeyBinding("ROTATE");
+        Integer sd = s.getKeyBinding("SOFT_DROP");
+        panel.keyMoveLeftField.setText(ml == null ? "" : KeyMapper.keyCodeToName(ml));
+        panel.keyMoveRightField.setText(mr == null ? "" : KeyMapper.keyCodeToName(mr));
+        panel.keyRotateField.setText(rot == null ? "" : KeyMapper.keyCodeToName(rot));
+        panel.keySoftDropField.setText(sd == null ? "" : KeyMapper.keyCodeToName(sd));
     }
 
     private void persistFromPanel() {
-        // collect key bindings
-        Map<String, String> kb = new HashMap<>();
-        kb.put("MOVE_LEFT", panel.keyMoveLeftField.getText().trim());
-        kb.put("MOVE_RIGHT", panel.keyMoveRightField.getText().trim());
-        kb.put("ROTATE", panel.keyRotateField.getText().trim());
-        kb.put("SOFT_DROP", panel.keySoftDropField.getText().trim());
-        // other actions can be added similarly
+    // collect key bindings as key codes
+    Map<String, Integer> kb = new HashMap<>();
+    int code;
+    code = KeyMapper.nameToKeyCode(panel.keyMoveLeftField.getText().trim());
+    if (code > 0) kb.put("MOVE_LEFT", code);
+    code = KeyMapper.nameToKeyCode(panel.keyMoveRightField.getText().trim());
+    if (code > 0) kb.put("MOVE_RIGHT", code);
+    code = KeyMapper.nameToKeyCode(panel.keyRotateField.getText().trim());
+    if (code > 0) kb.put("ROTATE", code);
+    code = KeyMapper.nameToKeyCode(panel.keySoftDropField.getText().trim());
+    if (code > 0) kb.put("SOFT_DROP", code);
+    // other actions can be added similarly
 
-        service.setKeyBindings(kb);
+    service.setKeyBindings(kb);
         service.setColorBlindMode(panel.colorBlindCheckbox.isSelected());
         Object sel = panel.sizeCombo.getSelectedItem();
         if (sel instanceof Setting.ScreenSize) {
@@ -109,13 +117,8 @@ public class SettingController {
 
         // Apply keybindings to runtime GameController
         if (gameController != null) {
-            java.util.Map<String, Integer> mapped = new java.util.HashMap<>();
-            for (java.util.Map.Entry<String, String> e : service.getSettings().getKeyBindings().entrySet()) {
-                int code = KeyMapper.nameToKeyCode(e.getValue());
-                if (code > 0) {
-                    mapped.put(e.getKey(), code);
-                }
-            }
+            // service.getSettings().getKeyBindings() already contains int codes
+            java.util.Map<String, Integer> mapped = new java.util.HashMap<>(service.getSettings().getKeyBindings());
             gameController.applyKeyBindings(mapped);
         }
     }

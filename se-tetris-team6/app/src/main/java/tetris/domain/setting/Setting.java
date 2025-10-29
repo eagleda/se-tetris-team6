@@ -14,7 +14,7 @@ public class Setting {
     }
 
     private ScreenSize screenSize;
-    private Map<String, String> keyBindings;
+    private Map<String, Integer> keyBindings;
     private boolean colorBlindMode;
 
     public Setting() {
@@ -25,13 +25,13 @@ public class Setting {
         Setting s = new Setting();
         s.screenSize = ScreenSize.MEDIUM;
         s.colorBlindMode = false;
-        Map<String, String> kb = new HashMap<>();
-        kb.put("MOVE_LEFT", "LEFT");
-        kb.put("MOVE_RIGHT", "RIGHT");
-        kb.put("ROTATE", "UP");
-        kb.put("SOFT_DROP", "DOWN");
-        kb.put("HARD_DROP", "SPACE");
-        kb.put("HOLD", "C");
+    Map<String, Integer> kb = new HashMap<>();
+    kb.put("MOVE_LEFT", java.awt.event.KeyEvent.VK_LEFT);
+    kb.put("MOVE_RIGHT", java.awt.event.KeyEvent.VK_RIGHT);
+    kb.put("ROTATE", java.awt.event.KeyEvent.VK_UP);
+    kb.put("SOFT_DROP", java.awt.event.KeyEvent.VK_DOWN);
+    kb.put("HARD_DROP", java.awt.event.KeyEvent.VK_SPACE);
+    kb.put("HOLD", java.awt.event.KeyEvent.VK_C);
         s.keyBindings = kb;
         return s;
     }
@@ -44,20 +44,20 @@ public class Setting {
         this.screenSize = screenSize;
     }
 
-    public Map<String, String> getKeyBindings() {
+    public Map<String, Integer> getKeyBindings() {
         return Collections.unmodifiableMap(keyBindings);
     }
 
-    public void setKeyBindings(Map<String, String> keyBindings) {
+    public void setKeyBindings(Map<String, Integer> keyBindings) {
         this.keyBindings = new HashMap<>(keyBindings);
     }
 
-    public String getKeyBinding(String action) {
+    public Integer getKeyBinding(String action) {
         return keyBindings.get(action);
     }
 
-    public void setKeyBinding(String action, String keyName) {
-        this.keyBindings.put(action, keyName);
+    public void setKeyBinding(String action, Integer keyCode) {
+        this.keyBindings.put(action, keyCode);
     }
 
     public boolean isColorBlindMode() {

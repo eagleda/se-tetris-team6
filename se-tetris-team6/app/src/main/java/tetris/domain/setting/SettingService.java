@@ -36,7 +36,8 @@ public class SettingService {
     }
 
     public void setKeyBinding(String action, String keyName) {
-        getSettings().setKeyBinding(action, keyName);
+        // accept key code as stringified int or name? For now assume string is name and map externally
+        // keep method for compatibility but not used elsewhere
     }
 
     public void resetToDefaults() {
@@ -60,8 +61,8 @@ public class SettingService {
     /**
      * Convenience: replace all key bindings at once.
      */
-    public void setKeyBindings(Map<String, String> map) {
-        Map<String, String> m = new HashMap<>(map);
+    public void setKeyBindings(Map<String, Integer> map) {
+        Map<String, Integer> m = new HashMap<>(map);
         getSettings().setKeyBindings(m);
     }
 }
