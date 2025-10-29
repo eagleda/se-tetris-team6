@@ -30,6 +30,7 @@ public class SettingPanel extends JPanel {
     public JButton resetScoresButton;
     public JButton resetDefaultsButton;
     public JButton saveButton;
+    public JButton backToMainButton;
 
     public SettingPanel() {
         this.setSize(TetrisFrame.FRAME_SIZE);
@@ -95,12 +96,14 @@ public class SettingPanel extends JPanel {
         // Action buttons
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT));
         actions.setOpaque(false);
-        resetScoresButton = new JButton("Reset Scoreboard");
-        resetDefaultsButton = new JButton("Reset to Defaults");
-        saveButton = new JButton("Save Settings");
+    resetScoresButton = new JButton("Reset Scoreboard");
+    resetDefaultsButton = new JButton("Reset to Defaults");
+    saveButton = new JButton("Save Settings");
+    backToMainButton = new JButton("Back to Menu");
         actions.add(resetScoresButton);
         actions.add(resetDefaultsButton);
         actions.add(saveButton);
+    actions.add(backToMainButton);
         this.add(actions);
         // install capture behavior: controller will attach listeners, but provide a default capturing helper
         installCaptureHandlers();
@@ -121,18 +124,20 @@ public class SettingPanel extends JPanel {
 
             java.awt.KeyEventDispatcher dispatcher = new java.awt.KeyEventDispatcher() {
                 @Override
-                public boolean dispatchKeyEvent(java.awt.event.KeyEvent evt) {
-                    if (evt.getID() == java.awt.event.KeyEvent.KEY_PRESSED) {
-                        int code = evt.getKeyCode();
-                        targetField.setText(tetris.util.KeyMapper.keyCodeToName(code));
-                        // restore button
-                        button.setText("Capture");
-                        button.setEnabled(true);
-                        java.awt.KeyboardFocusManager.getCurrentKeyboardFocusManager().removeKeyEventDispatcher(this);
-                        return true; // consume
+                    public boolean dispatchKeyEvent(java.awt.event.KeyEvent evt) {
+                        if (evt.getID() == java.awt.event.KeyEvent.KEY_PRESSED) {
+                            int code = evt.getKeyCode();
+                            targetField.setText(tetris.util.KeyMapper.keyCodeToName(code));
+                            // consume the event so no KEY_TYPED is delivered to other components
+                            evt.consume();
+                            // restore button
+                            button.setText("Capture");
+                            button.setEnabled(true);
+                            java.awt.KeyboardFocusManager.getCurrentKeyboardFocusManager().removeKeyEventDispatcher(this);
+                            return true; // indicate consumed by dispatcher
+                        }
+                        return false;
                     }
-                    return false;
-                }
             };
 
             java.awt.KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(dispatcher);

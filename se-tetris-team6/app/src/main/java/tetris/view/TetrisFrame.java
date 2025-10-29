@@ -198,6 +198,13 @@ public class TetrisFrame extends JFrame {
         }
     }
 
+    /**
+     * Convenience to show the main menu panel.
+     */
+    public void showMainPanel() {
+        displayPanel(mainPanel);
+    }
+
     // 전역 키 설정
     private void installRootKeyBindings() {
         InputMap im = this.getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);

@@ -63,6 +63,16 @@ public class SettingController {
             }
         });
 
+        // Back to main menu
+        panel.backToMainButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (frame != null) {
+                    frame.showMainPanel();
+                }
+            }
+        });
+
         // Screen size combo -> update immediately on change
         JComboBox<Setting.ScreenSize> combo = panel.sizeCombo;
         combo.addActionListener(new ActionListener() {
