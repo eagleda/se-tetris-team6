@@ -34,6 +34,18 @@ public class GameController {
     }
 
     /**
+     * Apply updated key bindings at runtime. Only keys present in the map are updated.
+     * Map keys are action names (same as used throughout this class) -> KeyEvent codes.
+     */
+    public void applyKeyBindings(java.util.Map<String, Integer> updated) {
+        if (updated == null) return;
+        for (java.util.Map.Entry<String, Integer> e : updated.entrySet()) {
+            if (e.getValue() == null) continue;
+            keyBindings.put(e.getKey(), e.getValue());
+        }
+    }
+
+    /**
      * 기본 키 바인딩 초기화
      * 설정에서 변경 가능하도록 Map으로 관리
      */
