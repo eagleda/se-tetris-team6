@@ -77,8 +77,8 @@ public final class GameModel {
     public GameModel(BlockGenerator generator, ScoreRepository scoreRepository) {
     this.scoreRepository = Objects.requireNonNull(scoreRepository, "scoreRepository");
     this.scoreEngine = new ScoreRuleEngine(scoreRepository);
-    // lightweight leaderboard for game-over name saving
-    this.leaderboardRepository = new tetris.data.leaderboard.InMemoryLeaderboardRepository();
+    // persistent leaderboard for game-over name saving
+    this.leaderboardRepository = new tetris.data.leaderboard.PreferencesLeaderboardRepository();
         // lightweight setting service used by handlers that expect model-level setting operations
         this.settingService = new SettingService(new PreferencesSettingRepository(), scoreRepository);
         setBlockGenerator(generator);

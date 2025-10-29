@@ -161,7 +161,8 @@ public class TetrisFrame extends JFrame {
             displayPanel(settingPanel);
         });
         mainPanel.scoreboardButton.addActionListener(e -> {
-            displayPanel(scoreboardPanel);
+            // ensure leaderboard is refreshed before showing
+            showScoreboardPanel();
         });
     }
 
@@ -216,6 +217,15 @@ public class TetrisFrame extends JFrame {
         }
         prevPanel = currPanel;
         currPanel = panel;
+        // If we're about to show the scoreboard, refresh its contents from the leaderboard repo
+        if (panel == scoreboardPanel) {
+            try {
+                var top = gameModel.getLeaderboardRepository().loadTop(10);
+                scoreboardPanel.renderLeaderboard(top);
+            } catch (Exception ex) {
+                // ignore; show existing content
+            }
+        }
         // if (prevPanel != null)
         // prevPanel.setVisible(false);
         panel.setVisible(true);
