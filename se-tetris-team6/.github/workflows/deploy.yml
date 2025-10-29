@@ -1,0 +1,65 @@
+name: Build & Release (Windows installer zip)
+
+on:
+  push:
+    branches: ["dev"]
+  workflow_dispatch: {}
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Ensure gradlew is executable
+        run: |
+          if (Test-Path ./gradlew) { icacls ./gradlew /grant Everyone:RX }
+
+      - name: Build distribution
+        run: |
+          .\gradlew.bat :app:installDist --no-daemon --console=plain
+
+      - name: Package install directory
+        run: |
+          $dist = "app\build\install\app"
+          $zip = "app-dist-${{ github.sha }}.zip"
+          if (Test-Path $zip) { Remove-Item $zip }
+          Compress-Archive -Path $dist -DestinationPath $zip -Force
+          Write-Host "Created $zip"
+
+      - name: Upload artifact (CI)
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-dist-zip
+          path: app-dist-${{ github.sha }}.zip
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: dev-${{ github.sha }}
+          release_name: Dev build ${{ github.sha }}
+          body: |-
+            Automated build from branch dev.
+            Includes application distribution (installDist).
+          draft: false
+          prerelease: true
+
+      - name: Upload release asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./app-dist-${{ github.sha }}.zip
+          asset_name: app-dist-${{ github.sha }}.zip
+          asset_content_type: application/zip
