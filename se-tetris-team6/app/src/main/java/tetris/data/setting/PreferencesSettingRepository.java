@@ -15,7 +15,15 @@ import tetris.domain.setting.SettingRepository;
 public class PreferencesSettingRepository implements SettingRepository {
 
     private static final String NODE = "se-tetris-team6/settings";
-    private final Preferences prefs = Preferences.userRoot().node(NODE);
+    private Preferences prefs;
+
+    public PreferencesSettingRepository() {
+        this(Preferences.userRoot().node(NODE));
+    }
+
+    public PreferencesSettingRepository(Preferences prefs) {
+        this.prefs = prefs;
+    }
 
     // keys
     private static final String KEY_SCREEN = "screenSize";

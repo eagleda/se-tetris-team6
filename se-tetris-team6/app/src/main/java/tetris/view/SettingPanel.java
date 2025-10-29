@@ -121,23 +121,32 @@ public class SettingPanel extends JPanel {
         button.addActionListener(e -> {
             button.setText("Press a key...");
             button.setEnabled(false);
-
+            // prevent the text field from accepting KEY_TYPED events while capturing
+            boolean prevEditable = targetField.isEditable();
+            targetField.setEditable(false);
             java.awt.KeyEventDispatcher dispatcher = new java.awt.KeyEventDispatcher() {
                 @Override
-                    public boolean dispatchKeyEvent(java.awt.event.KeyEvent evt) {
-                        if (evt.getID() == java.awt.event.KeyEvent.KEY_PRESSED) {
-                            int code = evt.getKeyCode();
-                            targetField.setText(tetris.util.KeyMapper.keyCodeToName(code));
-                            // consume the event so no KEY_TYPED is delivered to other components
-                            evt.consume();
-                            // restore button
-                            button.setText("Capture");
-                            button.setEnabled(true);
-                            java.awt.KeyboardFocusManager.getCurrentKeyboardFocusManager().removeKeyEventDispatcher(this);
-                            return true; // indicate consumed by dispatcher
-                        }
-                        return false;
+                public boolean dispatchKeyEvent(java.awt.event.KeyEvent evt) {
+                    // If a key was pressed, capture it and stop dispatching further key events.
+                    if (evt.getID() == java.awt.event.KeyEvent.KEY_PRESSED) {
+                        int code = evt.getKeyCode();
+                        targetField.setText(tetris.util.KeyMapper.keyCodeToName(code));
+                        // consume and prevent subsequent KEY_TYPED being delivered
+                        evt.consume();
+                        // restore button and field state
+                        button.setText("Capture");
+                        button.setEnabled(true);
+                        targetField.setEditable(prevEditable);
+                        java.awt.KeyboardFocusManager.getCurrentKeyboardFocusManager().removeKeyEventDispatcher(this);
+                        return true; // consumed
                     }
+                    // Also consume any KEY_TYPED events while capturing to avoid stray input
+                    if (evt.getID() == java.awt.event.KeyEvent.KEY_TYPED) {
+                        evt.consume();
+                        return true;
+                    }
+                    return false;
+                }
             };
 
             java.awt.KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(dispatcher);
