@@ -85,9 +85,6 @@ public class GameController {
             case PAUSED:
                 handlePausedInput(keyCode);
                 break;
-            case MENU:
-                handleMenuInput(keyCode);
-                break;
             case GAME_OVER:
                 handleGameOverInput(keyCode);
                 break;
@@ -100,10 +97,6 @@ public class GameController {
             case NAME_INPUT:
                 handleNameInputInput(keyCode);
                 break;
-            case MENU:
-                handleMenuInput(keyCode);
-                break;
-
             default:
                 // 기본 처리
                 break;
