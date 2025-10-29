@@ -177,6 +177,10 @@ public class GamePanel extends JPanel {
                 return "SLOW";
             case "bomb":
                 return "BOMB";
+            case "line_clear":
+                return "LINE";
+            case "weight":
+                return "WEIGHT";
             default:
                 return id.toUpperCase();
         }
