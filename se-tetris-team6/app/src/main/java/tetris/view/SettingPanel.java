@@ -17,6 +17,7 @@ import javax.swing.JPanel;
 import javax.swing.JTextField;
 
 import tetris.domain.setting.Setting;
+import tetris.domain.GameDifficulty;
 
 public class SettingPanel extends JPanel {
     // Exposed UI components for controller wiring
@@ -34,6 +35,7 @@ public class SettingPanel extends JPanel {
     public JButton resetDefaultsButton;
     public JButton saveButton;
     public JButton backToMainButton;
+    public JComboBox<GameDifficulty> difficultyCombo;
 
     public SettingPanel() {
         super(new GridBagLayout());
@@ -51,6 +53,15 @@ public class SettingPanel extends JPanel {
         sizeRow.add(sizeCombo);
 
         addToLayout(sizeRow, 0, 0, 1, 1, GridBagConstraints.BOTH, GridBagConstraints.WEST);
+
+        // Difficulty selector
+        JPanel difficultyRow = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        difficultyRow.setOpaque(false);
+        difficultyRow.add(new JLabel("Difficulty:"));
+        difficultyCombo = new JComboBox<>(GameDifficulty.values());
+        difficultyCombo.setPreferredSize(new Dimension(200, 24));
+        difficultyRow.add(difficultyCombo);
+        this.add(difficultyRow);
 
         // Colorblind mode
         JPanel colorRow = new JPanel(new FlowLayout(FlowLayout.LEFT));

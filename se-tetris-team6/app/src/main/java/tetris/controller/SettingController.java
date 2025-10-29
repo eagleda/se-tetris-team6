@@ -7,6 +7,8 @@ import java.util.Map;
 
 import javax.swing.JComboBox;
 
+import tetris.domain.GameDifficulty;
+
 import tetris.domain.setting.Setting;
 import tetris.domain.setting.SettingRepository;
 import tetris.domain.setting.SettingService;
@@ -86,11 +88,29 @@ public class SettingController {
                 }
             }
         });
+
+        // Difficulty combo -> update immediately on change
+        if (panel.difficultyCombo != null) {
+            panel.difficultyCombo.addActionListener(new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    GameDifficulty difficulty = (GameDifficulty) panel.difficultyCombo.getSelectedItem();
+                    service.setDifficulty(difficulty);
+                    if (gameController != null && difficulty != null) {
+                        gameController.applyDifficulty(difficulty);
+                    }
+                }
+            });
+        }
     }
 
     private void loadToPanel() {
         Setting s = service.getSettings();
         panel.sizeCombo.setSelectedItem(s.getScreenSize());
+        GameDifficulty difficulty = s.getDifficulty() != null ? s.getDifficulty() : GameDifficulty.NORMAL;
+        if (panel.difficultyCombo != null) {
+            panel.difficultyCombo.setSelectedItem(difficulty);
+        }
         panel.colorBlindCheckbox.setSelected(s.isColorBlindMode());
         // fill key fields
         Integer ml = s.getKeyBinding("MOVE_LEFT");
@@ -101,6 +121,9 @@ public class SettingController {
         panel.keyMoveRightField.setText(mr == null ? "" : KeyMapper.keyCodeToName(mr));
         panel.keyRotateField.setText(rot == null ? "" : KeyMapper.keyCodeToName(rot));
         panel.keySoftDropField.setText(sd == null ? "" : KeyMapper.keyCodeToName(sd));
+        if (gameController != null) {
+            gameController.applyDifficulty(difficulty);
+        }
     }
 
     private void persistFromPanel() {
@@ -123,6 +146,10 @@ public class SettingController {
         if (sel instanceof Setting.ScreenSize) {
             service.setScreenSize((Setting.ScreenSize) sel);
         }
+        Object diffSel = panel.difficultyCombo != null ? panel.difficultyCombo.getSelectedItem() : null;
+        GameDifficulty difficulty = diffSel instanceof GameDifficulty
+            ? (GameDifficulty) diffSel : GameDifficulty.NORMAL;
+        service.setDifficulty(difficulty);
         service.save();
 
         // Apply keybindings to runtime GameController
@@ -130,6 +157,7 @@ public class SettingController {
             // service.getSettings().getKeyBindings() already contains int codes
             java.util.Map<String, Integer> mapped = new java.util.HashMap<>(service.getSettings().getKeyBindings());
             gameController.applyKeyBindings(mapped);
+            gameController.applyDifficulty(difficulty);
         }
     }
 }
