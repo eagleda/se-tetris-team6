@@ -13,6 +13,9 @@ import tetris.domain.setting.SettingService;
 import tetris.data.setting.PreferencesSettingRepository;
 import tetris.domain.score.ScoreRepository;
 import tetris.view.SettingPanel;
+import tetris.controller.GameController;
+import tetris.view.TetrisFrame;
+import tetris.util.KeyMapper;
 
 /**
  * Controller that wires SettingPanel and SettingService.
@@ -22,10 +25,15 @@ public class SettingController {
     private final SettingService service;
     private final SettingPanel panel;
 
-    public SettingController(ScoreRepository scoreRepository, SettingPanel panel) {
+    private final GameController gameController;
+    private final TetrisFrame frame;
+
+    public SettingController(ScoreRepository scoreRepository, SettingPanel panel, GameController gameController, TetrisFrame frame) {
         SettingRepository repo = new PreferencesSettingRepository();
         this.service = new SettingService(repo, scoreRepository);
         this.panel = panel;
+        this.gameController = gameController;
+        this.frame = frame;
         bind();
         loadToPanel();
     }
@@ -63,6 +71,10 @@ public class SettingController {
             public void actionPerformed(ActionEvent e) {
                 Setting.ScreenSize s = (Setting.ScreenSize) combo.getSelectedItem();
                 service.setScreenSize(s);
+                // Immediately apply to frame
+                if (frame != null) {
+                    frame.applyScreenSize(s);
+                }
             }
         });
     }
@@ -94,5 +106,17 @@ public class SettingController {
             service.setScreenSize((Setting.ScreenSize) sel);
         }
         service.save();
+
+        // Apply keybindings to runtime GameController
+        if (gameController != null) {
+            java.util.Map<String, Integer> mapped = new java.util.HashMap<>();
+            for (java.util.Map.Entry<String, String> e : service.getSettings().getKeyBindings().entrySet()) {
+                int code = KeyMapper.nameToKeyCode(e.getValue());
+                if (code > 0) {
+                    mapped.put(e.getKey(), code);
+                }
+            }
+            gameController.applyKeyBindings(mapped);
+        }
     }
 }

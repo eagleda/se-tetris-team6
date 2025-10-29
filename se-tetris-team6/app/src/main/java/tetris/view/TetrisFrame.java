@@ -135,6 +135,13 @@ public class TetrisFrame extends JFrame {
         settingPanel = new SettingPanel();
         settingPanel.setVisible(false);
         layeredPane.add(settingPanel, JLayeredPane.DEFAULT_LAYER);
+        // create and bind setting controller so settings persist and apply at runtime
+        new tetris.controller.SettingController(
+            gameModel.getScoreRepository(),
+            settingPanel,
+            gameController,
+            this
+        );
     }
 
     private void setupPausePanel() {
@@ -235,5 +242,33 @@ public class TetrisFrame extends JFrame {
                     }
                     return false;
                 });
+    }
+
+    /**
+     * Apply a screen size selection to the frame and contained layered pane/panels.
+     * Adjusts frame size and layer preferred sizes so the UI reflects the selection.
+     */
+    public void applyScreenSize(tetris.domain.setting.Setting.ScreenSize size) {
+        if (size == null) return;
+        switch (size) {
+            case SMALL:
+                setSize(new Dimension(560, 720));
+                layeredPane.setPreferredSize(new Dimension(560, 720));
+                break;
+            case MEDIUM:
+                setSize(new Dimension(700, 900));
+                layeredPane.setPreferredSize(new Dimension(700, 900));
+                break;
+            case LARGE:
+                setSize(new Dimension(900, 1200));
+                layeredPane.setPreferredSize(new Dimension(900, 1200));
+                break;
+            default:
+                break;
+        }
+        // reposition and resize existing panels
+        layeredPane.setSize(getSize());
+        layeredPane.revalidate();
+        layeredPane.repaint();
     }
 }
