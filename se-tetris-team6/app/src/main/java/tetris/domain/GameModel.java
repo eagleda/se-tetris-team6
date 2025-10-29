@@ -5,9 +5,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
-import tetris.domain.BlockGenerator;
-import tetris.domain.BlockKind;
-import tetris.domain.RandomBlockGenerator;
+import tetris.data.score.InMemoryScoreRepository;
 import tetris.domain.handler.GameHandler;
 import tetris.domain.handler.GameOverHandler;
 import tetris.domain.handler.GamePlayHandler;
@@ -17,11 +15,12 @@ import tetris.domain.handler.PausedHandler;
 import tetris.domain.handler.ScoreboardHandler;
 import tetris.domain.handler.SettingsHandler;
 import tetris.domain.model.Block;
+import tetris.domain.model.GameClock;
 import tetris.domain.model.GameState;
 import tetris.domain.model.InputState;
-import tetris.domain.model.ScoreData;
-import tetris.domain.model.GameClock;
-import tetris.domain.model.ScoreRuleEngine;
+import tetris.domain.score.Score;
+import tetris.domain.score.ScoreRepository;
+import tetris.domain.score.ScoreRuleEngine;
 
 /**
  * 게임 핵심 도메인 모델.
@@ -48,9 +47,9 @@ public final class GameModel implements GameClock.Listener {
     };
 
     private final Board board = new Board();
-    private final ScoreData scoreData = new ScoreData();
     private final InputState inputState = new InputState();
     private final GameClock clock = new GameClock(this);
+    private final ScoreRepository scoreRepository;
     private final ScoreRuleEngine scoreEngine;
     private BlockGenerator blockGenerator;
     private final Map<GameState, GameHandler> handlers = new EnumMap<>(GameState.class);
@@ -62,11 +61,12 @@ public final class GameModel implements GameClock.Listener {
     private boolean clockStarted;
 
     public GameModel() {
-        this(new RandomBlockGenerator());
+        this(new RandomBlockGenerator(), new InMemoryScoreRepository());
     }
 
-    public GameModel(BlockGenerator generator) {
-        this.scoreEngine = new ScoreRuleEngine(scoreData, null);
+    public GameModel(BlockGenerator generator, ScoreRepository scoreRepository) {
+        this.scoreRepository = Objects.requireNonNull(scoreRepository, "scoreRepository");
+        this.scoreEngine = new ScoreRuleEngine(scoreRepository);
         setBlockGenerator(generator);
         registerHandlers();
         changeState(GameState.MENU);
@@ -113,12 +113,20 @@ public final class GameModel implements GameClock.Listener {
         return board;
     }
 
-    public ScoreData getScoreData() {
-        return scoreData;
-    }
-
     public InputState getInputState() {
         return inputState;
+    }
+
+    public Score getScore() {
+        return scoreRepository.load();
+    }
+
+    public ScoreRepository getScoreRepository() {
+        return scoreRepository;
+    }
+
+    public ScoreRuleEngine getScoreEngine() {
+        return scoreEngine;
     }
 
     public Block getActiveBlock() {
@@ -191,7 +199,7 @@ public final class GameModel implements GameClock.Listener {
     private void resetGameplayState() {
         resetInputAxes();
         board.clear();
-        scoreData.reset();
+        scoreEngine.resetScore();
         activeBlock = null;
         stopClockCompletely();
     }

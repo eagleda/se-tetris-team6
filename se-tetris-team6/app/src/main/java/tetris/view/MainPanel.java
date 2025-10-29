@@ -44,6 +44,7 @@ public class MainPanel extends JPanel {
                 setFont(new Font("SansSerif", Font.BOLD, 18));
             }
         };
+        //아이템 모드 버튼 추가 -> 나중에 구현
         settingButton = new JButton() {
             {
                 setText("Setting");

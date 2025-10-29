@@ -17,6 +17,7 @@ import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
 
 import tetris.controller.GameController;
+import tetris.controller.ScoreController;
 import tetris.domain.GameModel;
 import tetris.domain.model.GameState;
 
@@ -41,6 +42,7 @@ public class TetrisFrame extends JFrame {
     private static JPanel currPanel;
 
     private GameController gameController;
+    private ScoreController scoreController;
 
     public TetrisFrame() {
         super(FRAME_TITLE);
@@ -48,8 +50,6 @@ public class TetrisFrame extends JFrame {
         initializeFrame();
         // 전역 키 바인딩 설정 (포커스와 무관하게 동작)
         installRootKeyBindings();
-
-        this.gameModel = new GameModel();
 
         // 각 패널 설정
         setupMainPanel();
@@ -75,7 +75,11 @@ public class TetrisFrame extends JFrame {
             }
         });
 
-        gameController = new GameController(gameModel);
+        scoreController = new ScoreController(
+            gameModel.getScoreRepository(),
+            gameModel.getScoreEngine(),
+            scoreboardPanel
+        );
 
         // 시작 화면 설정
         this.setVisible(true);
@@ -89,6 +93,7 @@ public class TetrisFrame extends JFrame {
     private void initializeModelsAndControllers() {
         gameModel = new GameModel();
         gameController = new GameController(gameModel);
+        scoreController = null;
     }
 
     private void initializeFrame() {
