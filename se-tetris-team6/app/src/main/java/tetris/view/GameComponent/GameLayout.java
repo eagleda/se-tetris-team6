@@ -1,50 +1,24 @@
 package tetris.view.GameComponent;
 
-<<<<<<< HEAD
-import java.awt.Component;
-=======
 import java.awt.Color;
 import java.awt.Component;
-import java.awt.Dimension;
->>>>>>> 870d0047cfb1dc8314fb9ed388606a46b54b486f
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 
 import javax.swing.JPanel;
 
-<<<<<<< HEAD
 import tetris.domain.GameModel;
 import tetris.view.EmptySpace;
- 
-import tetris.view.GamePanel;
+import tetris.view.GameComponent.GamePanel;
 
 public class GameLayout extends JPanel {
-=======
-import tetris.domain.Board;
-import tetris.domain.GameModel;
-import tetris.domain.model.Block;
-import tetris.view.TetrisFrame;
-import tetris.domain.BlockShape;
-import tetris.view.EmptySpace;
-
-public class GameLayout extends JPanel {
-    private static final int COLUMNS = 3;
-    private static final int ROWS = 4;
-
->>>>>>> 870d0047cfb1dc8314fb9ed388606a46b54b486f
     private GamePanel gamePanel;
     private NextBlockPanel nextBlockPanel;
     private ScorePanel scoreboard;
 
     public GameLayout() {
-<<<<<<< HEAD
-    super(new GridBagLayout());
-=======
         super(new GridBagLayout());
-        setPreferredSize(TetrisFrame.FRAME_SIZE);
-        setBackground(Color.WHITE);
->>>>>>> 870d0047cfb1dc8314fb9ed388606a46b54b486f
         setOpaque(true);
         setVisible(false);
 
@@ -74,10 +48,6 @@ public class GameLayout extends JPanel {
         gbc.gridwidth = w;
         gbc.gridheight = h;
 
-<<<<<<< HEAD
-=======
-        // 가중치는 영역 비율대로 설정 (셀 단위 동등 분배)
->>>>>>> 870d0047cfb1dc8314fb9ed388606a46b54b486f
         gbc.weightx = gbc.gridwidth;
         gbc.weighty = gbc.gridheight;
 
