@@ -39,34 +39,17 @@ public class NextBlockPanel extends JPanel {
         setLayout(new BorderLayout());
         setOpaque(true);
         setBackground(Color.BLACK);
+    // 테두리
+    setBorder(BorderFactory.createLineBorder(Color.DARK_GRAY, 2));
 
-<<<<<<< HEAD
-        // 테두리
-        setBorder(BorderFactory.createLineBorder(Color.DARK_GRAY, 2));
-
-        JTextPane text = new JTextPane();
-        text.setText("Next");
-        text.setEditable(false);
-        text.setOpaque(false);
-        text.setForeground(Color.WHITE);
-        text.setFont(new Font("SansSerif", Font.BOLD, 14));
-        text.setFocusable(false);
-        add(text, BorderLayout.NORTH);
-=======
-        // 빨간 테두리: 패널이 할당된 영역을 감싸도록 표시
-        setBorder(BorderFactory.createLineBorder(Color.RED, 3));
-
-        // 중앙 텍스트
-        JTextPane text = new JTextPane();
-        text.setText("NextBlockPanel");
-        text.setEditable(false);
-        text.setOpaque(false); // 배경은 패널 배경을 사용
-        text.setForeground(Color.WHITE);
-        text.setFont(new Font("SansSerif", Font.BOLD, 16));
-        text.setFocusable(false);
-
-        add(text, BorderLayout.CENTER);
->>>>>>> 870d0047cfb1dc8314fb9ed388606a46b54b486f
+    JTextPane text = new JTextPane();
+    text.setText("Next");
+    text.setEditable(false);
+    text.setOpaque(false);
+    text.setForeground(Color.WHITE);
+    text.setFont(new Font("SansSerif", Font.BOLD, 14));
+    text.setFocusable(false);
+    add(text, BorderLayout.NORTH);
     }
 
     public void bindGameModel(GameModel model) {
@@ -76,13 +59,8 @@ public class NextBlockPanel extends JPanel {
 
     @Override
     protected void paintComponent(Graphics g) {
-        super.paintComponent(g);
-
-<<<<<<< HEAD
-        if (gameModel == null) return;
-
-=======
->>>>>>> 870d0047cfb1dc8314fb9ed388606a46b54b486f
+    super.paintComponent(g);
+    if (gameModel == null) return;
         Graphics2D g2 = (Graphics2D) g.create();
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
@@ -101,7 +79,6 @@ public class NextBlockPanel extends JPanel {
         g2.setColor(BACKGROUND_COLOR);
         g2.fillRect(originX, originY, boardWidthPx, boardHeightPx);
 
-<<<<<<< HEAD
         BlockKind kind = gameModel.getNextBlockKind();
         if (kind == null) {
             g2.dispose();
@@ -118,44 +95,6 @@ public class NextBlockPanel extends JPanel {
         int colorIndex = shape.kind().ordinal() + 1;
         g2.setColor(colorFor(colorIndex));
 
-=======
-        drawNextBlock(g2, cellSize, originX, originY);
-        drawGridLines(g2, cellSize, originX, originY, boardWidthPx, boardHeightPx);
-    }
-
-    private void drawGridLines(Graphics2D g2, int cellSize, int originX, int originY, int boardWidthPx,
-            int boardHeightPx) {
-        g2.setColor(GRID_COLOR);
-        for (int x = 0; x <= BOARD_COLS; x++) {
-            int px = originX + x * cellSize;
-            g2.drawLine(px, originY, px, originY + boardHeightPx);
-        }
-        for (int y = 0; y <= BOARD_ROWS; y++) {
-            int py = originY + y * cellSize;
-            g2.drawLine(originX, py, originX + boardWidthPx, py);
-        }
-    }
-
-    private void drawNextBlock(Graphics2D g2, int cellSize, int originX, int originY) {
-        if (gameModel == null) {
-            return;
-        }
-
-        // TODO - GameModel.getNextBlock() 메서드 구현 후 아래 코드와 교체
-        // Block next = gameModel.getNextBlock();
-        BlockKind kind = gameModel.getActiveBlock().getShape().kind();
-        Block next = Block.spawn(kind, 2, 2);
-
-        if (next == null) {
-            return;
-        }
-
-        BlockShape shape = next.getShape();
-        int colorIndex = shape.kind().ordinal() + 1;
-        g2.setColor(colorFor(colorIndex));
-
-        // 블록을 5x5 영역의 가운데에 배치
->>>>>>> 870d0047cfb1dc8314fb9ed388606a46b54b486f
         int offsetX = (BOARD_COLS - shape.width()) / 2;
         int offsetY = (BOARD_ROWS - shape.height()) / 2;
         for (int sy = 0; sy < shape.height(); sy++) {
@@ -171,12 +110,25 @@ public class NextBlockPanel extends JPanel {
                 g2.fillRect(px, py, cellSize, cellSize);
             }
         }
-<<<<<<< HEAD
 
+        drawGridLines(g2, cellSize, originX, originY, boardWidthPx, boardHeightPx);
         g2.dispose();
-=======
->>>>>>> 870d0047cfb1dc8314fb9ed388606a46b54b486f
     }
+
+    private void drawGridLines(Graphics2D g2, int cellSize, int originX, int originY, int boardWidthPx,
+            int boardHeightPx) {
+        g2.setColor(GRID_COLOR);
+        for (int x = 0; x <= BOARD_COLS; x++) {
+            int px = originX + x * cellSize;
+            g2.drawLine(px, originY, px, originY + boardHeightPx);
+        }
+        for (int y = 0; y <= BOARD_ROWS; y++) {
+            int py = originY + y * cellSize;
+            g2.drawLine(originX, py, originX + boardWidthPx, py);
+        }
+    }
+
+    
 
     private Color colorFor(int value) {
         if (value <= 0) {
