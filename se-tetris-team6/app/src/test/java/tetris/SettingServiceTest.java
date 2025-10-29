@@ -149,17 +149,4 @@ class SettingServiceTest {
         }
     }
 
-    // Stub to satisfy SettingService constructor when a LeaderboardRepository is needed elsewhere.
-    static final class NoopLeaderboardRepository implements LeaderboardRepository {
-        @Override
-        public List<LeaderboardEntry> loadTop(int n, tetris.domain.GameMode mode) {
-            return List.of();
-        }
-
-        @Override
-        public void saveEntry(LeaderboardEntry entry) {}
-
-        @Override
-        public void reset() {}
-    }
 }

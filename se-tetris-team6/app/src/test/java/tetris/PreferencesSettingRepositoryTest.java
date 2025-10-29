@@ -21,6 +21,7 @@ class PreferencesSettingRepositoryTest {
     Setting s = new Setting();
         s.setScreenSize(Setting.ScreenSize.LARGE);
         s.setColorBlindMode(true);
+        s.setDifficulty(tetris.domain.GameDifficulty.HARD);
         Map<String, Integer> kb = new HashMap<>();
         kb.put("MOVE_LEFT", java.awt.event.KeyEvent.VK_A);
         kb.put("MOVE_RIGHT", java.awt.event.KeyEvent.VK_D);
@@ -36,6 +37,7 @@ class PreferencesSettingRepositoryTest {
             Setting loaded = repo.load();
             assertEquals(Setting.ScreenSize.LARGE, loaded.getScreenSize());
             assertTrue(loaded.isColorBlindMode());
+            assertEquals(tetris.domain.GameDifficulty.HARD, loaded.getDifficulty());
             assertEquals(java.awt.event.KeyEvent.VK_A, loaded.getKeyBinding("MOVE_LEFT").intValue());
             assertEquals(java.awt.event.KeyEvent.VK_D, loaded.getKeyBinding("MOVE_RIGHT").intValue());
         } finally {
