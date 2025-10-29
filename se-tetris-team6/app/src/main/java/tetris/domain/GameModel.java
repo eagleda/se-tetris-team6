@@ -25,6 +25,7 @@ import tetris.domain.handler.SettingsHandler;
 import tetris.domain.item.ItemBehavior;
 import tetris.domain.item.ItemContextImpl;
 import tetris.domain.item.ItemManager;
+import tetris.domain.item.ItemType;
 import tetris.domain.item.behavior.BombBehavior;
 import tetris.domain.item.behavior.DoubleScoreBehavior;
 import tetris.domain.item.behavior.TimeSlowBehavior;
@@ -85,6 +86,29 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         () -> new TimeSlowBehavior(600, 0.5),
         () -> new BombBehavior(1)
     );
+    public static final class ActiveItemInfo {
+        private final BlockLike block;
+        private final String label;
+        private final ItemType type;
+
+        public ActiveItemInfo(BlockLike block, String label, ItemType type) {
+            this.block = block;
+            this.label = label;
+            this.type = type;
+        }
+
+        public BlockLike block() {
+            return block;
+        }
+
+        public String label() {
+            return label;
+        }
+
+        public ItemType type() {
+            return type;
+        }
+    }
     private ItemBlockModel activeItemBlock;
     private boolean nextBlockIsItem;
     private int totalClearedLines;
@@ -240,6 +264,20 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
 
     public boolean isItemMode() {
         return currentMode == GameMode.ITEM;
+    }
+
+    public boolean isNextBlockItem() {
+        return isItemMode() && nextBlockIsItem;
+    }
+
+    public ActiveItemInfo getActiveItemInfo() {
+        if (!isItemMode() || activeItemBlock == null) {
+            return null;
+        }
+        ItemBehavior primary = activeItemBlock.getBehaviors().isEmpty() ? null : activeItemBlock.getBehaviors().get(0);
+        String label = primary != null ? primary.id() : null;
+        ItemType type = primary != null ? primary.type() : ItemType.INSTANT;
+        return new ActiveItemInfo(activeItemBlock.getDelegate(), label, type);
     }
 
     public void spawnParticles(int x, int y, String type) {

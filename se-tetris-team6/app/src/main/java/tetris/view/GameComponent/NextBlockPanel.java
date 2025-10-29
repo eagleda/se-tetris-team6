@@ -33,6 +33,9 @@ public class NextBlockPanel extends JPanel {
     };
 
     private GameModel gameModel;
+    private static final Color ITEM_BADGE_BG = new Color(255, 215, 0, 220);
+    private static final Color ITEM_BADGE_TEXT = Color.BLACK;
+    private static final Font ITEM_BADGE_FONT = new Font("SansSerif", Font.BOLD, 12);
 
     public NextBlockPanel() {
         // 패널 레이아웃 및 외형 설정
@@ -111,6 +114,10 @@ public class NextBlockPanel extends JPanel {
             }
         }
 
+        if (gameModel.isItemMode() && gameModel.isNextBlockItem()) {
+            drawItemBadge(g2, originX, originY, boardWidthPx, boardHeightPx);
+        }
+
         drawGridLines(g2, cellSize, originX, originY, boardWidthPx, boardHeightPx);
         g2.dispose();
     }
@@ -139,5 +146,23 @@ public class NextBlockPanel extends JPanel {
             idx = BLOCK_COLORS.length - 1;
         }
         return BLOCK_COLORS[idx];
+    }
+
+    private void drawItemBadge(Graphics2D g2, int originX, int originY, int width, int height) {
+        Graphics2D badge = (Graphics2D) g2.create();
+        badge.setFont(ITEM_BADGE_FONT);
+        String label = "ITEM";
+        int textWidth = badge.getFontMetrics().stringWidth(label);
+        int textHeight = badge.getFontMetrics().getAscent();
+        int padding = 6;
+        int boxWidth = textWidth + padding * 2;
+        int boxHeight = textHeight + padding;
+        int x = originX + width - boxWidth - 6;
+        int y = originY + 6;
+        badge.setColor(ITEM_BADGE_BG);
+        badge.fillRoundRect(x, y, boxWidth, boxHeight, 12, 12);
+        badge.setColor(ITEM_BADGE_TEXT);
+        badge.drawString(label, x + padding, y + textHeight);
+        badge.dispose();
     }
 }
