@@ -6,11 +6,13 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 
+import javax.swing.BorderFactory;
 import javax.swing.JPanel;
 
 import tetris.domain.Board;
 import tetris.domain.GameModel;
 import tetris.domain.model.Block;
+import tetris.domain.model.GameState;
 import tetris.view.TetrisFrame;
 import tetris.domain.BlockShape;
 
@@ -34,10 +36,12 @@ public class GamePanel extends JPanel {
     private GameModel gameModel;
 
     public GamePanel() {
-        setPreferredSize(TetrisFrame.FRAME_SIZE);
         setBackground(BACKGROUND_COLOR);
         setOpaque(true);
         setVisible(false);
+
+        // 영역 경계선 표시
+        setBorder(BorderFactory.createLineBorder(Color.RED, 3));
     }
 
     public void bindGameModel(GameModel model) {
@@ -67,16 +71,17 @@ public class GamePanel extends JPanel {
         g2.setColor(BACKGROUND_COLOR);
         g2.fillRect(originX, originY, boardWidthPx, boardHeightPx);
 
-        if (gameModel != null) {
-            drawLockedBlocks(g2, cellSize, originX, originY);
-            drawActiveBlock(g2, cellSize, originX, originY);
-        }
-
+        drawLockedBlocks(g2, cellSize, originX, originY);
+        drawActiveBlock(g2, cellSize, originX, originY);
         drawGridLines(g2, cellSize, originX, originY, boardWidthPx, boardHeightPx);
         g2.dispose();
     }
 
     private void drawLockedBlocks(Graphics2D g2, int cellSize, int originX, int originY) {
+        if (gameModel == null) {
+            return;
+        }
+
         int[][] grid = gameModel.getBoard().gridView();
         for (int y = 0; y < grid.length; y++) {
             for (int x = 0; x < grid[y].length; x++) {
@@ -93,6 +98,10 @@ public class GamePanel extends JPanel {
     }
 
     private void drawActiveBlock(Graphics2D g2, int cellSize, int originX, int originY) {
+        if (gameModel == null) {
+            return;
+        }
+
         Block active = gameModel.getActiveBlock();
         if (active == null) {
             return;

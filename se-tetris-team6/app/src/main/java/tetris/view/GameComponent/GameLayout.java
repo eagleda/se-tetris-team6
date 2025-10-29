@@ -72,6 +72,8 @@ public class GameLayout extends JPanel {
 
     public void bindGameModel(GameModel model) {
         gamePanel.bindGameModel(model);
+        nextBlockPanel.bindGameModel(model);
+        scoreboard.bindGameModel(model);
         repaint();
     }
 }

@@ -3,12 +3,21 @@ package tetris.view.GameComponent;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Font;
+import java.awt.Graphics;
+import java.util.Random;
 
 import javax.swing.BorderFactory;
 import javax.swing.JPanel;
 import javax.swing.JTextPane;
 
+import tetris.domain.GameModel;
+
 public class ScorePanel extends JPanel {
+
+    private JTextPane ScoreText;
+
+    private GameModel gameModel;
+
     public ScorePanel() {
         // 패널 레이아웃 및 외형 설정
         setLayout(new BorderLayout());
@@ -18,15 +27,45 @@ public class ScorePanel extends JPanel {
         // 빨간 테두리: 패널이 할당된 영역을 감싸도록 표시
         setBorder(BorderFactory.createLineBorder(Color.RED, 3));
 
-        // 중앙 텍스트
-        JTextPane text = new JTextPane();
-        text.setText("ScorePanel");
-        text.setEditable(false);
-        text.setOpaque(false); // 배경은 패널 배경을 사용
-        text.setForeground(Color.WHITE);
-        text.setFont(new Font("SansSerif", Font.BOLD, 16));
-        text.setFocusable(false);
+        JTextPane titleText = new JTextPane() {
+            {
+                setText("Scores");
+                setEditable(false);
+                setOpaque(false); // 배경은 패널 배경을 사용
+                setForeground(Color.GREEN);
+                setFont(new Font("SansSerif", Font.BOLD, 32));
+                setFocusable(false);
+            }
+        };
+        add(titleText, BorderLayout.NORTH);
 
-        add(text, BorderLayout.CENTER);
+        ScoreText = new JTextPane() {
+            {
+                setText("0");
+                setEditable(false);
+                setOpaque(false); // 배경은 패널 배경을 사용
+                setForeground(Color.WHITE);
+                setFont(new Font("SansSerif", Font.BOLD, 24));
+                setFocusable(false);
+            }
+        };
+        add(ScoreText, BorderLayout.CENTER);
+    }
+
+    public void bindGameModel(GameModel model) {
+        this.gameModel = model;
+        repaint();
+    }
+
+    private void updateScore(int score) {
+        ScoreText.setText(String.valueOf(score));
+    }
+
+    @Override
+    protected void paintComponent(Graphics g) {
+        super.paintComponent(g);
+        // TODO - GameModel.getScore() 메서드 구현
+        // updateScore(gameModel.getScore())
+        updateScore(new Random().nextInt(0, 100)); // 임시
     }
 }
