@@ -27,6 +27,7 @@ import tetris.domain.GameMode;
 import tetris.domain.GameModel;
 import tetris.domain.leaderboard.LeaderboardEntry;
 import tetris.domain.model.GameState;
+import tetris.domain.setting.Setting;
 import tetris.view.GameComponent.GameLayout;
 import tetris.view.GameComponent.GameOverPanel;
 
@@ -35,7 +36,7 @@ public class TetrisFrame extends JFrame {
     private GameModel gameModel;
 
     private static final String FRAME_TITLE = "Tetris Game - Team 06";
-    public static Dimension FRAME_SIZE = new Dimension(700, 900);
+    public static Dimension FRAME_SIZE = Setting.ScreenSize.MEDIUM.getDimension();
 
     // 프레임 레이아웃
     private JLayeredPane layeredPane;
