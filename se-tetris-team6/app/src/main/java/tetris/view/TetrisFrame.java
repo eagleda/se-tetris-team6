@@ -67,7 +67,7 @@ public class TetrisFrame extends JFrame {
         setupSettingPanel();
         setupScoreboardPanel();
         setupPausePanel();
-    setupGameOverPanel();
+        setupGameOverPanel();
         setupGameLayout();
 
         gameModel.bindUiBridge(new GameModel.UiBridge() {
@@ -227,7 +227,8 @@ public class TetrisFrame extends JFrame {
         }
         prevPanel = currPanel;
         currPanel = panel;
-        // If we're about to show the scoreboard, refresh its contents from the leaderboard repo
+        // If we're about to show the scoreboard, refresh its contents from the
+        // leaderboard repo
         if (panel == scoreboardPanel) {
             try {
                 List<LeaderboardEntry> standard = gameModel.loadTopScores(GameMode.STANDARD, 10);
@@ -305,6 +306,32 @@ public class TetrisFrame extends JFrame {
             public void actionPerformed(ActionEvent e) {
                 displayPanel(mainPanel);
                 gameModel.quitToMenu();
+            }
+        });
+
+        // 방향키로 버튼 이동 및 엔터로 클릭
+        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_UP, 0), "moveUpButton");
+        am.put("moveUpButton", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (mainPanel.equals(currPanel))
+                    mainPanel.focusButton(-1);
+            }
+        });
+        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_DOWN, 0), "moveDownButton");
+        am.put("moveDownButton", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (mainPanel.equals(currPanel))
+                    mainPanel.focusButton(1);
+            }
+        });
+        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_UP, 0), "clickFocusButton");
+        am.put("clickFocusButton", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (mainPanel.equals(currPanel))
+                    mainPanel.clickFocusButton();
             }
         });
 
