@@ -1,6 +1,7 @@
 package tetris.view.GameComponent;
 
 import java.awt.Color;
+import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
@@ -33,7 +34,7 @@ public class GamePanel extends JPanel {
     private GameModel gameModel;
 
     public GamePanel() {
-        setSize(TetrisFrame.FRAME_SIZE);
+        setPreferredSize(TetrisFrame.FRAME_SIZE);
         setBackground(BACKGROUND_COLOR);
         setOpaque(true);
         setVisible(false);
@@ -52,6 +53,7 @@ public class GamePanel extends JPanel {
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
         int cellSize = Math.min(getWidth() / BOARD_COLS, getHeight() / BOARD_ROWS);
+        cellSize = (int) (0.9 * cellSize); // 셀 크기 조정으로 화면 벗어남 방지
         if (cellSize <= 0) {
             g2.dispose();
             return;

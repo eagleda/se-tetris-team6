@@ -8,8 +8,8 @@ import javax.swing.BorderFactory;
 import javax.swing.JPanel;
 import javax.swing.JTextPane;
 
-public class NextBlockPanel extends JPanel {
-    public NextBlockPanel() {
+public class ScorePanel extends JPanel {
+    public ScorePanel() {
         // 패널 레이아웃 및 외형 설정
         setLayout(new BorderLayout());
         setOpaque(true);
@@ -20,7 +20,7 @@ public class NextBlockPanel extends JPanel {
 
         // 중앙 텍스트
         JTextPane text = new JTextPane();
-        text.setText("NextBlockPanel");
+        text.setText("ScorePanel");
         text.setEditable(false);
         text.setOpaque(false); // 배경은 패널 배경을 사용
         text.setForeground(Color.WHITE);
