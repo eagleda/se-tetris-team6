@@ -1,13 +1,19 @@
 package tetris.domain;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.EnumMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Random;
+import java.util.function.Supplier;
 
 import tetris.data.score.InMemoryScoreRepository;
 import tetris.data.setting.PreferencesSettingRepository;
 import tetris.domain.setting.SettingService;
+import tetris.domain.block.BlockLike;
 import tetris.domain.handler.GameHandler;
 import tetris.domain.handler.GameOverHandler;
 import tetris.domain.handler.GamePlayHandler;
@@ -16,8 +22,14 @@ import tetris.domain.handler.NameInputHandler;
 import tetris.domain.handler.PausedHandler;
 import tetris.domain.handler.ScoreboardHandler;
 import tetris.domain.handler.SettingsHandler;
+import tetris.domain.item.ItemBehavior;
+import tetris.domain.item.ItemContextImpl;
+import tetris.domain.item.ItemManager;
+import tetris.domain.item.behavior.BombBehavior;
+import tetris.domain.item.behavior.DoubleScoreBehavior;
+import tetris.domain.item.behavior.TimeSlowBehavior;
+import tetris.domain.item.model.ItemBlockModel;
 import tetris.domain.model.Block;
- 
 import tetris.domain.model.GameState;
 import tetris.domain.model.InputState;
 import tetris.domain.score.Score;
@@ -30,7 +42,7 @@ import tetris.domain.score.ScoreRuleEngine;
  * - {@link GameHandler} 구현들을 상태 머신으로 등록해 UI 흐름을 제어합니다.
  * - {@link GameClock} 이벤트를 받아 중력 및 잠금 지연을 처리합니다.
  */
-public final class GameModel {
+public final class GameModel implements tetris.domain.engine.GameplayEngine.GameplayEvents {
 
     /**
      * UI 계층과의 최소 연결 지점.
@@ -64,6 +76,24 @@ public final class GameModel {
     private final SettingService settingService;
     private BlockGenerator blockGenerator;
     private final Map<GameState, GameHandler> handlers = new EnumMap<>(GameState.class);
+    private GameMode currentMode = GameMode.STANDARD;
+    private GameMode lastMode = GameMode.STANDARD;
+    private final ItemManager itemManager = new ItemManager();
+    private final Random itemRandom = new Random();
+    private final List<Supplier<ItemBehavior>> behaviorFactories = List.of(
+        () -> new DoubleScoreBehavior(600, 2.0),
+        () -> new TimeSlowBehavior(600, 0.5),
+        () -> new BombBehavior(1)
+    );
+    private ItemBlockModel activeItemBlock;
+    private boolean nextBlockIsItem;
+    private int totalClearedLines;
+    private long currentTick;
+    private double scoreMultiplier = 1.0;
+    private long doubleScoreUntilTick;
+    private double slowFactor = 1.0;
+    private long slowUntilTick;
+    private ItemContextImpl itemContext;
 
     private UiBridge uiBridge = NO_OP_UI_BRIDGE;
     private GameState currentState;
@@ -85,6 +115,8 @@ public final class GameModel {
         registerHandlers();
         changeState(GameState.MENU);
         gameplayEngine = new tetris.domain.engine.GameplayEngine(board, inputState, blockGenerator, scoreEngine, uiBridge);
+        gameplayEngine.setEvents(this);
+        itemContext = new ItemContextImpl(this);
     }
 
     private void registerHandlers() {
@@ -148,6 +180,77 @@ public final class GameModel {
         return leaderboardRepository;
     }
 
+    public void clearBoardRegion(int x, int y, int width, int height) {
+        board.clearArea(x, y, width, height);
+        uiBridge.refreshBoard();
+    }
+
+    public void addBoardCells(int x, int y, int[][] cells) {
+        if (cells == null) {
+            return;
+        }
+        for (int row = 0; row < cells.length; row++) {
+            int[] line = cells[row];
+            if (line == null) {
+                continue;
+            }
+            for (int col = 0; col < line.length; col++) {
+                int value = line[col];
+                if (value <= 0) {
+                    continue;
+                }
+                board.setCell(x + col, y + row, value);
+            }
+        }
+        uiBridge.refreshBoard();
+    }
+
+    public void addGlobalBuff(String buffId, long durationTicks, Map<String, Object> meta) {
+        if (currentMode != GameMode.ITEM) {
+            return;
+        }
+        long duration = Math.max(0, durationTicks);
+        long expiry = currentTick + duration;
+        Map<String, Object> data = meta == null ? Collections.emptyMap() : meta;
+        if ("double_score".equals(buffId)) {
+            Object factorObj = data.getOrDefault("factor", Double.valueOf(2.0));
+            double factor = factorObj instanceof Number ? ((Number) factorObj).doubleValue() : 2.0;
+            scoreMultiplier = Math.max(0.0, factor);
+            doubleScoreUntilTick = expiry;
+            scoreEngine.setMultiplier(scoreMultiplier);
+        } else if ("slow".equals(buffId)) {
+            Object factorObj = data.getOrDefault("factor", Double.valueOf(0.5));
+            slowFactor = Math.max(0.1, factorObj instanceof Number ? ((Number) factorObj).doubleValue() : 0.5);
+            slowUntilTick = expiry;
+            gameplayEngine.setSpeedModifier(slowFactor);
+        }
+    }
+
+    public long getCurrentTick() {
+        return currentTick;
+    }
+
+    public GameMode getCurrentMode() {
+        return currentMode;
+    }
+
+    public GameMode getLastMode() {
+        return lastMode;
+    }
+
+    public boolean isItemMode() {
+        return currentMode == GameMode.ITEM;
+    }
+
+    public void spawnParticles(int x, int y, String type) {
+        // TODO: bridge to UI particle system. For now board만 새로고침.
+        uiBridge.refreshBoard();
+    }
+
+    public void playSfx(String id) {
+        // TODO: audio 시스템 연동
+    }
+
     public Block getActiveBlock() {
         return gameplayEngine.getActiveBlock();
     }
@@ -158,6 +261,9 @@ public final class GameModel {
 
     public void setBlockGenerator(BlockGenerator generator) {
         this.blockGenerator = Objects.requireNonNull(generator, "generator");
+        if (gameplayEngine != null) {
+            gameplayEngine.setBlockGenerator(generator);
+        }
     }
 
     public BlockGenerator getBlockGenerator() {
@@ -171,6 +277,14 @@ public final class GameModel {
     public tetris.domain.BlockKind getNextBlockKind() {
         if (blockGenerator == null) return null;
         return blockGenerator.peekNext();
+    }
+
+    public void startGame(GameMode mode) {
+        GameMode selected = mode == null ? GameMode.STANDARD : mode;
+        this.currentMode = selected;
+        this.lastMode = selected;
+        resetGameplayState();
+        changeState(GameState.PLAYING);
     }
 
     public void spawnIfNeeded() {
@@ -199,7 +313,84 @@ public final class GameModel {
         return gameplayEngine.getActiveBlock() != null;
     }
 
-    
+    @Override
+    public void onBlockSpawned(Block block) {
+        if (block == null) {
+            return;
+        }
+        if (currentMode != GameMode.ITEM) {
+            activeItemBlock = null;
+            nextBlockIsItem = false;
+            return;
+        }
+        if (nextBlockIsItem) {
+            List<ItemBehavior> behaviors = new ArrayList<>();
+            behaviors.add(rollBehavior());
+            ItemBlockModel itemBlock = new ItemBlockModel(block, behaviors);
+            activeItemBlock = itemBlock;
+            itemManager.add(itemBlock);
+            itemBlock.onSpawn(itemContext);
+            nextBlockIsItem = false;
+        } else {
+            activeItemBlock = null;
+        }
+    }
+
+    @Override
+    public void onBlockLocked(Block block) {
+        if (currentMode != GameMode.ITEM) {
+            return;
+        }
+        if (activeItemBlock != null && activeItemBlock.getDelegate() == block) {
+            itemManager.onLock(itemContext, activeItemBlock);
+            activeItemBlock = null;
+        }
+    }
+
+    @Override
+    public void onLinesCleared(int clearedLines) {
+        if (clearedLines <= 0) {
+            return;
+        }
+        totalClearedLines += clearedLines;
+        if (currentMode != GameMode.ITEM) {
+            return;
+        }
+        if (totalClearedLines % 10 == 0) {
+            nextBlockIsItem = true;
+        }
+        itemManager.onLineClear(itemContext, null);
+    }
+
+    @Override
+    public void onTick(long tick) {
+        currentTick = tick;
+        if (currentMode == GameMode.ITEM) {
+            itemManager.tick(itemContext, tick);
+            refreshBuffs(tick);
+        }
+    }
+
+    private ItemBehavior rollBehavior() {
+        if (behaviorFactories.isEmpty()) {
+            return new DoubleScoreBehavior(600, 2.0);
+        }
+        int index = itemRandom.nextInt(behaviorFactories.size());
+        return behaviorFactories.get(index).get();
+    }
+
+    private void refreshBuffs(long tick) {
+        if (doubleScoreUntilTick > 0 && tick >= doubleScoreUntilTick) {
+            doubleScoreUntilTick = 0;
+            scoreMultiplier = 1.0;
+            scoreEngine.setMultiplier(scoreMultiplier);
+        }
+        if (slowUntilTick > 0 && tick >= slowUntilTick) {
+            slowUntilTick = 0;
+            slowFactor = 1.0;
+            gameplayEngine.setSpeedModifier(slowFactor);
+        }
+    }
 
     private void resetInputAxes() {
         inputState.setLeft(false);
@@ -212,6 +403,17 @@ public final class GameModel {
         resetInputAxes();
         board.clear();
         scoreEngine.resetScore();
+        scoreEngine.setMultiplier(1.0);
+        gameplayEngine.setSpeedModifier(1.0);
+        itemManager.clear();
+        activeItemBlock = null;
+        nextBlockIsItem = false;
+        totalClearedLines = 0;
+        currentTick = 0;
+        scoreMultiplier = 1.0;
+        doubleScoreUntilTick = 0;
+        slowFactor = 1.0;
+        slowUntilTick = 0;
         gameplayEngine.setActiveBlock(null);
         gameplayEngine.stopClockCompletely();
     }
@@ -321,8 +523,7 @@ public final class GameModel {
     }
 
     public void restartGame() {
-        resetGameplayState();
-        changeState(GameState.PLAYING);
+        startGame(lastMode);
     }
 
     public void moveBlockLeft() {

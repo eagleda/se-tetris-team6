@@ -81,6 +81,32 @@ public final class Board {
         }
     }
 
+    /** 지정한 직사각형 영역을 비웁니다. */
+    public void clearArea(int x, int y, int width, int height) {
+        if (width <= 0 || height <= 0) {
+            return;
+        }
+        clearAreaInclusive(x, y, x + width - 1, y + height - 1);
+    }
+
+    /** 포함 범위로 영역을 비웁니다. */
+    public void clearAreaInclusive(int x0, int y0, int x1, int y1) {
+        int minX = Math.max(0, Math.min(x0, x1));
+        int maxX = Math.min(W - 1, Math.max(x0, x1));
+        int minY = Math.max(0, Math.min(y0, y1));
+        int maxY = Math.min(H - 1, Math.max(y0, y1));
+        for (int yy = minY; yy <= maxY; yy++) {
+            Arrays.fill(grid[yy], minX, maxX + 1, 0);
+        }
+    }
+
+    public void setCell(int x, int y, int value) {
+        if (x < 0 || x >= W || y < 0 || y >= H) {
+            return;
+        }
+        grid[y][x] = value;
+    }
+
     // 내부 유틸
     private boolean isFullRow(int y) {
         for (int x = 0; x < W; x++) if (grid[y][x] == 0) return false;

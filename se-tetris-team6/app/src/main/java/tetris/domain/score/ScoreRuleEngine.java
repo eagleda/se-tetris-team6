@@ -16,6 +16,7 @@ public final class ScoreRuleEngine {
     private static final int BASE_DROP_POINTS = 1;
 
     private final ScoreRepository repository;
+    private double multiplier = 1.0;
     private final List<Consumer<Score>> listeners = new CopyOnWriteArrayList<>();
 
     public ScoreRuleEngine(ScoreRepository repository) {
@@ -32,7 +33,11 @@ public final class ScoreRuleEngine {
     }
 
     public void onBlockDescend() {
-        apply(score -> score.withAdditionalPoints(BASE_DROP_POINTS));
+        int delta = applyMultiplier(BASE_DROP_POINTS);
+        if (delta <= 0) {
+            return;
+        }
+        apply(score -> score.withAdditionalPoints(delta));
     }
 
     public void onBlockLocked() {
@@ -50,9 +55,10 @@ public final class ScoreRuleEngine {
             case 4 -> 800;
             default -> 1200;
         };
+        int delta = applyMultiplier(base);
         apply(score -> score
             .withClearedLinesAdded(clearedLines)
-            .withAdditionalPoints(base));
+            .withAdditionalPoints(delta));
     }
 
     public void resetScore() {
@@ -71,5 +77,14 @@ public final class ScoreRuleEngine {
         for (Consumer<Score> listener : listeners) {
             listener.accept(updated);
         }
+    }
+
+    private int applyMultiplier(int basePoints) {
+        double applied = basePoints * multiplier;
+        return (int) Math.round(applied);
+    }
+
+    public void setMultiplier(double multiplier) {
+        this.multiplier = Math.max(0.0, multiplier);
     }
 }

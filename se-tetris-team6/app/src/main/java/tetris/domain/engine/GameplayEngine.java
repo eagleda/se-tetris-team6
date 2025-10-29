@@ -20,6 +20,13 @@ import java.util.Objects;
  */
 public class GameplayEngine implements GameClock.Listener {
 
+    public interface GameplayEvents {
+        void onBlockSpawned(Block block);
+        void onBlockLocked(Block block);
+        void onLinesCleared(int clearedLines);
+        void onTick(long tick);
+    }
+
     private final Board board;
     private final InputState inputState;
     private final ScoreRuleEngine scoreEngine;
@@ -28,6 +35,8 @@ public class GameplayEngine implements GameClock.Listener {
     private BlockGenerator blockGenerator;
     private Block activeBlock;
     private boolean clockStarted;
+    private GameplayEvents events;
+    private long tickCounter;
 
     public GameplayEngine(Board board, InputState inputState, BlockGenerator generator, ScoreRuleEngine scoreEngine, UiBridge uiBridge) {
         this.board = Objects.requireNonNull(board);
@@ -44,12 +53,20 @@ public class GameplayEngine implements GameClock.Listener {
         this.clock = new GameClock(this);
     }
 
+    public void setEvents(GameplayEvents events) {
+        this.events = events;
+    }
+
     public void setUiBridge(UiBridge bridge) {
         this.uiBridge = Objects.requireNonNull(bridge, "bridge");
     }
 
     public void setBlockGenerator(BlockGenerator generator) {
         this.blockGenerator = Objects.requireNonNull(generator);
+    }
+
+    public void setSpeedModifier(double modifier) {
+        clock.setSpeedModifier(modifier);
     }
 
     public Block getActiveBlock() { return activeBlock; }
@@ -92,18 +109,28 @@ public class GameplayEngine implements GameClock.Listener {
             return false;
         }
         activeBlock = next;
+        if (events != null) {
+            events.onBlockSpawned(activeBlock);
+        }
         return true;
     }
 
     private void lockActiveBlock() {
         if (activeBlock == null) return;
-        BlockShape shape = activeBlock.getShape();
+        Block current = activeBlock;
+        BlockShape shape = current.getShape();
         int blockId = shape.kind().ordinal() + 1;
-        board.place(shape, activeBlock.getX(), activeBlock.getY(), blockId);
+        board.place(shape, current.getX(), current.getY(), blockId);
         activeBlock = null;
         int cleared = board.clearLines();
         if (cleared > 0) {
             scoreEngine.onLinesCleared(cleared);
+        }
+        if (events != null) {
+            events.onBlockLocked(current);
+            if (cleared > 0) {
+                events.onLinesCleared(cleared);
+            }
         }
     }
 
@@ -150,6 +177,10 @@ public class GameplayEngine implements GameClock.Listener {
 
     @Override
     public void onGravityTick() {
+        tickCounter++;
+        if (events != null) {
+            events.onTick(tickCounter);
+        }
         if (activeBlock == null) return;
         uiBridge.refreshBoard();
 
