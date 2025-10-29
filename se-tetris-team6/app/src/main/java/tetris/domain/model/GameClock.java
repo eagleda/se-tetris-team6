@@ -60,6 +60,7 @@ public final class GameClock {
     private int level;
     private boolean softDropActive;
     private boolean running;
+    private double externalSpeedModifier = 1.0;
 
     public GameClock(Listener listener) {
         this(listener, LEVEL_GRAVITY_TABLE[0]);
@@ -139,6 +140,11 @@ public final class GameClock {
         return softDropActive;
     }
 
+    public void setSpeedModifier(double modifier) {
+        externalSpeedModifier = Math.max(0.1, modifier);
+        updateGravityDelay();
+    }
+
     public void armLockDelay(int delayMs) {
         if (delayMs <= 0) {
             listener.onLockDelayTimeout();
@@ -178,9 +184,11 @@ public final class GameClock {
 
     private void updateGravityDelay() {
         int base = computeDelayForLevel(level);
-        int delay = softDropActive
-            ? Math.max(MIN_GRAVITY_DELAY, base / SOFT_DROP_FACTOR)
+        double adjusted = softDropActive
+            ? Math.max(MIN_GRAVITY_DELAY, base / (double) SOFT_DROP_FACTOR)
             : base;
+        adjusted = Math.max(MIN_GRAVITY_DELAY, adjusted * externalSpeedModifier);
+        int delay = (int) Math.round(adjusted);
         gravityTimer.setDelay(delay);
         gravityTimer.setInitialDelay(delay);
     }

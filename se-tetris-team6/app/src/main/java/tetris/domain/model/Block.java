@@ -1,12 +1,13 @@
 package tetris.domain.model;
 
-import tetris.domain.BlockShape;
 import tetris.domain.BlockKind;
+import tetris.domain.BlockShape;
+import tetris.domain.block.BlockLike;
 
 /**
  * 현재 조작 중인 미노를 표현하는 도메인 객체.
  */
-public final class Block {
+public final class Block implements BlockLike {
     private BlockShape shape;
     private int x;
     private int y;
@@ -21,6 +22,7 @@ public final class Block {
         return new Block(BlockShape.of(kind), spawnX, spawnY);
     }
 
+    @Override
     public BlockShape getShape() {
         return shape;
     }
@@ -29,10 +31,17 @@ public final class Block {
         this.shape = shape;
     }
 
+    @Override
+    public BlockKind getKind() {
+        return shape.kind();
+    }
+
+    @Override
     public int getX() {
         return x;
     }
 
+    @Override
     public int getY() {
         return y;
     }
@@ -42,6 +51,7 @@ public final class Block {
         this.y += dy;
     }
 
+    @Override
     public void setPosition(int x, int y) {
         this.x = x;
         this.y = y;
@@ -52,7 +62,6 @@ public final class Block {
     }
 
     public Block copy() {
-        Block clone = new Block(shape, x, y);
-        return clone;
+        return new Block(shape, x, y);
     }
 }

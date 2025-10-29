@@ -154,8 +154,11 @@ public class TetrisFrame extends JFrame {
 
         mainPanel.gameButton.addActionListener(e -> {
             displayPanel(gameLayout);
-            // 2. Controller에게 게임 시작을 명령
-            gameController.startGame();
+            gameController.startStandardGame();
+        });
+        mainPanel.itemGameButton.addActionListener(e -> {
+            displayPanel(gameLayout);
+            gameController.startItemGame();
         });
         mainPanel.settingButton.addActionListener(e -> {
             displayPanel(settingPanel);

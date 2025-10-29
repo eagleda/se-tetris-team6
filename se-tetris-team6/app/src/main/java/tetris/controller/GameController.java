@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.Map;
 import tetris.domain.BlockGenerator;
 import tetris.domain.GameDifficulty;
+import tetris.domain.GameMode;
 import tetris.domain.GameModel;
 import tetris.domain.model.GameState;
 // 이제부터 모델의 좌우 움직임이 안 되는 이유를 해결합니다.
@@ -173,6 +174,8 @@ public class GameController {
             System.out.println("Controller: 블록 홀드");
         } else if (keyCode == keyBindings.get("RESTART")) {
             gameModel.restartGame();
+            pauseKeyPressed = false;
+            lastKeyPressTime.clear();
             System.out.println("Controller: 게임 재시작");
         }
     }
@@ -192,6 +195,8 @@ public class GameController {
             System.out.println("Controller: 메뉴로 돌아가기");
         } else if (keyCode == keyBindings.get("RESTART")) {
             gameModel.restartGame();
+            pauseKeyPressed = false;
+            lastKeyPressTime.clear();
             System.out.println("Controller: 게임 재시작");
         }
     }
@@ -311,9 +316,22 @@ public class GameController {
     /**
      * 게임 시작 메소드
      */
+    public void startStandardGame() {
+        startGame(GameMode.STANDARD);
+    }
+
+    public void startItemGame() {
+        startGame(GameMode.ITEM);
+    }
+
+    public void startGame(GameMode mode) {
+        pauseKeyPressed = false;
+        lastKeyPressTime.clear();
+        gameModel.startGame(mode);
+    }
+
     public void startGame() {
-        System.out.println("[LOG] GameController.startGame()");
-        gameModel.changeState(GameState.PLAYING);
+        startStandardGame();
     }
 
     /**

@@ -12,6 +12,7 @@ import javax.swing.JPanel;
 
 public class MainPanel extends JPanel {
     public JButton gameButton;
+    public JButton itemGameButton;
     public JButton settingButton;
     public JButton scoreboardButton;
 
@@ -44,7 +45,12 @@ public class MainPanel extends JPanel {
                 setFont(new Font("SansSerif", Font.BOLD, 18));
             }
         };
-        //아이템 모드 버튼 추가 -> 나중에 구현
+        itemGameButton = new JButton() {
+            {
+                setText("Item Mode");
+                setFont(new Font("SansSerif", Font.BOLD, 18));
+            }
+        };
         settingButton = new JButton() {
             {
                 setText("Setting");
@@ -63,6 +69,7 @@ public class MainPanel extends JPanel {
             addComponentVertical(new EmptySpace(), gbc);
         }
         addComponentVertical(gameButton, gbc);
+        addComponentVertical(itemGameButton, gbc);
         addComponentVertical(settingButton, gbc);
         addComponentVertical(scoreboardButton, gbc);
         for (int i = 0; i < 8; i++) {
