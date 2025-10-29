@@ -61,7 +61,8 @@ public class SettingPanel extends JPanel {
         difficultyCombo = new JComboBox<>(GameDifficulty.values());
         difficultyCombo.setPreferredSize(new Dimension(200, 24));
         difficultyRow.add(difficultyCombo);
-        this.add(difficultyRow);
+
+        addToLayout(difficultyRow, 0, 1, 1, 1, GridBagConstraints.BOTH, GridBagConstraints.WEST);
 
         // Colorblind mode
         JPanel colorRow = new JPanel(new FlowLayout(FlowLayout.LEFT));
@@ -70,7 +71,7 @@ public class SettingPanel extends JPanel {
         colorBlindCheckbox = new JCheckBox();
         colorRow.add(colorBlindCheckbox);
 
-        addToLayout(colorRow, 0, 1, 1, 1, GridBagConstraints.BOTH, GridBagConstraints.WEST);
+        addToLayout(colorRow, 0, 2, 1, 1, GridBagConstraints.BOTH, GridBagConstraints.WEST);
 
         // Key bindings
         JPanel keysRow = new JPanel();
@@ -106,7 +107,7 @@ public class SettingPanel extends JPanel {
         row2.add(captureSoftDropButton);
         keysRow.add(row2);
 
-        addToLayout(keysRow, 0, 2, 1, 1, GridBagConstraints.BOTH, GridBagConstraints.WEST);
+        addToLayout(keysRow, 0, 3, 1, 1, GridBagConstraints.BOTH, GridBagConstraints.WEST);
 
         // Action buttons
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT));
@@ -120,7 +121,7 @@ public class SettingPanel extends JPanel {
         actions.add(saveButton);
         actions.add(backToMainButton);
 
-        addToLayout(actions, 0, 3, 1, 1, GridBagConstraints.BOTH, GridBagConstraints.WEST);
+        addToLayout(actions, 0, 4, 1, 1, GridBagConstraints.BOTH, GridBagConstraints.WEST);
 
         // install capture behavior: controller will attach listeners, but provide a
         // default capturing helper
