@@ -51,21 +51,41 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
      */
     public interface UiBridge {
         void showPauseOverlay();
+
         void hidePauseOverlay();
+
         void refreshBoard();
-        /** Show the Game Over overlay. If canEnterName is true the UI should
-         * provide a name entry flow to persist to the leaderboard. */
+
+        /**
+         * Show the Game Over overlay. If canEnterName is true the UI should
+         * provide a name entry flow to persist to the leaderboard.
+         */
         void showGameOverOverlay(tetris.domain.score.Score score, boolean canEnterName);
+
         /** Show a dedicated name-entry overlay (optional). */
         void showNameEntryOverlay(tetris.domain.score.Score score);
     }
 
     private static final UiBridge NO_OP_UI_BRIDGE = new UiBridge() {
-        @Override public void showPauseOverlay() { /* no-op */ }
-        @Override public void hidePauseOverlay() { /* no-op */ }
-        @Override public void refreshBoard() { /* no-op */ }
-        @Override public void showGameOverOverlay(tetris.domain.score.Score score, boolean canEnterName) { /* no-op */ }
-        @Override public void showNameEntryOverlay(tetris.domain.score.Score score) { /* no-op */ }
+        @Override
+        public void showPauseOverlay() {
+            /* no-op */ }
+
+        @Override
+        public void hidePauseOverlay() {
+            /* no-op */ }
+
+        @Override
+        public void refreshBoard() {
+            /* no-op */ }
+
+        @Override
+        public void showGameOverOverlay(tetris.domain.score.Score score, boolean canEnterName) {
+            /* no-op */ }
+
+        @Override
+        public void showNameEntryOverlay(tetris.domain.score.Score score) {
+            /* no-op */ }
     };
 
     private final Board board = new Board();
@@ -82,10 +102,10 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
     private final ItemManager itemManager = new ItemManager();
     private final Random itemRandom = new Random();
     private final List<Supplier<ItemBehavior>> behaviorFactories = List.of(
-        () -> new DoubleScoreBehavior(600, 2.0),
-        () -> new TimeSlowBehavior(600, 0.5),
-        () -> new BombBehavior(1)
-    );
+            () -> new DoubleScoreBehavior(600, 2.0),
+            () -> new TimeSlowBehavior(600, 0.5),
+            () -> new BombBehavior(1));
+
     public static final class ActiveItemInfo {
         private final BlockLike block;
         private final String label;
@@ -109,6 +129,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
             return type;
         }
     }
+
     private ItemBlockModel activeItemBlock;
     private boolean nextBlockIsItem;
     private int totalClearedLines;
@@ -122,23 +143,24 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
     private UiBridge uiBridge = NO_OP_UI_BRIDGE;
     private GameState currentState;
     private GameHandler currentHandler;
-    
 
     public GameModel() {
         this(new RandomBlockGenerator(), new InMemoryScoreRepository());
     }
 
     public GameModel(BlockGenerator generator, ScoreRepository scoreRepository) {
-    this.scoreRepository = Objects.requireNonNull(scoreRepository, "scoreRepository");
-    this.scoreEngine = new ScoreRuleEngine(scoreRepository);
-    // persistent leaderboard for game-over name saving
-    this.leaderboardRepository = new tetris.data.leaderboard.PreferencesLeaderboardRepository();
-        // lightweight setting service used by handlers that expect model-level setting operations
+        this.scoreRepository = Objects.requireNonNull(scoreRepository, "scoreRepository");
+        this.scoreEngine = new ScoreRuleEngine(scoreRepository);
+        // persistent leaderboard for game-over name saving
+        this.leaderboardRepository = new tetris.data.leaderboard.PreferencesLeaderboardRepository();
+        // lightweight setting service used by handlers that expect model-level setting
+        // operations
         this.settingService = new SettingService(new PreferencesSettingRepository(), scoreRepository);
         setBlockGenerator(generator);
         registerHandlers();
         changeState(GameState.MENU);
-        gameplayEngine = new tetris.domain.engine.GameplayEngine(board, inputState, blockGenerator, scoreEngine, uiBridge);
+        gameplayEngine = new tetris.domain.engine.GameplayEngine(board, inputState, blockGenerator, scoreEngine,
+                uiBridge);
         gameplayEngine.setEvents(this);
         itemContext = new ItemContextImpl(this);
     }
@@ -160,13 +182,13 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
     public void changeState(GameState next) {
         Objects.requireNonNull(next, "next");
         System.out.printf("[LOG] GameModel.changeState(%s -> %s)%n",
-            currentState, next);
+                currentState, next);
         if (currentHandler != null) {
             currentHandler.exit(this);
         }
         currentState = next;
         currentHandler = Optional.ofNullable(handlers.get(next))
-            .orElseThrow(() -> new IllegalStateException("No handler for state: " + next));
+                .orElseThrow(() -> new IllegalStateException("No handler for state: " + next));
         currentHandler.enter(this);
     }
 
@@ -182,6 +204,47 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
 
     public Board getBoard() {
         return board;
+    }
+
+    /**
+     * 활성 블록을 현재 보드에 시뮬레이션으로 놓았을 때 가득 찬(삭제 대상이 될) 줄 인덱스 목록을 반환합니다.
+     * 실제 보드는 변경하지 않습니다. 반환 순서는 아래(큰 y) -> 위(작은 y) 순서입니다.
+     */
+    public java.util.List<Integer> getPendingFullLines() {
+        // active 블록이 없으면 빈 리스트 반환
+        if (gameplayEngine == null || gameplayEngine.getActiveBlock() == null) {
+            return java.util.Collections.emptyList();
+        }
+        // 보드 스냅샷(깊은 복사) 가져와 시뮬레이션
+        int[][] temp = board.gridView();
+        tetris.domain.model.Block active = gameplayEngine.getActiveBlock();
+        BlockShape shape = active.getShape();
+        int blockId = shape.kind().ordinal() + 1;
+        for (int sy = 0; sy < shape.height(); sy++) {
+            for (int sx = 0; sx < shape.width(); sx++) {
+                if (!shape.filled(sx, sy))
+                    continue;
+                int gx = active.getX() + sx;
+                int gy = active.getY() + sy;
+                if (gx < 0 || gx >= Board.W || gy < 0 || gy >= Board.H)
+                    continue;
+                temp[gy][gx] = blockId;
+            }
+        }
+        // 시뮬레이션된 보드에서 가득 찬 행 수집 (아래->위)
+        java.util.List<Integer> fullRows = new ArrayList<>();
+        for (int y = Board.H - 1; y >= 0; y--) {
+            boolean full = true;
+            for (int x = 0; x < Board.W; x++) {
+                if (temp[y][x] == 0) {
+                    full = false;
+                    break;
+                }
+            }
+            if (full)
+                fullRows.add(y);
+        }
+        return fullRows;
     }
 
     public InputState getInputState() {
@@ -321,7 +384,8 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
      * This is used by UI components to render a "next block" preview.
      */
     public tetris.domain.BlockKind getNextBlockKind() {
-        if (blockGenerator == null) return null;
+        if (blockGenerator == null)
+            return null;
         return blockGenerator.peekNext();
     }
 
@@ -468,8 +532,6 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         gameplayEngine.stopClockCompletely();
     }
 
-    
-
     public void stepGameplay() {
         gameplayEngine.stepGameplay();
     }
@@ -526,7 +588,8 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
     }
 
     public void prepareNameEntry() {
-        // Placeholder for name entry preparation; handled by NameInputHandler in UI flow
+        // Placeholder for name entry preparation; handled by NameInputHandler in UI
+        // flow
     }
 
     public void processNameEntry() {
@@ -539,8 +602,6 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
             scoreEngine.onLinesCleared(linesCleared);
         }
     }
-
-    
 
     // === 외부 제어 진입점 ===
 
