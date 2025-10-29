@@ -1,5 +1,6 @@
 package tetris.domain;
 
+import java.util.Arrays;
 import java.util.Objects;
 import java.util.Random;
 
@@ -11,10 +12,18 @@ public final class RandomBlockGenerator implements BlockGenerator {
 
     private final BlockKind[] kinds = BlockKind.values();
     private final Random random;
-    // maintain a lookahead so peekNext() can report the upcoming kind without
-    // disturbing the sequence used by nextBlock(). This implements a 1-slot
-    // preview buffer (sufficient for simple UI preview).
+
+    // lookahead buffer so peekNext() can report the upcoming kind without
+    // disturbing the sequence used by nextBlock(). Keep 1-slot preview to
+    // remain compatible with UI components that rely on peekNext().
     private BlockKind nextKind;
+
+    // Weighted roulette selection state (to support difficulty adjustments).
+    private final double[] weights;
+    private final double[] cumulativeWeights;
+    private double totalWeight;
+    private GameDifficulty difficulty = GameDifficulty.NORMAL;
+    private boolean dirty = true;
 
     public RandomBlockGenerator() {
         this(new Random());
@@ -22,22 +31,69 @@ public final class RandomBlockGenerator implements BlockGenerator {
 
     public RandomBlockGenerator(Random random) {
         this.random = Objects.requireNonNull(random, "random");
-        this.nextKind = kinds[this.random.nextInt(kinds.length)];
+        this.weights = new double[kinds.length];
+        this.cumulativeWeights = new double[kinds.length];
+        // initialize buffer using weighted sampling (will call recompute on first use)
+        this.nextKind = null;
     }
 
     @Override
     public BlockKind nextBlock() {
-        BlockKind current = nextKind != null ? nextKind : kinds[random.nextInt(kinds.length)];
-        // advance buffer
-        nextKind = kinds[random.nextInt(kinds.length)];
+        ensureBuffered();
+        BlockKind current = nextKind;
+        // advance buffer by sampling with current weights
+        nextKind = sampleByWeights();
         return current;
     }
 
     @Override
     public BlockKind peekNext() {
-        if (nextKind == null) {
-            nextKind = kinds[random.nextInt(kinds.length)];
-        }
+        ensureBuffered();
         return nextKind;
+    }
+
+    @Override
+    public void setDifficulty(GameDifficulty difficulty) {
+        GameDifficulty next = difficulty == null ? GameDifficulty.NORMAL : difficulty;
+        if (this.difficulty != next) {
+            this.difficulty = next;
+            this.dirty = true;
+        }
+    }
+
+    private void ensureBuffered() {
+        if (nextKind == null) {
+            if (dirty) recomputeWeights();
+            nextKind = sampleByWeights();
+        }
+    }
+
+    private BlockKind sampleByWeights() {
+        if (dirty) recomputeWeights();
+        double pick = random.nextDouble() * totalWeight;
+        for (int i = 0; i < cumulativeWeights.length; i++) {
+            if (pick < cumulativeWeights[i]) {
+                return kinds[i];
+            }
+        }
+        return kinds[kinds.length - 1];
+    }
+
+    private void recomputeWeights() {
+        // base uniform weight
+        double baseWeight = 1.0;
+        Arrays.fill(weights, baseWeight);
+        // index of I block is 0 in BlockKind enum
+        int indexI = 0;
+        weights[indexI] = (difficulty == GameDifficulty.EASY) ? baseWeight * 1.2
+            : (difficulty == GameDifficulty.HARD) ? baseWeight * 0.8 : baseWeight;
+
+        double acc = 0.0;
+        for (int i = 0; i < weights.length; i++) {
+            acc += weights[i];
+            cumulativeWeights[i] = acc;
+        }
+        totalWeight = acc;
+        dirty = false;
     }
 }

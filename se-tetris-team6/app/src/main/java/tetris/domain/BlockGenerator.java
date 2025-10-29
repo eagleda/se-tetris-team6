@@ -22,4 +22,12 @@ public interface BlockGenerator {
         // 구현체에서 상태를 유지하도록 오버라이드하는 것을 권장합니다.
         return nextBlock();
     }
+
+    /**
+     * Optional runtime difficulty hint. Default implementation is no-op so
+     * existing generators remain compatible when callers set difficulty.
+     */
+    default void setDifficulty(tetris.domain.GameDifficulty difficulty) {
+        // no-op by default
+    }
 }
