@@ -6,6 +6,8 @@ import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.util.ArrayList;
+import java.util.List;
 
 import javax.swing.JButton;
 import javax.swing.JPanel;
@@ -15,6 +17,11 @@ public class MainPanel extends JPanel {
     public JButton itemGameButton;
     public JButton settingButton;
     public JButton scoreboardButton;
+
+    public Color NORMAL_COLOR = Color.white;
+    public Color HIGHLIGHT_COLOR = Color.gray;
+    private List<JButton> buttons;
+    private int currentFocusIndex = 0;
 
     public MainPanel() {
         this.setSize(TetrisFrame.FRAME_SIZE);
@@ -75,10 +82,27 @@ public class MainPanel extends JPanel {
         for (int i = 0; i < 8; i++) {
             addComponentVertical(new EmptySpace(), gbc);
         }
+
+        // Add button to buttons
+        buttons = new ArrayList<>();
+        buttons.add(gameButton);
+        buttons.add(itemGameButton);
+        buttons.add(settingButton);
+        buttons.add(scoreboardButton);
     }
 
     private void addComponentVertical(Component component, GridBagConstraints gbc) {
         this.add(component, gbc);
         gbc.gridy++;
+    }
+
+    public void focusButton(int direction) {
+        buttons.get(currentFocusIndex).setBackground(NORMAL_COLOR);
+        currentFocusIndex = (currentFocusIndex + direction + buttons.size()) % buttons.size();
+        buttons.get(currentFocusIndex).setBackground(HIGHLIGHT_COLOR);
+    }
+
+    public void clickFocusButton() {
+        buttons.get(currentFocusIndex).doClick();
     }
 }
