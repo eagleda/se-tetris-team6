@@ -150,6 +150,15 @@ public final class GameModel {
         return blockGenerator;
     }
 
+    /**
+     * Return a preview of the next BlockKind without consuming the generator.
+     * This is used by UI components to render a "next block" preview.
+     */
+    public tetris.domain.BlockKind getNextBlockKind() {
+        if (blockGenerator == null) return null;
+        return blockGenerator.peekNext();
+    }
+
     public void spawnIfNeeded() {
         gameplayEngine.spawnIfNeeded();
         if (gameplayEngine.getActiveBlock() == null) {
