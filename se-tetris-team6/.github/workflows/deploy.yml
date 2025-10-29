@@ -40,6 +40,44 @@ jobs:
           name: app-dist-zip
           path: app-dist-${{ github.sha }}.zip
 
+      - name: Create runtime image with jlink
+        shell: powershell
+        run: |
+          Write-Host "Creating runtime image with jlink"
+          $jmods = "${{ env.JAVA_HOME }}\jmods"
+          $out = "runtime"
+          if (Test-Path $out) { Remove-Item -Recurse -Force $out }
+          & "${{ env.JAVA_HOME }}\bin\jlink.exe" --strip-debug --compress=2 --no-header-files --no-man-pages --module-path $jmods -p $jmods --add-modules java.base,java.desktop -o $out
+          Write-Host "Runtime image created: $out"
+
+      - name: Run jpackage to create Windows installer (exe)
+        shell: powershell
+        env:
+          JAVA_HOME: ${{ env.JAVA_HOME }}
+        run: |
+          Write-Host "Locating main jar in installDist lib"
+          $libDir = "app\build\install\app\lib"
+          $jars = Get-ChildItem -Path $libDir -Filter "*.jar" | Select-Object -ExpandProperty FullName
+          if (-not $jars) { Write-Error "No jars found in $libDir"; exit 1 }
+          $mainJar = $jars | Select-Object -Last 1
+          Write-Host "Using main jar: $mainJar"
+          $iconPath = "assets\tetris.ico"
+          $dest = "dist"
+          if (-Not (Test-Path $dest)) { New-Item -ItemType Directory -Path $dest | Out-Null }
+          $jpackageCmd = "& \"${{ env.JAVA_HOME }}\\bin\\jpackage.exe\" --type exe --input \"$libDir\" --main-jar \"$(Split-Path -Leaf $mainJar)\" --main-class tetris.App --name Tetris --dest \"$dest\" --runtime-image \"runtime\""
+          if (Test-Path $iconPath) { $jpackageCmd += " --icon \"$iconPath\"" }
+          Write-Host "Running jpackage: $jpackageCmd"
+          Invoke-Expression $jpackageCmd
+          Write-Host "jpackage finished, checking dist folder"
+          Get-ChildItem -Path $dest | Write-Host
+
+      - name: Upload native installer
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-installer
+          path: dist
+
       - name: Create GitHub Release
         id: create_release
         uses: actions/create-release@v1
