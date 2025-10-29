@@ -1,4 +1,4 @@
-﻿package tetris.view.GameComponent;
+package tetris.view.GameComponent;
 
 import java.awt.Color;
 import java.awt.Graphics;
