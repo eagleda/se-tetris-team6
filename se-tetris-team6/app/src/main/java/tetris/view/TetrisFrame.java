@@ -76,7 +76,8 @@ public class TetrisFrame extends JFrame {
             @Override
             public void refreshBoard() {
                 SwingUtilities.invokeLater(() -> {
-                    if (gameLayout != null) gameLayout.repaint();
+                    if (gameLayout != null)
+                        gameLayout.repaint();
                 });
             }
         });
@@ -115,9 +116,9 @@ public class TetrisFrame extends JFrame {
         layeredPane.add(mainPanel, JLayeredPane.DEFAULT_LAYER);
 
         mainPanel.gameButton.addActionListener(e -> {
-        displayPanel(gameLayout);
-        // 2. Controller에게 게임 시작을 명령
-        gameController.startGame();
+            displayPanel(gameLayout);
+            // 2. Controller에게 게임 시작을 명령
+            gameController.startGame();
         });
         mainPanel.settingButton.addActionListener(e -> {
             displayPanel(settingPanel);
