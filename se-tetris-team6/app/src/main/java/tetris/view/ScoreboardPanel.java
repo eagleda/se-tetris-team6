@@ -31,7 +31,6 @@ public class ScoreboardPanel extends JPanel implements ScoreView {
     private final JButton backButton = new JButton("Back to Menu");
 
     public ScoreboardPanel() {
-        setSize(TetrisFrame.FRAME_SIZE);
         setBackground(Color.darkGray);
         setOpaque(true);
         setVisible(false);
