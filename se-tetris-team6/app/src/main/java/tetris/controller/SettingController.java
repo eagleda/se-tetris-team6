@@ -86,12 +86,26 @@ public class SettingController {
                 }
             }
         });
+
+        panel.colorBlindCheckbox.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                boolean enabled = panel.colorBlindCheckbox.isSelected();
+                service.setColorBlindMode(enabled);
+                if (frame != null) {
+                    frame.applyColorBlindMode(enabled);
+                }
+            }
+        });
     }
 
     private void loadToPanel() {
         Setting s = service.getSettings();
         panel.sizeCombo.setSelectedItem(s.getScreenSize());
         panel.colorBlindCheckbox.setSelected(s.isColorBlindMode());
+        if (frame != null) {
+            frame.applyColorBlindMode(s.isColorBlindMode());
+        }
         // fill key fields
         Integer ml = s.getKeyBinding("MOVE_LEFT");
         Integer mr = s.getKeyBinding("MOVE_RIGHT");
@@ -130,6 +144,9 @@ public class SettingController {
             // service.getSettings().getKeyBindings() already contains int codes
             java.util.Map<String, Integer> mapped = new java.util.HashMap<>(service.getSettings().getKeyBindings());
             gameController.applyKeyBindings(mapped);
+        }
+        if (frame != null) {
+            frame.applyColorBlindMode(panel.colorBlindCheckbox.isSelected());
         }
     }
 }

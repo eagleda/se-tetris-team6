@@ -43,6 +43,7 @@ public class TetrisFrame extends JFrame {
 
     private GameController gameController;
     private ScoreController scoreController;
+    private boolean colorBlindMode;
 
     public TetrisFrame() {
         super(FRAME_TITLE);
@@ -128,6 +129,7 @@ public class TetrisFrame extends JFrame {
     private void setupGamePanel() {
         gamePanel = new GamePanel();
         gamePanel.bindGameModel(gameModel);
+        gamePanel.setColorBlindMode(colorBlindMode);
         layeredPane.add(gamePanel, JLayeredPane.DEFAULT_LAYER);
     }
 
@@ -195,6 +197,13 @@ public class TetrisFrame extends JFrame {
             displayPanel(pausePanel);
         } else {
             displayPanel(prevPanel);
+        }
+    }
+
+    public void applyColorBlindMode(boolean enabled) {
+        this.colorBlindMode = enabled;
+        if (gamePanel != null) {
+            gamePanel.setColorBlindMode(enabled);
         }
     }
 

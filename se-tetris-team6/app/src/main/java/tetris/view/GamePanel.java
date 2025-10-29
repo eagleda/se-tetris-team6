@@ -7,10 +7,11 @@ import java.awt.RenderingHints;
 
 import javax.swing.JPanel;
 
+import tetris.domain.BlockKind;
 import tetris.domain.Board;
 import tetris.domain.GameModel;
-import tetris.domain.model.Block;
 import tetris.domain.BlockShape;
+import tetris.domain.model.Block;
 
 public class GamePanel extends JPanel {
 
@@ -18,18 +19,30 @@ public class GamePanel extends JPanel {
     private static final int BOARD_ROWS = Board.H;
     private static final Color BACKGROUND_COLOR = new Color(18, 18, 18);
     private static final Color GRID_COLOR = new Color(48, 48, 48, 180);
-    private static final Color[] BLOCK_COLORS = {
-        new Color(30, 30, 30),     // 0: 빈 칸
-        new Color(0, 240, 240),    // I
-        new Color(0, 0, 240),      // J
-        new Color(240, 160, 0),    // L
-        new Color(240, 240, 0),    // O
-        new Color(0, 240, 0),      // S
-        new Color(160, 0, 240),    // T
-        new Color(240, 0, 0)       // Z
+    private static final Color[] STANDARD_PALETTE = {
+        new Color(30, 30, 30),     // empty
+        new Color(0x00, 0xF0, 0xF0), // I
+        new Color(0x00, 0x00, 0xF0), // J
+        new Color(0xF0, 0xA0, 0x00), // L
+        new Color(0xF0, 0xF0, 0x00), // O
+        new Color(0x00, 0xF0, 0x00), // S
+        new Color(0xA0, 0x00, 0xF0), // T
+        new Color(0xF0, 0x00, 0x00)  // Z
+    };
+    private static final Color[] COLORBLIND_PALETTE = {
+        STANDARD_PALETTE[0],
+        new Color(0x56, 0xB4, 0xE9), // I
+        new Color(0x00, 0x72, 0xB2), // J
+        new Color(0xE6, 0x9F, 0x00), // L
+        new Color(0xF0, 0xE4, 0x42), // O
+        new Color(0x00, 0x9E, 0x73), // S
+        new Color(0xCC, 0x79, 0xA7), // T
+        new Color(0xD5, 0x5E, 0x00)  // Z
     };
 
     private GameModel gameModel;
+    private Color[] activePalette = STANDARD_PALETTE;
+    private boolean colorBlindMode;
 
     public GamePanel() {
         setSize(TetrisFrame.FRAME_SIZE);
@@ -40,6 +53,15 @@ public class GamePanel extends JPanel {
 
     public void bindGameModel(GameModel model) {
         this.gameModel = model;
+        repaint();
+    }
+
+    public void setColorBlindMode(boolean enabled) {
+        if (this.colorBlindMode == enabled) {
+            return;
+        }
+        this.colorBlindMode = enabled;
+        this.activePalette = enabled ? COLORBLIND_PALETTE : STANDARD_PALETTE;
         repaint();
     }
 
@@ -81,7 +103,7 @@ public class GamePanel extends JPanel {
                 if (value <= 0) {
                     continue;
                 }
-                g2.setColor(colorFor(value));
+                g2.setColor(colorForBlockId(value));
                 int px = originX + x * cellSize;
                 int py = originY + y * cellSize;
                 g2.fillRect(px, py, cellSize, cellSize);
@@ -96,8 +118,7 @@ public class GamePanel extends JPanel {
         }
 
         BlockShape shape = active.getShape();
-        int colorIndex = shape.kind().ordinal() + 1;
-        g2.setColor(colorFor(colorIndex));
+        g2.setColor(colorForBlockKind(shape.kind()));
 
         for (int sy = 0; sy < shape.height(); sy++) {
             for (int sx = 0; sx < shape.width(); sx++) {
@@ -128,14 +149,21 @@ public class GamePanel extends JPanel {
         }
     }
 
-    private Color colorFor(int value) {
+    private Color colorForBlockId(int value) {
         if (value <= 0) {
-            return BLOCK_COLORS[0];
+            return activePalette[0];
         }
-        int idx = value % BLOCK_COLORS.length;
-        if (idx == 0) {
-            idx = BLOCK_COLORS.length - 1;
+        int idx = value;
+        if (idx >= activePalette.length) {
+            idx = activePalette.length - 1;
         }
-        return BLOCK_COLORS[idx];
+        return activePalette[idx];
+    }
+
+    private Color colorForBlockKind(BlockKind kind) {
+        if (kind == null) {
+            return activePalette[0];
+        }
+        return colorForBlockId(kind.ordinal() + 1);
     }
 }
