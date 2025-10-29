@@ -22,6 +22,7 @@ public final class ScoreData {
 
     public void addScore(int delta) {
         score += delta;
+        System.out.printf("[LOG] score updated: %d%n", score);
     }
 
     public void addClearedLines(int lines) {
