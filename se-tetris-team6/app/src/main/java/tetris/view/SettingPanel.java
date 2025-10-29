@@ -39,7 +39,6 @@ public class SettingPanel extends JPanel {
 
     public SettingPanel() {
         super(new GridBagLayout());
-        setSize(TetrisFrame.FRAME_SIZE);
         setBackground(Color.LIGHT_GRAY);
         setOpaque(true);
         setVisible(false);

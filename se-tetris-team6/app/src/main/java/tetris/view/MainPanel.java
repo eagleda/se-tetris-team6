@@ -26,12 +26,9 @@ public class MainPanel extends JPanel {
     private int currentFocusIndex = 0;
 
     public MainPanel() {
-        this.setSize(TetrisFrame.FRAME_SIZE);
         this.setBackground(Color.black);
         this.setOpaque(true);
         this.setVisible(false);
-        // layout = new SpringLayout();
-        // this.setLayout(layout);
         this.setLayout(new GridBagLayout());
 
         // GridBagLayout 설정

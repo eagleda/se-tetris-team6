@@ -33,11 +33,7 @@ import tetris.view.GameComponent.GameLayout;
 import tetris.view.GameComponent.GameOverPanel;
 
 public class TetrisFrame extends JFrame {
-
-    private GameModel gameModel;
-
     private static final String FRAME_TITLE = "Tetris Game - Team 06";
-    public static Dimension FRAME_SIZE = Setting.ScreenSize.MEDIUM.getDimension();
 
     // 프레임 레이아웃
     private JLayeredPane layeredPane;
@@ -54,6 +50,7 @@ public class TetrisFrame extends JFrame {
     private static JPanel prevPanel;
     private static JPanel currPanel;
 
+    private GameModel gameModel;
     private GameController gameController;
     private ScoreController scoreController;
 
@@ -123,11 +120,12 @@ public class TetrisFrame extends JFrame {
         displayPanel(mainPanel);
         this.setVisible(true);
 
+        // 화면 크기 설정
+        applyScreenSize(Setting.ScreenSize.MEDIUM);
     }
 
     private void setupGameOverPanel() {
         gameOverPanel = new GameOverPanel();
-        gameOverPanel.setBounds(0, 0, FRAME_SIZE.width, FRAME_SIZE.height);
         layeredPane.add(gameOverPanel, JLayeredPane.PALETTE_LAYER);
         // create controller
         gameOverController = new GameOverController(
@@ -143,13 +141,11 @@ public class TetrisFrame extends JFrame {
     }
 
     private void initializeFrame() {
-        setSize(FRAME_SIZE);
         setResizable(false);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
 
         layeredPane = new JLayeredPane();
-        layeredPane.setPreferredSize(FRAME_SIZE);
         this.add(layeredPane);
     }
 
@@ -178,8 +174,6 @@ public class TetrisFrame extends JFrame {
         gameLayout = new GameLayout();
         gameLayout.setVisible(false);
         gameLayout.bindGameModel(gameModel);
-        // JLayeredPane uses absolute positioning; set bounds so the layout is visible
-        gameLayout.setBounds(0, 0, FRAME_SIZE.width, FRAME_SIZE.height);
         layeredPane.add(gameLayout, JLayeredPane.DEFAULT_LAYER);
     }
 
@@ -196,7 +190,6 @@ public class TetrisFrame extends JFrame {
 
     private void setupPausePanel() {
         pausePanel = new PausePanel();
-        pausePanel.setBounds(0, 0, FRAME_SIZE.width, FRAME_SIZE.height);
         layeredPane.add(pausePanel, JLayeredPane.PALETTE_LAYER);
 
         // 버튼 기능 추가

@@ -18,7 +18,6 @@ public class PausePanel extends JPanel {
     public JButton exitButton;
 
     public PausePanel() {
-        this.setSize(TetrisFrame.FRAME_SIZE);
         this.setBackground(Color.gray);
         this.setVisible(false);
         this.setLayout(new GridBagLayout());
