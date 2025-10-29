@@ -1,4 +1,5 @@
-package tetris.domain.item.behavior;
+
+ㅇpackage tetris.domain.item.behavior;
 
 import tetris.domain.item.ItemBehavior;
 import tetris.domain.item.ItemContext;
