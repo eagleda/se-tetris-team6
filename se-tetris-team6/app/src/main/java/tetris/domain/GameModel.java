@@ -5,9 +5,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
-import tetris.domain.BlockGenerator;
-import tetris.domain.BlockKind;
-import tetris.domain.RandomBlockGenerator;
 import tetris.domain.handler.GameHandler;
 import tetris.domain.handler.GameOverHandler;
 import tetris.domain.handler.GamePlayHandler;
@@ -22,7 +19,6 @@ import tetris.domain.model.GameState;
 import tetris.domain.model.InputState;
 import tetris.domain.model.ScoreData;
 import tetris.domain.model.ScoreRuleEngine;
-import tetris.domain.model.MenuState;
 
 /**
  * 게임 핵심 도메인 모델.
@@ -54,7 +50,6 @@ public final class GameModel implements GameClock.Listener {
     private final GameClock clock = new GameClock(this);
     private final ScoreRuleEngine scoreEngine;
     private BlockGenerator blockGenerator;
-    private final MenuState menuState = new MenuState();
     private final Map<GameState, GameHandler> handlers = new EnumMap<>(GameState.class);
 
     private UiBridge uiBridge = NO_OP_UI_BRIDGE;
@@ -123,10 +118,6 @@ public final class GameModel implements GameClock.Listener {
         return inputState;
     }
 
-    public MenuState getMenuState() {
-        return menuState;
-    }
-
     public Block getActiveBlock() {
         return activeBlock;
     }
@@ -141,11 +132,6 @@ public final class GameModel implements GameClock.Listener {
 
     public BlockGenerator getBlockGenerator() {
         return blockGenerator;
-    }
-
-    public void requestGameExit() {
-        // TODO: UI 계층에 애플리케이션 종료를 위임
-        System.out.println("[LOG] GameModel.requestGameExit()");
     }
 
     public void spawnIfNeeded() {
@@ -487,31 +473,30 @@ public final class GameModel implements GameClock.Listener {
 
     public void navigateMenuUp() {
         if (currentState == GameState.MENU) {
-            menuState.moveUp();
+            // TODO: 메뉴 항목 위로 이동
         }
         uiBridge.refreshBoard();
     }
 
     public void navigateMenuDown() {
         if (currentState == GameState.MENU) {
-            menuState.moveDown();
+            // TODO: 메뉴 항목 아래로 이동
         }
         uiBridge.refreshBoard();
     }
 
     public void selectCurrentMenuItem() {
         if (currentState == GameState.MENU) {
-            menuState.activateSelected(this);
+            // TODO: 메뉴 항목 선택
         }
         uiBridge.refreshBoard();
     }
 
     public void handleMenuBack() {
         if (currentState == GameState.MENU) {
-            menuState.reset();
+            // TODO: 메뉴 뒤로가기 처리
         } else {
             changeState(GameState.MENU);
-            menuState.reset();
         }
         uiBridge.refreshBoard();
     }
