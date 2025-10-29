@@ -6,9 +6,11 @@ import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
-
+import java.util.ArrayList;
+import java.util.List;
 import javax.swing.BorderFactory;
 import javax.swing.JPanel;
+import javax.swing.Timer;
 
 import tetris.domain.Board;
 import tetris.domain.GameModel;
@@ -17,6 +19,9 @@ import tetris.domain.GameModel.ActiveItemInfo;
 import tetris.domain.model.Block;
 
 public class GamePanel extends JPanel {
+    // 플래시 중인 행 및 타이머
+    private List<Integer> flashingLines = new ArrayList<>();
+    private Timer flashTimer;
 
     private static final int BOARD_COLS = Board.W;
     private static final int BOARD_ROWS = Board.H;
@@ -75,18 +80,21 @@ public class GamePanel extends JPanel {
 
         drawLockedBlocks(g2, cellSize, originX, originY);
         drawActiveBlock(g2, cellSize, originX, originY);
+        highlightLines(g2, cellSize, originX, originY);
         drawGridLines(g2, cellSize, originX, originY, boardWidthPx, boardHeightPx);
         g2.dispose();
     }
 
     private void drawLockedBlocks(Graphics2D g2, int cellSize, int originX, int originY) {
-        if (gameModel == null) return;
+        if (gameModel == null)
+            return;
 
         int[][] grid = gameModel.getBoard().gridView();
         for (int y = 0; y < grid.length; y++) {
             for (int x = 0; x < grid[y].length; x++) {
                 int value = grid[y][x];
-                if (value <= 0) continue;
+                if (value <= 0)
+                    continue;
                 g2.setColor(colorFor(value));
                 int px = originX + x * cellSize;
                 int py = originY + y * cellSize;
@@ -96,9 +104,11 @@ public class GamePanel extends JPanel {
     }
 
     private void drawActiveBlock(Graphics2D g2, int cellSize, int originX, int originY) {
-        if (gameModel == null) return;
+        if (gameModel == null)
+            return;
         Block active = gameModel.getActiveBlock();
-        if (active == null) return;
+        if (active == null)
+            return;
 
         BlockShape shape = active.getShape();
         int colorIndex = shape.kind().ordinal() + 1;
@@ -113,10 +123,12 @@ public class GamePanel extends JPanel {
 
         for (int sy = 0; sy < shape.height(); sy++) {
             for (int sx = 0; sx < shape.width(); sx++) {
-                if (!shape.filled(sx, sy)) continue;
+                if (!shape.filled(sx, sy))
+                    continue;
                 int boardX = active.getX() + sx;
                 int boardY = active.getY() + sy;
-                if (boardX < 0 || boardX >= BOARD_COLS || boardY < 0 || boardY >= BOARD_ROWS) continue;
+                if (boardX < 0 || boardX >= BOARD_COLS || boardY < 0 || boardY >= BOARD_ROWS)
+                    continue;
                 int px = originX + boardX * cellSize;
                 int py = originY + boardY * cellSize;
                 g2.fillRect(px, py, cellSize, cellSize);
@@ -146,6 +158,41 @@ public class GamePanel extends JPanel {
         }
     }
 
+    private void highlightLines(Graphics2D g2, int cellSize, int originX, int originY) {
+        if (gameModel == null)
+            return;
+
+        // 플래시가 아직 동작중이지 않다면 pending(또는 board)의 가득 찬 줄을 캡처하여 플래시 시작
+        if (flashingLines.isEmpty()) {
+            List<Integer> pending = gameModel.getPendingFullLines(); // GameModel에 추가한 메서드 사용
+            if (pending == null || pending.isEmpty()) {
+                return;
+            }
+            flashingLines = new ArrayList<>(pending);
+            if (flashTimer != null && flashTimer.isRunning())
+                flashTimer.stop();
+            flashTimer = new Timer(50, e -> {
+                flashingLines.clear();
+                repaint();
+                ((Timer) e.getSource()).stop();
+            });
+            flashTimer.setRepeats(false);
+            flashTimer.start();
+        }
+
+        // 플래시 중인 행을 흰색으로 그림
+        if (!flashingLines.isEmpty()) {
+            g2.setColor(Color.WHITE);
+            for (int highlightedLine : flashingLines) {
+                int y = originY + highlightedLine * cellSize;
+                for (int x = 0; x < BOARD_COLS; x++) {
+                    int px = originX + x * cellSize;
+                    g2.fillRect(px, y, cellSize, cellSize);
+                }
+            }
+        }
+    }
+
     private void drawGridLines(Graphics2D g2, int cellSize, int originX, int originY, int boardWidthPx,
             int boardHeightPx) {
         g2.setColor(GRID_COLOR);
@@ -160,9 +207,11 @@ public class GamePanel extends JPanel {
     }
 
     private Color colorFor(int value) {
-        if (value <= 0) return BLOCK_COLORS[0];
+        if (value <= 0)
+            return BLOCK_COLORS[0];
         int idx = value % BLOCK_COLORS.length;
-        if (idx == 0) idx = BLOCK_COLORS.length - 1;
+        if (idx == 0)
+            idx = BLOCK_COLORS.length - 1;
         return BLOCK_COLORS[idx];
     }
 
