@@ -11,7 +11,7 @@ import tetris.domain.item.model.ItemBlockModel;
 public final class BombBehavior implements ItemBehavior {
 
     private final int radius;
-    private boolean triggered;
+    private boolean triggered;    
 
     public BombBehavior(int radius) {
         this.radius = Math.max(0, radius);

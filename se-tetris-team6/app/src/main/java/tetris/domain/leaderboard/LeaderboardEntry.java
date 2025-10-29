@@ -2,16 +2,29 @@ package tetris.domain.leaderboard;
 
 import java.util.Objects;
 
-/** Simple leaderboard entry containing a player name and points. */
+import tetris.domain.GameMode;
+
+/** Simple leaderboard entry containing a player name, points, and mode. */
 public final class LeaderboardEntry {
     private final String name;
     private final int points;
+    private final GameMode mode;
 
     public LeaderboardEntry(String name, int points) {
+        this(name, points, GameMode.STANDARD);
+    }
+
+    public LeaderboardEntry(String name, int points, GameMode mode) {
         this.name = Objects.requireNonNull(name, "name");
         this.points = points;
+        this.mode = mode == null ? GameMode.STANDARD : mode;
     }
 
     public String getName() { return name; }
     public int getPoints() { return points; }
+    public GameMode getMode() { return mode; }
+
+    public LeaderboardEntry withMode(GameMode newMode) {
+        return new LeaderboardEntry(name, points, newMode);
+    }
 }

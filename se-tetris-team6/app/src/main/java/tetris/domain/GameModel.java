@@ -204,6 +204,14 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         return leaderboardRepository;
     }
 
+    public java.util.List<tetris.domain.leaderboard.LeaderboardEntry> loadTopScores(GameMode mode, int limit) {
+        try {
+            return leaderboardRepository.loadTop(limit, mode);
+        } catch (Exception ex) {
+            return Collections.emptyList();
+        }
+    }
+
     public void clearBoardRegion(int x, int y, int width, int height) {
         board.clearArea(x, y, width, height);
         uiBridge.refreshBoard();
@@ -493,17 +501,12 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         // Prepare data for UI and determine whether name entry should be allowed.
         tetris.domain.score.Score finalScore = scoreRepository.load();
         boolean qualifies = false;
-        try {
-            var top = leaderboardRepository.loadTop(10);
-            if (top.size() < 10) {
-                qualifies = true;
-            } else {
-                int lastPoints = top.get(top.size() - 1).getPoints();
-                qualifies = finalScore.getPoints() > lastPoints;
-            }
-        } catch (Exception ex) {
-            // if leaderboard not available or any error, conservatively allow name entry
+        List<tetris.domain.leaderboard.LeaderboardEntry> top = loadTopScores(lastMode, 10);
+        if (top.isEmpty() || top.size() < 10) {
             qualifies = true;
+        } else {
+            int lastPoints = top.get(top.size() - 1).getPoints();
+            qualifies = finalScore.getPoints() > lastPoints;
         }
         uiBridge.showGameOverOverlay(finalScore, qualifies);
     }

@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
+import tetris.domain.GameMode;
 import tetris.domain.leaderboard.LeaderboardEntry;
 import tetris.domain.leaderboard.LeaderboardRepository;
 
@@ -23,25 +24,48 @@ public final class InMemoryLeaderboardRepository implements LeaderboardRepositor
     }
 
     @Override
-    public synchronized List<LeaderboardEntry> loadTop(int n) {
-        List<LeaderboardEntry> copy = new ArrayList<>(entries);
-        copy.sort(Comparator.comparingInt(LeaderboardEntry::getPoints).reversed());
-        if (n >= copy.size()) return Collections.unmodifiableList(copy);
-        return Collections.unmodifiableList(copy.subList(0, n));
+    public synchronized List<LeaderboardEntry> loadTop(int n, GameMode mode) {
+        List<LeaderboardEntry> filtered = new ArrayList<>();
+        for (LeaderboardEntry entry : entries) {
+            if (entry.getMode() == mode) {
+                filtered.add(entry);
+            }
+        }
+        filtered.sort(Comparator.comparingInt(LeaderboardEntry::getPoints).reversed());
+        if (n >= filtered.size()) return Collections.unmodifiableList(filtered);
+        return Collections.unmodifiableList(new ArrayList<>(filtered.subList(0, n)));
     }
 
     @Override
     public synchronized void saveEntry(LeaderboardEntry entry) {
         entries.add(entry);
-        entries.sort(Comparator.comparingInt(LeaderboardEntry::getPoints).reversed());
-        // trim to capacity
-        while (entries.size() > capacity) {
-            entries.remove(entries.size() - 1);
-        }
+        // sort by mode then points
+        entries.sort((a, b) -> {
+            int modeCmp = a.getMode().compareTo(b.getMode());
+            if (modeCmp != 0) return modeCmp;
+            return Integer.compare(b.getPoints(), a.getPoints());
+        });
+
+        trimMode(GameMode.STANDARD);
+        trimMode(GameMode.ITEM);
     }
 
     @Override
     public synchronized void reset() {
         entries.clear();
+    }
+
+    private void trimMode(GameMode mode) {
+        int count = 0;
+        List<LeaderboardEntry> toRemove = new ArrayList<>();
+        for (LeaderboardEntry entry : entries) {
+            if (entry.getMode() == mode) {
+                count++;
+                if (count > capacity) {
+                    toRemove.add(entry);
+                }
+            }
+        }
+        entries.removeAll(toRemove);
     }
 }

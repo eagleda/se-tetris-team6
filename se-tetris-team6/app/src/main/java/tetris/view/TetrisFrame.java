@@ -6,6 +6,7 @@ import java.awt.KeyboardFocusManager;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.WindowEvent;
+import java.util.List;
 
 import javax.swing.AbstractAction;
 import javax.swing.ActionMap;
@@ -20,12 +21,14 @@ import javax.swing.SwingUtilities;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
 import tetris.controller.GameController;
-import tetris.controller.ScoreController;
 import tetris.controller.GameOverController;
-import tetris.view.GameComponent.GameOverPanel;
+import tetris.controller.ScoreController;
+import tetris.domain.GameMode;
 import tetris.domain.GameModel;
+import tetris.domain.leaderboard.LeaderboardEntry;
 import tetris.domain.model.GameState;
 import tetris.view.GameComponent.GameLayout;
+import tetris.view.GameComponent.GameOverPanel;
 
 public class TetrisFrame extends JFrame {
 
@@ -212,6 +215,10 @@ public class TetrisFrame extends JFrame {
     private void setupScoreboardPanel() {
         scoreboardPanel = new ScoreboardPanel();
         layeredPane.add(scoreboardPanel, JLayeredPane.DEFAULT_LAYER);
+        scoreboardPanel.setBackAction(e -> {
+            displayPanel(mainPanel);
+            gameModel.quitToMenu();
+        });
     }
 
     public void displayPanel(JPanel panel) {
@@ -223,10 +230,12 @@ public class TetrisFrame extends JFrame {
         // If we're about to show the scoreboard, refresh its contents from the leaderboard repo
         if (panel == scoreboardPanel) {
             try {
-                var top = gameModel.getLeaderboardRepository().loadTop(10);
-                scoreboardPanel.renderLeaderboard(top);
+                List<LeaderboardEntry> standard = gameModel.loadTopScores(GameMode.STANDARD, 10);
+                List<LeaderboardEntry> item = gameModel.loadTopScores(GameMode.ITEM, 10);
+                scoreboardPanel.renderLeaderboard(GameMode.STANDARD, standard);
+                scoreboardPanel.renderLeaderboard(GameMode.ITEM, item);
             } catch (Exception ex) {
-                // ignore; show existing content
+                // ignore; show existing data if loading fails
             }
         }
         // if (prevPanel != null)
@@ -264,13 +273,6 @@ public class TetrisFrame extends JFrame {
 
     /** Convenience to show the scoreboard panel. */
     public void showScoreboardPanel() {
-        // refresh leaderboard contents before showing
-        try {
-            var top = gameModel.getLeaderboardRepository().loadTop(10);
-            scoreboardPanel.renderLeaderboard(top);
-        } catch (Exception ex) {
-            // ignore and show what we have
-        }
         displayPanel(scoreboardPanel);
     }
 
@@ -367,5 +369,9 @@ public class TetrisFrame extends JFrame {
         // 레이아웃 갱신
         this.revalidate();
         this.repaint();
+    }
+
+    public GameModel getGameModel() {
+        return gameModel;
     }
 }

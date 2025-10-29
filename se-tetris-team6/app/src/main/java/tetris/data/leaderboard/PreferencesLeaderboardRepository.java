@@ -9,6 +9,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.prefs.Preferences;
 
+import tetris.domain.GameMode;
 import tetris.domain.leaderboard.LeaderboardEntry;
 import tetris.domain.leaderboard.LeaderboardRepository;
 
@@ -33,42 +34,46 @@ public final class PreferencesLeaderboardRepository implements LeaderboardReposi
     }
 
     @Override
-    public synchronized List<LeaderboardEntry> loadTop(int n) {
-        String raw = prefs.get(KEY_ENTRIES, "");
-        if (raw == null || raw.isBlank()) return Collections.emptyList();
-        String[] lines = raw.split("\n");
-        List<LeaderboardEntry> list = new ArrayList<>();
-        for (String line : lines) {
-            int sep = line.lastIndexOf('|');
-            if (sep <= 0) continue;
-            try {
-                String enc = line.substring(0, sep);
-                String name = URLDecoder.decode(enc, StandardCharsets.UTF_8.name());
-                int pts = Integer.parseInt(line.substring(sep + 1));
-                list.add(new LeaderboardEntry(name, pts));
-            } catch (Exception ex) {
-                // ignore malformed lines
+    public synchronized List<LeaderboardEntry> loadTop(int n, GameMode mode) {
+        List<LeaderboardEntry> filtered = new ArrayList<>();
+        for (LeaderboardEntry entry : readAllEntries()) {
+            if (entry.getMode() == mode) {
+                filtered.add(entry);
             }
         }
-        list.sort(Comparator.comparingInt(LeaderboardEntry::getPoints).reversed());
-        if (n >= list.size()) return Collections.unmodifiableList(list);
-        return Collections.unmodifiableList(new ArrayList<>(list.subList(0, n)));
+        filtered.sort(Comparator.comparingInt(LeaderboardEntry::getPoints).reversed());
+        if (n >= filtered.size()) return Collections.unmodifiableList(filtered);
+        return Collections.unmodifiableList(new ArrayList<>(filtered.subList(0, n)));
     }
 
     @Override
     public synchronized void saveEntry(LeaderboardEntry entry) {
-        List<LeaderboardEntry> current = new ArrayList<>(loadTop(capacity));
-        current.add(entry);
-        current.sort(Comparator.comparingInt(LeaderboardEntry::getPoints).reversed());
-        while (current.size() > capacity) current.remove(current.size() - 1);
-        // serialize
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < current.size(); i++) {
-            LeaderboardEntry e = current.get(i);
-            String enc = URLEncoder.encode(e.getName(), StandardCharsets.UTF_8);
-            sb.append(enc).append('|').append(e.getPoints());
-            if (i < current.size() - 1) sb.append('\n');
+        List<LeaderboardEntry> standard = new ArrayList<>();
+        List<LeaderboardEntry> item = new ArrayList<>();
+        for (LeaderboardEntry existing : readAllEntries()) {
+            if (existing.getMode() == GameMode.ITEM) {
+                item.add(existing);
+            } else {
+                standard.add(existing.withMode(GameMode.STANDARD));
+            }
         }
+
+        if (entry.getMode() == GameMode.ITEM) {
+            item.add(entry);
+        } else {
+            standard.add(entry.withMode(GameMode.STANDARD));
+        }
+
+        Comparator<LeaderboardEntry> comparator = Comparator.comparingInt(LeaderboardEntry::getPoints).reversed();
+        standard.sort(comparator);
+        item.sort(comparator);
+        trimToCapacity(standard);
+        trimToCapacity(item);
+
+        StringBuilder sb = new StringBuilder();
+        writeEntries(sb, standard);
+        if (!standard.isEmpty() && !item.isEmpty()) sb.append('\n');
+        writeEntries(sb, item);
         prefs.put(KEY_ENTRIES, sb.toString());
         try { prefs.flush(); } catch (Exception ex) { /* best-effort */ }
     }
@@ -77,5 +82,46 @@ public final class PreferencesLeaderboardRepository implements LeaderboardReposi
     public synchronized void reset() {
         prefs.remove(KEY_ENTRIES);
         try { prefs.flush(); } catch (Exception ex) { /* best-effort */ }
+    }
+
+    private List<LeaderboardEntry> readAllEntries() {
+        String raw = prefs.get(KEY_ENTRIES, "");
+        if (raw == null || raw.isBlank()) {
+            return new ArrayList<>();
+        }
+        String[] lines = raw.split("\n");
+        List<LeaderboardEntry> list = new ArrayList<>();
+        for (String line : lines) {
+            String[] parts = line.split("\\|");
+            if (parts.length < 2) {
+                continue;
+            }
+            try {
+                String name = URLDecoder.decode(parts[0], StandardCharsets.UTF_8.name());
+                int points = Integer.parseInt(parts[1]);
+                GameMode mode = parts.length >= 3 ? GameMode.valueOf(parts[2]) : GameMode.STANDARD;
+                list.add(new LeaderboardEntry(name, points, mode));
+            } catch (Exception ignore) {
+                // malformed line -> skip
+            }
+        }
+        return list;
+    }
+
+    private void trimToCapacity(List<LeaderboardEntry> list) {
+        while (list.size() > capacity) {
+            list.remove(list.size() - 1);
+        }
+    }
+
+    private void writeEntries(StringBuilder sb, List<LeaderboardEntry> entries) {
+        for (int i = 0; i < entries.size(); i++) {
+            LeaderboardEntry e = entries.get(i);
+            String enc = URLEncoder.encode(e.getName(), StandardCharsets.UTF_8);
+            sb.append(enc).append('|').append(e.getPoints()).append('|').append(e.getMode().name());
+            if (i < entries.size() - 1) {
+                sb.append('\n');
+            }
+        }
     }
 }

@@ -2,6 +2,7 @@ package tetris.controller;
 
 import java.util.Objects;
 
+import tetris.domain.GameMode;
 import tetris.domain.leaderboard.LeaderboardEntry;
 import tetris.domain.leaderboard.LeaderboardRepository;
 import tetris.domain.score.Score;
@@ -56,7 +57,8 @@ public final class GameOverController {
             return;
         }
         var score = scoreRepository.load();
-        var entry = new LeaderboardEntry(name.trim(), score.getPoints());
+        GameMode mode = frame.getGameModel().getLastMode();
+        var entry = new LeaderboardEntry(name.trim(), score.getPoints(), mode);
         leaderboardRepository.saveEntry(entry);
         hideAndShowScoreboard();
     }
