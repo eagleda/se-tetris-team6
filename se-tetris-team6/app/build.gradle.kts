@@ -54,7 +54,12 @@ tasks.named<JacocoReport>("jacocoTestReport") {
         files(
             classDirectories.files.map {
                 fileTree(it) {
+                    // Exclude generated App entry and large UI/controller packages
                     exclude("tetris/App.class")
+                    exclude("tetris/view/**")
+                    exclude("tetris/view/**/**")
+                    exclude("tetris/controller/**")
+                    exclude("tetris/controller/**/**")
                 }
             }
         )
