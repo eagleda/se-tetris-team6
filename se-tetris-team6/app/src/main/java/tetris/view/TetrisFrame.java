@@ -27,15 +27,12 @@ import tetris.domain.GameMode;
 import tetris.domain.GameModel;
 import tetris.domain.leaderboard.LeaderboardEntry;
 import tetris.domain.model.GameState;
+import tetris.domain.setting.Setting;
 import tetris.view.GameComponent.GameLayout;
 import tetris.view.GameComponent.GameOverPanel;
 
 public class TetrisFrame extends JFrame {
-
-    private GameModel gameModel;
-
     private static final String FRAME_TITLE = "Tetris Game - Team 06";
-    public static Dimension FRAME_SIZE = new Dimension(700, 900);
 
     // 프레임 레이아웃
     private JLayeredPane layeredPane;
@@ -52,6 +49,7 @@ public class TetrisFrame extends JFrame {
     private static JPanel prevPanel;
     private static JPanel currPanel;
 
+    private GameModel gameModel;
     private GameController gameController;
     private ScoreController scoreController;
 
@@ -120,11 +118,12 @@ public class TetrisFrame extends JFrame {
         displayPanel(mainPanel);
         this.setVisible(true);
 
+        // 화면 크기 설정
+        applyScreenSize(Setting.ScreenSize.MEDIUM);
     }
 
     private void setupGameOverPanel() {
         gameOverPanel = new GameOverPanel();
-        gameOverPanel.setBounds(0, 0, FRAME_SIZE.width, FRAME_SIZE.height);
         layeredPane.add(gameOverPanel, JLayeredPane.PALETTE_LAYER);
         // create controller
         gameOverController = new GameOverController(
@@ -141,13 +140,11 @@ public class TetrisFrame extends JFrame {
     }
 
     private void initializeFrame() {
-        setSize(FRAME_SIZE);
         setResizable(false);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
 
         layeredPane = new JLayeredPane();
-        layeredPane.setPreferredSize(FRAME_SIZE);
         this.add(layeredPane);
     }
 
@@ -170,14 +167,15 @@ public class TetrisFrame extends JFrame {
             // ensure leaderboard is refreshed before showing
             showScoreboardPanel();
         });
+        mainPanel.exitButton.addActionListener(e -> {
+            System.exit(0);
+        });
     }
 
     private void setupGameLayout() {
         gameLayout = new GameLayout();
         gameLayout.setVisible(false);
         gameLayout.bindGameModel(gameModel);
-        // JLayeredPane uses absolute positioning; set bounds so the layout is visible
-        gameLayout.setBounds(0, 0, FRAME_SIZE.width, FRAME_SIZE.height);
         layeredPane.add(gameLayout, JLayeredPane.DEFAULT_LAYER);
     }
 
@@ -194,7 +192,6 @@ public class TetrisFrame extends JFrame {
 
     private void setupPausePanel() {
         pausePanel = new PausePanel();
-        pausePanel.setBounds(0, 0, FRAME_SIZE.width, FRAME_SIZE.height);
         layeredPane.add(pausePanel, JLayeredPane.PALETTE_LAYER);
 
         // 버튼 기능 추가
@@ -295,6 +292,8 @@ public class TetrisFrame extends JFrame {
                     gameModel.pauseGame();
                 } else if (state == GameState.PAUSED) {
                     gameModel.resumeGame();
+                } else {
+                    displayPanel(prevPanel);
                 }
             }
         });
@@ -357,19 +356,7 @@ public class TetrisFrame extends JFrame {
     public void applyScreenSize(tetris.domain.setting.Setting.ScreenSize size) {
         if (size == null)
             return;
-        switch (size) {
-            case SMALL:
-                changeResolution(new Dimension(560, 720));
-                break;
-            case MEDIUM:
-                changeResolution(new Dimension(700, 900));
-                break;
-            case LARGE:
-                changeResolution(new Dimension(900, 1200));
-                break;
-            default:
-                break;
-        }
+        changeResolution(size.getDimension());
     }
 
     // 화면 크기 변경 메서드 추가

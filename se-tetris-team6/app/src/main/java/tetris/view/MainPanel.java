@@ -1,22 +1,16 @@
 package tetris.view;
 
-import java.awt.Color;
-import java.awt.Component;
-import java.awt.Font;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import java.awt.Insets;
 import java.util.ArrayList;
 import java.util.List;
-
-import javax.swing.JButton;
-import javax.swing.JPanel;
+import java.awt.*;
+import javax.swing.*;
 
 public class MainPanel extends JPanel {
     public JButton gameButton;
     public JButton itemGameButton;
     public JButton settingButton;
     public JButton scoreboardButton;
+    public JButton exitButton;
 
     public Color NORMAL_COLOR = Color.white;
     public Color HIGHLIGHT_COLOR = Color.gray;
@@ -24,12 +18,9 @@ public class MainPanel extends JPanel {
     private int currentFocusIndex = 0;
 
     public MainPanel() {
-        this.setSize(TetrisFrame.FRAME_SIZE);
         this.setBackground(Color.black);
         this.setOpaque(true);
         this.setVisible(false);
-        // layout = new SpringLayout();
-        // this.setLayout(layout);
         this.setLayout(new GridBagLayout());
 
         // GridBagLayout 설정
@@ -44,6 +35,12 @@ public class MainPanel extends JPanel {
                 insets = new Insets(10, 200, 10, 200);
             }
         };
+
+        // 게임 타이틀
+        JLabel titleText = new JLabel("TETRIS", SwingConstants.CENTER);
+        titleText.setFont(new Font("SansSerif", Font.BOLD, 48));
+        titleText.setForeground(Color.BLUE);
+        titleText.setHorizontalAlignment(SwingConstants.CENTER);
 
         // 버튼 생성
         gameButton = new JButton() {
@@ -70,15 +67,24 @@ public class MainPanel extends JPanel {
                 setFont(new Font("SansSerif", Font.BOLD, 18));
             }
         };
+        exitButton = new JButton() {
+            {
+                setText("Exit");
+                setFont(new Font("SansSerif", Font.BOLD, 18));
+            }
+        };
+
 
         // Add Components to GridBagLayout
         for (int i = 0; i < 2; i++) {
             addComponentVertical(new EmptySpace(), gbc);
         }
+        addComponentVertical(titleText, gbc);
         addComponentVertical(gameButton, gbc);
         addComponentVertical(itemGameButton, gbc);
         addComponentVertical(settingButton, gbc);
         addComponentVertical(scoreboardButton, gbc);
+        addComponentVertical(exitButton, gbc);
         for (int i = 0; i < 8; i++) {
             addComponentVertical(new EmptySpace(), gbc);
         }
