@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.awt.*;
 import java.awt.Dialog.ModalityType;
-import java.lang.reflect.Array;
 import java.util.Arrays;
 
 import javax.swing.*;
@@ -21,8 +20,6 @@ public class MainPanel extends JPanel {
     public JButton onlineMultiItemButton;
     public JButton onlineMultiTimeLimitButton;
 
-    public JButton gameButton;
-    public JButton itemGameButton;
     public JButton settingButton;
     public JButton scoreboardButton;
     public JButton exitButton;
@@ -57,19 +54,6 @@ public class MainPanel extends JPanel {
         titleText.setForeground(Color.BLUE);
         titleText.setHorizontalAlignment(SwingConstants.CENTER);
 
-        // 버튼 생성
-        gameButton = new JButton() {
-            {
-                setText("Game");
-                setFont(new Font("SansSerif", Font.BOLD, 18));
-            }
-        };
-        itemGameButton = new JButton() {
-            {
-                setText("Item Mode");
-                setFont(new Font("SansSerif", Font.BOLD, 18));
-            }
-        };
         settingButton = new JButton() {
             {
                 setText("Setting");
@@ -123,11 +107,11 @@ public class MainPanel extends JPanel {
                 setFont(new Font("SansSerif", Font.BOLD, 14));
             }
         };
-        localMultiNormalButton = new JButton("기본 모드");
+        localMultiNormalButton = new JButton("Normal Mode");
         localMultiNormalButton.setFont(new Font("SansSerif", Font.BOLD, 14));
-        localMultiItemButton = new JButton("아이템 모드");
+        localMultiItemButton = new JButton("Item Mode");
         localMultiItemButton.setFont(new Font("SansSerif", Font.BOLD, 14));
-        localMultiTimeLimitButton = new JButton("시간 제한 모드");
+        localMultiTimeLimitButton = new JButton("Time Limit Mode");
         localMultiTimeLimitButton.setFont(new Font("SansSerif", Font.BOLD, 14));
         attachPopupToTrigger(localMultiButton,
                 Arrays.asList(localMultiNormalButton, localMultiItemButton, localMultiTimeLimitButton));
@@ -137,11 +121,11 @@ public class MainPanel extends JPanel {
                 setFont(new Font("SansSerif", Font.BOLD, 14));
             }
         };
-        onlineMultiNormalButton = new JButton("기본 모드");
+        onlineMultiNormalButton = new JButton("Normal Mode");
         onlineMultiNormalButton.setFont(new Font("SansSerif", Font.BOLD, 14));
-        onlineMultiItemButton = new JButton("아이템 모드");
+        onlineMultiItemButton = new JButton("Item Mode");
         onlineMultiItemButton.setFont(new Font("SansSerif", Font.BOLD, 14));
-        onlineMultiTimeLimitButton = new JButton("시간 제한 모드");
+        onlineMultiTimeLimitButton = new JButton("Time Limit Mode");
         onlineMultiTimeLimitButton.setFont(new Font("SansSerif", Font.BOLD, 14));
         attachPopupToTrigger(onlineMultiButton,
                 Arrays.asList(onlineMultiNormalButton, onlineMultiItemButton, onlineMultiTimeLimitButton));
@@ -162,8 +146,6 @@ public class MainPanel extends JPanel {
         addComponentVertical(titleText, gbc);
         addComponentVertical(singlePlayButton, gbc);
         addComponentVertical(multiPlayButton, gbc);
-        addComponentVertical(gameButton, gbc);
-        addComponentVertical(itemGameButton, gbc);
         addComponentVertical(settingButton, gbc);
         addComponentVertical(scoreboardButton, gbc);
         addComponentVertical(exitButton, gbc);
@@ -173,10 +155,11 @@ public class MainPanel extends JPanel {
 
         // Add button to buttons
         buttons = new ArrayList<>();
-        buttons.add(gameButton);
-        buttons.add(itemGameButton);
+        buttons.add(singlePlayButton);
+        buttons.add(multiPlayButton);
         buttons.add(settingButton);
         buttons.add(scoreboardButton);
+        buttons.add(exitButton);
     }
 
     private void addComponentVertical(Component component, GridBagConstraints gbc) {
