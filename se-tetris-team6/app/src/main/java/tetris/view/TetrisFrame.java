@@ -30,8 +30,9 @@ import tetris.domain.GameModel;
 import tetris.domain.leaderboard.LeaderboardEntry;
 import tetris.domain.model.GameState;
 import tetris.domain.setting.Setting;
-import tetris.view.GameComponent.GameLayout;
+import tetris.view.GameComponent.SingleGameLayout;
 import tetris.view.GameComponent.GameOverPanel;
+import tetris.view.GameComponent.MultiGameLayout;
 
 public class TetrisFrame extends JFrame {
     private static final String FRAME_TITLE = "Tetris Game - Team 06";
@@ -42,18 +43,20 @@ public class TetrisFrame extends JFrame {
     // 패널 참조
     // 모든 패널과 모델/컨트롤러를 인스턴스 변수로 변경 (static 제거)
     protected MainPanel mainPanel;
-    protected GameLayout gameLayout;
+    protected SingleGameLayout singleGameLayout;
+    protected MultiGameLayout multiGameLayout;
     protected SettingPanel settingPanel;
     protected ScoreboardPanel scoreboardPanel;
     protected PausePanel pausePanel;
     protected GameOverPanel gameOverPanel;
-    private GameOverController gameOverController;
+
     private static JPanel prevPanel;
     private static JPanel currPanel;
-
+    
     private GameModel gameModel;
     private GameController gameController;
     private ScoreController scoreController;
+    private GameOverController gameOverController;
 
     public TetrisFrame(GameModel gameModel) {
         super(FRAME_TITLE);
@@ -69,7 +72,8 @@ public class TetrisFrame extends JFrame {
         setupScoreboardPanel();
         setupPausePanel();
         setupGameOverPanel();
-        setupGameLayout();
+        setupSingleGameLayout();
+        setupMultiGameLayout();
 
         gameModel.bindUiBridge(new GameModel.UiBridge() {
             @Override
@@ -85,8 +89,8 @@ public class TetrisFrame extends JFrame {
             @Override
             public void refreshBoard() {
                 SwingUtilities.invokeLater(() -> {
-                    if (gameLayout != null)
-                        gameLayout.repaint();
+                    if (singleGameLayout != null)
+                        singleGameLayout.repaint();
                 });
             }
 
@@ -153,36 +157,42 @@ public class TetrisFrame extends JFrame {
     private void setupMainPanel() {
         mainPanel = new MainPanel();
         layeredPane.add(mainPanel, JLayeredPane.DEFAULT_LAYER);
-
+        // single game
         mainPanel.singleNormalButton.addActionListener(e -> {
-            displayPanel(gameLayout);
+            displayPanel(singleGameLayout);
             gameController.startStandardGame();
         });
         mainPanel.singleItemButton.addActionListener(e -> {
-            displayPanel(gameLayout);
+            displayPanel(singleGameLayout);
             gameController.startItemGame();
         });
-
+        // local multi game
         mainPanel.localMultiNormalButton.addActionListener(e -> {
             //
+            displayPanel(multiGameLayout);
         });
         mainPanel.localMultiItemButton.addActionListener(e -> {
             //
+            displayPanel(multiGameLayout);
         });
         mainPanel.localMultiTimeLimitButton.addActionListener(e -> {
             //
+            displayPanel(multiGameLayout);
         });
-
+        // online multi game
         mainPanel.onlineMultiNormalButton.addActionListener(e -> {
             //
+            displayPanel(multiGameLayout);
         });
         mainPanel.onlineMultiItemButton.addActionListener(e -> {
             //
+            displayPanel(multiGameLayout);
         });
         mainPanel.onlineMultiTimeLimitButton.addActionListener(e -> {
             //
+            displayPanel(multiGameLayout);
         });
-
+        // menu
         mainPanel.settingButton.addActionListener(e -> {
             displayPanel(settingPanel);
         });
@@ -195,11 +205,18 @@ public class TetrisFrame extends JFrame {
         });
     }
 
-    private void setupGameLayout() {
-        gameLayout = new GameLayout();
-        gameLayout.setVisible(false);
-        gameLayout.bindGameModel(gameModel);
-        layeredPane.add(gameLayout, JLayeredPane.DEFAULT_LAYER);
+    private void setupSingleGameLayout() {
+        singleGameLayout = new SingleGameLayout();
+        singleGameLayout.setVisible(false);
+        singleGameLayout.bindGameModel(gameModel);
+        layeredPane.add(singleGameLayout, JLayeredPane.DEFAULT_LAYER);
+    }
+
+    private void setupMultiGameLayout() {
+        multiGameLayout = new MultiGameLayout();
+        multiGameLayout.setVisible(false);
+        multiGameLayout.bindGameModel(gameModel);
+        layeredPane.add(multiGameLayout, JLayeredPane.DEFAULT_LAYER);
     }
 
     private void setupSettingPanel() {
