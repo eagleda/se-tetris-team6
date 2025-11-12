@@ -90,7 +90,8 @@ public class MultiGameLayout extends JPanel {
         gbc.weightx = 1.0;
         gbc.weighty = 1.0;
         gbc.fill = GridBagConstraints.BOTH;
-        gbc.insets = new Insets(4, 4, 4, 2);
+        // increase right inset to add horizontal gap between columns
+        gbc.insets = new Insets(4, 4, 4, 24);
         this.add(leftColumn, gbc);
 
         gbc = new GridBagConstraints();
@@ -99,7 +100,8 @@ public class MultiGameLayout extends JPanel {
         gbc.weightx = 1.0;
         gbc.weighty = 1.0;
         gbc.fill = GridBagConstraints.BOTH;
-        gbc.insets = new Insets(4, 2, 4, 4);
+        // increase left inset to match the gap
+        gbc.insets = new Insets(4, 24, 4, 4);
         this.add(rightColumn, gbc);
 
         revalidate();

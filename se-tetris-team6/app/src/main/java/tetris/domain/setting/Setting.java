@@ -13,9 +13,9 @@ import tetris.domain.GameDifficulty;
 public class Setting {
 
     public enum ScreenSize {
-        SMALL(new Dimension(560, 720)),
-        MEDIUM(new Dimension(700, 900)),
-        LARGE(new Dimension(780, 1000));
+        SMALL(new Dimension(1120, 720)),
+        MEDIUM(new Dimension(1400, 900)),
+        LARGE(new Dimension(1560, 1000));
 
         private final Dimension dimension;
 
