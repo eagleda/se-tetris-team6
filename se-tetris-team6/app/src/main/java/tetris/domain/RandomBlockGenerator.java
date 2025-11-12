@@ -69,14 +69,11 @@ public final class RandomBlockGenerator implements BlockGenerator {
     }
 
     private BlockKind sampleByWeights() {
-        if (dirty) recomputeWeights();
-        double pick = random.nextDouble() * totalWeight;
-        for (int i = 0; i < cumulativeWeights.length; i++) {
-            if (pick < cumulativeWeights[i]) {
-                return kinds[i];
-            }
+        // Force-select the I block regardless of weights or difficulty.
+        if (dirty) {
+            recomputeWeights();
         }
-        return kinds[kinds.length - 1];
+        return BlockKind.I;
     }
 
     private void recomputeWeights() {

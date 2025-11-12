@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Random;
+import java.util.Locale;
 import java.util.function.Supplier;
 
 import tetris.data.score.InMemoryScoreRepository;
@@ -29,6 +30,8 @@ import tetris.domain.item.ItemType;
 import tetris.domain.item.behavior.BombBehavior;
 import tetris.domain.item.behavior.DoubleScoreBehavior;
 import tetris.domain.item.behavior.TimeSlowBehavior;
+import tetris.domain.item.behavior.LineClearBehavior;
+import tetris.domain.item.behavior.WeightBehavior;
 import tetris.domain.item.model.ItemBlockModel;
 import tetris.domain.model.Block;
 import tetris.domain.model.GameState;
@@ -104,7 +107,9 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
     private final List<Supplier<ItemBehavior>> behaviorFactories = List.of(
             () -> new DoubleScoreBehavior(600, 2.0),
             () -> new TimeSlowBehavior(600, 0.5),
-            () -> new BombBehavior(1));
+            () -> new BombBehavior(1),
+            () -> new LineClearBehavior(),
+            WeightBehavior::new);
 
     public static final class ActiveItemInfo {
         private final BlockLike block;
@@ -130,6 +135,8 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         }
     }
 
+    private static final int DEFAULT_ITEM_SPAWN_INTERVAL = 2;
+
     private ItemBlockModel activeItemBlock;
     private boolean nextBlockIsItem;
     private int totalClearedLines;
@@ -139,6 +146,8 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
     private double slowFactor = 1.0;
     private long slowUntilTick;
     private ItemContextImpl itemContext;
+    private Supplier<ItemBehavior> behaviorOverride = () -> new TimeSlowBehavior(600, 0.5);
+    private int itemSpawnIntervalLines = DEFAULT_ITEM_SPAWN_INTERVAL;
 
     private UiBridge uiBridge = NO_OP_UI_BRIDGE;
     private GameState currentState;
@@ -379,6 +388,26 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         return blockGenerator;
     }
 
+    public void setItemSpawnIntervalLines(int interval) {
+        if (interval <= 0) {
+            throw new IllegalArgumentException("interval must be positive");
+        }
+        this.itemSpawnIntervalLines = interval;
+    }
+
+    public void setItemBehaviorOverride(String behaviorId) {
+        if (behaviorId == null || behaviorId.isBlank()) {
+            this.behaviorOverride = null;
+            return;
+        }
+        this.behaviorOverride = resolveBehaviorOverride(behaviorId);
+    }
+
+    public void resetItemTestingConfig() {
+        this.behaviorOverride = () -> new TimeSlowBehavior(600, 0.5);
+        this.itemSpawnIntervalLines = DEFAULT_ITEM_SPAWN_INTERVAL;
+    }
+
     /**
      * Return a preview of the next BlockKind without consuming the generator.
      * This is used by UI components to render a "next block" preview.
@@ -466,7 +495,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         if (currentMode != GameMode.ITEM) {
             return;
         }
-        if (totalClearedLines % 10 == 0) {
+        if (itemSpawnIntervalLines > 0 && totalClearedLines % itemSpawnIntervalLines == 0) {
             nextBlockIsItem = true;
         }
         itemManager.onLineClear(itemContext, null);
@@ -481,7 +510,22 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         }
     }
 
+    private Supplier<ItemBehavior> resolveBehaviorOverride(String behaviorId) {
+        String key = behaviorId.toLowerCase(Locale.ROOT);
+        return switch (key) {
+            case "line_clear", "lineclear", "line-clear" -> LineClearBehavior::new;
+            case "double_score", "doublescore", "double-score", "double" -> () -> new DoubleScoreBehavior(600, 2.0);
+            case "time_slow", "timeslow", "slow" -> () -> new TimeSlowBehavior(600, 0.5);
+            case "bomb" -> () -> new BombBehavior(1);
+            case "weight", "weight_drop", "weight-drop" -> WeightBehavior::new;
+            default -> throw new IllegalArgumentException("Unknown item behavior: " + behaviorId);
+        };
+    }
+
     private ItemBehavior rollBehavior() {
+        if (behaviorOverride != null) {
+            return behaviorOverride.get();
+        }
         if (behaviorFactories.isEmpty()) {
             return new DoubleScoreBehavior(600, 2.0);
         }

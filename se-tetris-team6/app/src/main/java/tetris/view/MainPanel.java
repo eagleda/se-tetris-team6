@@ -10,7 +10,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import javax.swing.JButton;
+import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.SwingConstants;
 
 public class MainPanel extends JPanel {
     public JButton gameButton;
@@ -71,10 +73,18 @@ public class MainPanel extends JPanel {
             }
         };
 
+        JLabel titleLabel = new JLabel("TETRIS", SwingConstants.CENTER) {
+            {
+                setFont(new Font("SansSerif", Font.BOLD, 54));
+                setForeground(Color.WHITE);
+                setOpaque(false);
+            }
+        };
+
         // Add Components to GridBagLayout
-        for (int i = 0; i < 2; i++) {
-            addComponentVertical(new EmptySpace(), gbc);
-        }
+        addComponentVertical(new EmptySpace(), gbc);
+        addComponentVertical(titleLabel, gbc);
+        addComponentVertical(new EmptySpace(), gbc);
         addComponentVertical(gameButton, gbc);
         addComponentVertical(itemGameButton, gbc);
         addComponentVertical(settingButton, gbc);
