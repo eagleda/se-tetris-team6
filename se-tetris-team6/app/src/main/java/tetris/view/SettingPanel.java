@@ -82,11 +82,13 @@ public class SettingPanel extends JPanel {
         row1.setOpaque(false);
         row1.add(new JLabel("Move Left:"));
         keyMoveLeftField = new JTextField(8);
+        keyMoveLeftField.setFocusable(false);
         row1.add(keyMoveLeftField);
         captureMoveLeftButton = new JButton("Capture");
         row1.add(captureMoveLeftButton);
         row1.add(new JLabel("Move Right:"));
         keyMoveRightField = new JTextField(8);
+        keyMoveRightField.setFocusable(false);
         row1.add(keyMoveRightField);
         captureMoveRightButton = new JButton("Capture");
         row1.add(captureMoveRightButton);
@@ -96,11 +98,13 @@ public class SettingPanel extends JPanel {
         row2.setOpaque(false);
         row2.add(new JLabel("Rotate:"));
         keyRotateField = new JTextField(8);
+        keyRotateField.setFocusable(false);
         row2.add(keyRotateField);
         captureRotateButton = new JButton("Capture");
         row2.add(captureRotateButton);
         row2.add(new JLabel("Soft Drop:"));
         keySoftDropField = new JTextField(8);
+        keySoftDropField.setFocusable(false);
         row2.add(keySoftDropField);
         captureSoftDropButton = new JButton("Capture");
         row2.add(captureSoftDropButton);
@@ -159,8 +163,6 @@ public class SettingPanel extends JPanel {
             button.setText("Press a key...");
             button.setEnabled(false);
             // prevent the text field from accepting KEY_TYPED events while capturing
-            boolean prevEditable = targetField.isEditable();
-            targetField.setEditable(false);
             java.awt.KeyEventDispatcher dispatcher = new java.awt.KeyEventDispatcher() {
                 @Override
                 public boolean dispatchKeyEvent(java.awt.event.KeyEvent evt) {
@@ -173,7 +175,6 @@ public class SettingPanel extends JPanel {
                         // restore button and field state
                         button.setText("Capture");
                         button.setEnabled(true);
-                        targetField.setEditable(prevEditable);
                         java.awt.KeyboardFocusManager.getCurrentKeyboardFocusManager().removeKeyEventDispatcher(this);
                         return true; // consumed
                     }
