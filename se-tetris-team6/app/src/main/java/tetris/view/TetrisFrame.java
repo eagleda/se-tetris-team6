@@ -152,11 +152,11 @@ public class TetrisFrame extends JFrame {
         mainPanel = new MainPanel();
         layeredPane.add(mainPanel, JLayeredPane.DEFAULT_LAYER);
 
-        mainPanel.gameButton.addActionListener(e -> {
+        mainPanel.singleNormalButton.addActionListener(e -> {
             displayPanel(gameLayout);
             gameController.startStandardGame();
         });
-        mainPanel.itemGameButton.addActionListener(e -> {
+        mainPanel.singleItemButton.addActionListener(e -> {
             displayPanel(gameLayout);
             gameController.startItemGame();
         });
