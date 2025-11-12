@@ -3,9 +3,24 @@ package tetris.view;
 import java.util.ArrayList;
 import java.util.List;
 import java.awt.*;
+import java.awt.Dialog.ModalityType;
+import java.lang.reflect.Array;
+import java.util.Arrays;
+
 import javax.swing.*;
 
 public class MainPanel extends JPanel {
+    public JButton singleNormalButton;
+    public JButton singleItemButton;
+
+    public JButton localMultiNormalButton;
+    public JButton localMultiItemButton;
+    public JButton localMultiTimeLimitButton;
+
+    public JButton onlineMultiNormalButton;
+    public JButton onlineMultiItemButton;
+    public JButton onlineMultiTimeLimitButton;
+
     public JButton gameButton;
     public JButton itemGameButton;
     public JButton settingButton;
@@ -74,12 +89,71 @@ public class MainPanel extends JPanel {
             }
         };
 
+        // 싱글 플레이 버튼 설정
+        JButton singlePlayButton = new JButton() {
+            {
+                setText("Single Play");
+                setFont(new Font("SansSerif", Font.BOLD, 18));
+            }
+        };
+        singleNormalButton = new JButton() {
+            {
+                setText("Normal Mode");
+                setFont(new Font("SansSerif", Font.BOLD, 14));
+            }
+        };
+        singleItemButton = new JButton() {
+            {
+                setText("Item Mode");
+                setFont(new Font("SansSerif", Font.BOLD, 14));
+            }
+        };
+        attachPopupToTrigger(singlePlayButton, Arrays.asList(singleNormalButton, singleItemButton));
+
+        // 멀티 플레이 버튼 설정
+        JButton multiPlayButton = new JButton() {
+            {
+                setText("Multi Play");
+                setFont(new Font("SansSerif", Font.BOLD, 18));
+            }
+        };
+        JButton localMultiButton = new JButton() {
+            {
+                setText("Local");
+                setFont(new Font("SansSerif", Font.BOLD, 14));
+            }
+        };
+        localMultiNormalButton = new JButton("기본 모드");
+        localMultiNormalButton.setFont(new Font("SansSerif", Font.BOLD, 14));
+        localMultiItemButton = new JButton("아이템 모드");
+        localMultiItemButton.setFont(new Font("SansSerif", Font.BOLD, 14));
+        localMultiTimeLimitButton = new JButton("시간 제한 모드");
+        localMultiTimeLimitButton.setFont(new Font("SansSerif", Font.BOLD, 14));
+        attachPopupToTrigger(localMultiButton,
+                Arrays.asList(localMultiNormalButton, localMultiItemButton, localMultiTimeLimitButton));
+        JButton onlineMultiButton = new JButton() {
+            {
+                setText("Online");
+                setFont(new Font("SansSerif", Font.BOLD, 14));
+            }
+        };
+        onlineMultiNormalButton = new JButton("기본 모드");
+        onlineMultiNormalButton.setFont(new Font("SansSerif", Font.BOLD, 14));
+        onlineMultiItemButton = new JButton("아이템 모드");
+        onlineMultiItemButton.setFont(new Font("SansSerif", Font.BOLD, 14));
+        onlineMultiTimeLimitButton = new JButton("시간 제한 모드");
+        onlineMultiTimeLimitButton.setFont(new Font("SansSerif", Font.BOLD, 14));
+        attachPopupToTrigger(onlineMultiButton,
+                Arrays.asList(onlineMultiNormalButton, onlineMultiItemButton, onlineMultiTimeLimitButton));
+        attachPopupToTrigger(multiPlayButton, Arrays.asList(localMultiButton, onlineMultiButton));
 
         // Add Components to GridBagLayout
         for (int i = 0; i < 2; i++) {
             addComponentVertical(new EmptySpace(), gbc);
         }
         addComponentVertical(titleText, gbc);
+        addComponentVertical(singlePlayButton, gbc);
+        addComponentVertical(multiPlayButton, gbc);
         addComponentVertical(gameButton, gbc);
         addComponentVertical(itemGameButton, gbc);
         addComponentVertical(settingButton, gbc);
@@ -100,6 +174,75 @@ public class MainPanel extends JPanel {
     private void addComponentVertical(Component component, GridBagConstraints gbc) {
         this.add(component, gbc);
         gbc.gridy++;
+    }
+
+    /**
+     * Attach a popup to a trigger button. When the trigger is clicked a small
+     * dialog
+     * will appear showing the given option buttons (one per line). Clicking any
+     * option will invoke the original option's action (via doClick()) and close
+     * the popup.
+     *
+     * Notes:
+     * - The popup creates new JButton instances copied from the provided options
+     * to avoid adding listeners to the original buttons repeatedly.
+     * - The popup is non-modal and positioned just below the trigger button.
+     *
+     * @param trigger the button that opens the popup when clicked
+     * @param options list of buttons whose labels and fonts will be used for popup
+     */
+    public void attachPopupToTrigger(JButton trigger, List<JButton> options) {
+        if (trigger == null || options == null || options.isEmpty())
+            return;
+
+        trigger.addActionListener(e -> {
+            java.awt.Window win = SwingUtilities.getWindowAncestor(this);
+            final JDialog dlg = new JDialog(win, ModalityType.MODELESS);
+
+            JPanel panel = new JPanel();
+            panel.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+            // arrange option buttons horizontally (side-by-side)
+            panel.setLayout(new BoxLayout(panel, BoxLayout.X_AXIS));
+            panel.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+            for (JButton opt : options) {
+                // create a lightweight copy so we don't mutate the caller's button
+                JButton copy = new JButton(opt.getText());
+                copy.setFont(opt.getFont());
+                // center vertically within horizontal layout
+                copy.setAlignmentY(Component.CENTER_ALIGNMENT);
+                copy.addActionListener(ae -> {
+                    // forward the click to the original button so existing listeners run
+                    opt.doClick();
+                    dlg.dispose();
+                });
+                panel.add(copy);
+                // horizontal spacing between option buttons
+                panel.add(Box.createHorizontalStrut(6));
+            }
+
+            dlg.getContentPane().add(panel);
+            dlg.pack();
+            dlg.setResizable(false);
+
+            try {
+                // center the dialog inside the parent window when possible
+                if (win != null) {
+                    Rectangle wb = win.getBounds();
+                    int x = wb.x + (wb.width - dlg.getWidth()) / 2;
+                    int y = wb.y + (wb.height - dlg.getHeight()) / 2;
+                    dlg.setLocation(x, y);
+                } else {
+                    // fallback to positioning below the trigger button
+                    Point p = trigger.getLocationOnScreen();
+                    dlg.setLocation(p.x, p.y + trigger.getHeight());
+                }
+            } catch (IllegalComponentStateException ex) {
+                dlg.setLocationRelativeTo(trigger);
+            }
+
+            dlg.setVisible(true);
+        });
     }
 
     public void focusButton(int direction) {
