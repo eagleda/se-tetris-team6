@@ -1,0 +1,12 @@
+# 아키텍처 진단
+
+| 파일 | 현재 역할 | 위반 사항 | 권장 조치 | 사유 |
+|---|---|---|---|---|
+| se-tetris-team6/app/src/main/java/tetris/domain/GameModel.java | Domain | `tetris.data.*` 저장소와 UI 브리지를 직접 생성해 도메인이 인프라/프레젠테이션에 의존 | 저장소·포트를 주입받는 `application.GameplayService`로 인프라/브리지를 분리하고, `GameModel`은 순수 상태 머신으로 유지 | 도메인이 스토리지/뷰에 결합되지 않으며, 인프라를 주입으로 대체 가능 |
+| se-tetris-team6/app/src/main/java/tetris/domain/model/GameClock.java | Domain | `javax.swing.Timer`·`java.awt.event.*` 의존으로 핵심 타이밍이 Swing에 묶임 | `application.port.ClockPort` 인터페이스를 만들고, 구현은 `infrastructure/time/SwingGameClockAdapter`로 이동 | UI 툴킷 종속성을 제거해 다른 런타임에서도 재사용 가능 |
+| se-tetris-team6/app/src/main/java/tetris/domain/setting/Setting.java | Domain | `java.awt.event.KeyEvent` 값을 직접 보유해 키보드 레이아웃에 의존 | 애플리케이션 계층의 `KeyBindingPort`를 통해 키맵을 주입하고, 도메인은 값 객체만 유지 | 플랫폼/입력 방식이 달라도 재사용 가능 |
+| se-tetris-team6/app/src/main/java/tetris/view/GameComponent/GamePanel.java | View | `GameModel`, `Board` 등 도메인 객체를 직접 참조해 상태를 읽음 | 컨트롤러가 제공하는 `presentation.viewmodel.BoardSnapshot` DTO를 도입해 뷰는 DTO만 렌더링 | 뷰가 도메인 내부를 조작/의존하지 않도록 보호 |
+| se-tetris-team6/app/src/main/java/tetris/view/TetrisFrame.java | View | 상태 전환·타이머·저장소 호출까지 담당해 컨트롤러/유스케이스 책임 침범 | 전체 조립을 맡는 `presentation.controller.RootController`로 로직을 이동하고, 프레임은 위젯+옵저버에 집중 | 책임이 명확해지고 헤드리스 테스트 드라이버 구성 용이 |
+| se-tetris-team6/app/src/main/java/tetris/controller/GameController.java | Controller | 입력 반복/게임 진행/난이도 조정을 모두 직접 처리해 두꺼운 컨트롤러가 됨 | `StartGame`, `HandleGameplayInput` 등 애플리케이션 유스케이스를 만들고 컨트롤러는 호출자 역할만 수행 | 테스트 용이성과 얇은 컨트롤러 원칙 확보 |
+| se-tetris-team6/app/src/main/java/tetris/view/SettingPanel.java | View | 도메인 `Setting` 엔터티를 직접 수정하고 저장소에 쓰기 요청 | `SettingViewModel`과 컨트롤러 커맨드를 도입해 뷰는 의도(intents)만 발행 | Swing 컴포넌트가 도메인을 변경하지 않도록 차단 |
+| se-tetris-team6/app/src/main/java/tetris/App.java | Config | DI 없이 컨트롤러·뷰를 수동으로 묶어 모듈 경계가 불명확 | 도메인/애플리케이션/인프라 모듈을 배선하는 컴포지션 루트를 만들고 프레젠테이션에 주입 | 의존성 역전과 멀티 플랫폼 지원 기반 마련 |
