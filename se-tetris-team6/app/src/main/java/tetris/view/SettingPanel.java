@@ -7,6 +7,9 @@ import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.awt.event.KeyEvent;
+import java.awt.KeyEventDispatcher;
+import java.awt.KeyboardFocusManager;
 
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
@@ -80,12 +83,14 @@ public class SettingPanel extends JPanel {
 
         JPanel row1 = new JPanel(new FlowLayout(FlowLayout.LEFT));
         row1.setOpaque(false);
+
         row1.add(new JLabel("Move Left:"));
         keyMoveLeftField = new JTextField(8);
         keyMoveLeftField.setFocusable(false);
         row1.add(keyMoveLeftField);
         captureMoveLeftButton = new JButton("Capture");
         row1.add(captureMoveLeftButton);
+
         row1.add(new JLabel("Move Right:"));
         keyMoveRightField = new JTextField(8);
         keyMoveRightField.setFocusable(false);
@@ -96,12 +101,14 @@ public class SettingPanel extends JPanel {
 
         JPanel row2 = new JPanel(new FlowLayout(FlowLayout.LEFT));
         row2.setOpaque(false);
+
         row2.add(new JLabel("Rotate:"));
         keyRotateField = new JTextField(8);
         keyRotateField.setFocusable(false);
         row2.add(keyRotateField);
         captureRotateButton = new JButton("Capture");
         row2.add(captureRotateButton);
+
         row2.add(new JLabel("Soft Drop:"));
         keySoftDropField = new JTextField(8);
         keySoftDropField.setFocusable(false);
@@ -158,28 +165,31 @@ public class SettingPanel extends JPanel {
         installCapture(captureSoftDropButton, keySoftDropField);
     }
 
-    private void installCapture(JButton button, JTextField targetField) {
-        button.addActionListener(e -> {
-            button.setText("Press a key...");
-            button.setEnabled(false);
+    private void installCapture(JButton captureKeyButton, JTextField targetField) {
+        captureKeyButton.addActionListener(e -> {
+            captureKeyButton.setText("Press a key...");
+            captureKeyButton.setEnabled(false);
             // prevent the text field from accepting KEY_TYPED events while capturing
-            java.awt.KeyEventDispatcher dispatcher = new java.awt.KeyEventDispatcher() {
+            java.awt.KeyEventDispatcher dispatcher = new KeyEventDispatcher() {
                 @Override
-                public boolean dispatchKeyEvent(java.awt.event.KeyEvent evt) {
+                public boolean dispatchKeyEvent(KeyEvent evt) {
                     // If a key was pressed, capture it and stop dispatching further key events.
-                    if (evt.getID() == java.awt.event.KeyEvent.KEY_PRESSED) {
+                    if (evt.getID() == KeyEvent.KEY_PRESSED) {
                         int code = evt.getKeyCode();
-                        targetField.setText(tetris.util.KeyMapper.keyCodeToName(code));
+                        // If ESC pressed, cancel capture without assigning
+                        if (code != KeyEvent.VK_ESCAPE) {
+                            targetField.setText(tetris.util.KeyMapper.keyCodeToName(code));
+                        }
                         // consume and prevent subsequent KEY_TYPED being delivered
                         evt.consume();
                         // restore button and field state
-                        button.setText("Capture");
-                        button.setEnabled(true);
-                        java.awt.KeyboardFocusManager.getCurrentKeyboardFocusManager().removeKeyEventDispatcher(this);
+                        captureKeyButton.setText("Capture");
+                        captureKeyButton.setEnabled(true);
+                        KeyboardFocusManager.getCurrentKeyboardFocusManager().removeKeyEventDispatcher(this);
                         return true; // consumed
                     }
                     // Also consume any KEY_TYPED events while capturing to avoid stray input
-                    if (evt.getID() == java.awt.event.KeyEvent.KEY_TYPED) {
+                    if (evt.getID() == KeyEvent.KEY_TYPED) {
                         evt.consume();
                         return true;
                     }

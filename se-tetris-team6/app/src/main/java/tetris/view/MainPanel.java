@@ -10,6 +10,7 @@ public class MainPanel extends JPanel {
     public JButton itemGameButton;
     public JButton settingButton;
     public JButton scoreboardButton;
+    public JButton exitButton;
 
     public Color NORMAL_COLOR = Color.white;
     public Color HIGHLIGHT_COLOR = Color.gray;
@@ -66,6 +67,13 @@ public class MainPanel extends JPanel {
                 setFont(new Font("SansSerif", Font.BOLD, 18));
             }
         };
+        exitButton = new JButton() {
+            {
+                setText("Exit");
+                setFont(new Font("SansSerif", Font.BOLD, 18));
+            }
+        };
+
 
         JLabel titleLabel = new JLabel("TETRIS", SwingConstants.CENTER) {
             {
@@ -84,6 +92,7 @@ public class MainPanel extends JPanel {
         addComponentVertical(itemGameButton, gbc);
         addComponentVertical(settingButton, gbc);
         addComponentVertical(scoreboardButton, gbc);
+        addComponentVertical(exitButton, gbc);
         for (int i = 0; i < 8; i++) {
             addComponentVertical(new EmptySpace(), gbc);
         }
