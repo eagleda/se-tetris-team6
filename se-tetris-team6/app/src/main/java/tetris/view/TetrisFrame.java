@@ -11,6 +11,7 @@ import java.util.List;
 import javax.swing.AbstractAction;
 import javax.swing.ActionMap;
 import javax.swing.InputMap;
+import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JLayeredPane;
@@ -160,6 +161,27 @@ public class TetrisFrame extends JFrame {
             displayPanel(gameLayout);
             gameController.startItemGame();
         });
+
+        mainPanel.localMultiNormalButton.addActionListener(e -> {
+            //
+        });
+        mainPanel.localMultiItemButton.addActionListener(e -> {
+            //
+        });
+        mainPanel.localMultiTimeLimitButton.addActionListener(e -> {
+            //
+        });
+
+        mainPanel.onlineMultiNormalButton.addActionListener(e -> {
+            //
+        });
+        mainPanel.onlineMultiItemButton.addActionListener(e -> {
+            //
+        });
+        mainPanel.onlineMultiTimeLimitButton.addActionListener(e -> {
+            //
+        });
+
         mainPanel.settingButton.addActionListener(e -> {
             displayPanel(settingPanel);
         });
