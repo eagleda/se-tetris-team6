@@ -1,12 +1,30 @@
 package tetris.view;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.awt.*;
+import java.awt.Color;
+import java.awt.Component;
 import java.awt.Dialog.ModalityType;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Font;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.IllegalComponentStateException;
+import java.awt.Insets;
+import java.awt.Point;
+import java.awt.Rectangle;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
-import javax.swing.*;
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JButton;
+import javax.swing.JDialog;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
 
 public class MainPanel extends JPanel {
     public JButton singleNormalButton;
@@ -163,7 +181,22 @@ public class MainPanel extends JPanel {
     }
 
     private void addComponentVertical(Component component, GridBagConstraints gbc) {
-        this.add(component, gbc);
+        // If the component is a JButton, wrap it in a center-aligned panel and
+        // fix its preferred size so all menu buttons keep the same horizontal
+        // size regardless of the parent width.
+        if (component instanceof JButton button) {
+            // choose a fixed size for menu buttons
+            Dimension fixed = new Dimension(240, 44);
+            button.setPreferredSize(fixed);
+            button.setMaximumSize(fixed);
+
+            JPanel wrapper = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
+            wrapper.setOpaque(false);
+            wrapper.add(button);
+            this.add(wrapper, gbc);
+        } else {
+            this.add(component, gbc);
+        }
         gbc.gridy++;
     }
 
