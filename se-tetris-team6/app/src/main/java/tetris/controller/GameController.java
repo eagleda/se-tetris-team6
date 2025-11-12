@@ -66,7 +66,7 @@ public class GameController {
         // 게임 플레이 키
         keyBindings.put("MOVE_LEFT", KeyEvent.VK_LEFT);
         keyBindings.put("MOVE_RIGHT", KeyEvent.VK_RIGHT);
-        keyBindings.put("MOVE_DOWN", KeyEvent.VK_DOWN);
+    keyBindings.put("SOFT_DROP", KeyEvent.VK_DOWN);
         keyBindings.put("ROTATE_CW", KeyEvent.VK_UP);           // 시계방향 회전
         keyBindings.put("ROTATE_CCW", KeyEvent.VK_Z);           // 반시계방향 회전 (추가)
         keyBindings.put("HARD_DROP", KeyEvent.VK_SPACE);        // 하드 드롭
@@ -157,7 +157,7 @@ public class GameController {
         } else if (keyCode == keyBindings.get("MOVE_RIGHT")) {
             gameModel.moveBlockRight();
             System.out.println("Controller: 블록 오른쪽 이동");
-        } else if (keyCode == keyBindings.get("MOVE_DOWN")) {
+        } else if (keyCode == keyBindings.get("SOFT_DROP")) {
             gameModel.moveBlockDown();
             System.out.println("Controller: 블록 아래로 이동 (소프트 드롭)");
         } else if (keyCode == keyBindings.get("ROTATE_CW")) {
@@ -296,7 +296,7 @@ public class GameController {
         // 이동 키들은 조금 더 느린 반복
         if (keyCode == keyBindings.get("MOVE_LEFT") ||
             keyCode == keyBindings.get("MOVE_RIGHT") ||
-            keyCode == keyBindings.get("MOVE_DOWN")) {
+            keyCode == keyBindings.get("SOFT_DROP")) {
             return MOVEMENT_REPEAT_DELAY;
         }
 

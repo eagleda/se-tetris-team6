@@ -167,6 +167,9 @@ public class TetrisFrame extends JFrame {
             // ensure leaderboard is refreshed before showing
             showScoreboardPanel();
         });
+        mainPanel.exitButton.addActionListener(e -> {
+            System.exit(0);
+        });
     }
 
     private void setupGameLayout() {

@@ -50,8 +50,8 @@ class SettingServiceTest {
         assertEquals(GameDifficulty.HARD, settings.getDifficulty());
         assertEquals(bindings, settings.getKeyBindings());
 
-        bindings.put("ROTATE", KeyEvent.VK_W);
-        assertFalse(settings.getKeyBindings().containsKey("ROTATE"),
+        bindings.put("ROTATE_CW", KeyEvent.VK_W);
+        assertFalse(settings.getKeyBindings().containsKey("ROTATE_CW"),
             "key map should have been defensively copied");
     }
 

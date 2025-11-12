@@ -45,7 +45,7 @@ public class Setting {
         Map<String, Integer> kb = new HashMap<>();
         kb.put("MOVE_LEFT", java.awt.event.KeyEvent.VK_LEFT);
         kb.put("MOVE_RIGHT", java.awt.event.KeyEvent.VK_RIGHT);
-        kb.put("ROTATE", java.awt.event.KeyEvent.VK_UP);
+        kb.put("ROTATE_CW", java.awt.event.KeyEvent.VK_UP);
         kb.put("SOFT_DROP", java.awt.event.KeyEvent.VK_DOWN);
         kb.put("HARD_DROP", java.awt.event.KeyEvent.VK_SPACE);
         kb.put("HOLD", java.awt.event.KeyEvent.VK_C);

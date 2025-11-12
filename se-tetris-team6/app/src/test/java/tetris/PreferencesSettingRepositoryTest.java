@@ -25,7 +25,7 @@ class PreferencesSettingRepositoryTest {
         Map<String, Integer> kb = new HashMap<>();
         kb.put("MOVE_LEFT", java.awt.event.KeyEvent.VK_A);
         kb.put("MOVE_RIGHT", java.awt.event.KeyEvent.VK_D);
-        kb.put("ROTATE", java.awt.event.KeyEvent.VK_W);
+    kb.put("ROTATE_CW", java.awt.event.KeyEvent.VK_W);
         kb.put("SOFT_DROP", java.awt.event.KeyEvent.VK_S);
         kb.put("HARD_DROP", java.awt.event.KeyEvent.VK_SPACE);
         kb.put("HOLD", java.awt.event.KeyEvent.VK_C);
