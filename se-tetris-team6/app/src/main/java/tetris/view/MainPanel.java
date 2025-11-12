@@ -1,18 +1,9 @@
 package tetris.view;
 
-import java.awt.Color;
-import java.awt.Component;
-import java.awt.Font;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import java.awt.Insets;
 import java.util.ArrayList;
 import java.util.List;
-
-import javax.swing.JButton;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.SwingConstants;
+import java.awt.*;
+import javax.swing.*;
 
 public class MainPanel extends JPanel {
     public JButton gameButton;
@@ -43,6 +34,12 @@ public class MainPanel extends JPanel {
                 insets = new Insets(10, 200, 10, 200);
             }
         };
+
+        // 게임 타이틀
+        JLabel titleText = new JLabel("TETRIS", SwingConstants.CENTER);
+        titleText.setFont(new Font("SansSerif", Font.BOLD, 48));
+        titleText.setForeground(Color.BLUE);
+        titleText.setHorizontalAlignment(SwingConstants.CENTER);
 
         // 버튼 생성
         gameButton = new JButton() {
@@ -79,9 +76,10 @@ public class MainPanel extends JPanel {
         };
 
         // Add Components to GridBagLayout
-        addComponentVertical(new EmptySpace(), gbc);
-        addComponentVertical(titleLabel, gbc);
-        addComponentVertical(new EmptySpace(), gbc);
+        for (int i = 0; i < 2; i++) {
+            addComponentVertical(new EmptySpace(), gbc);
+        }
+        addComponentVertical(titleText, gbc);
         addComponentVertical(gameButton, gbc);
         addComponentVertical(itemGameButton, gbc);
         addComponentVertical(settingButton, gbc);
