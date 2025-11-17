@@ -166,19 +166,6 @@ public class MainPanel extends JPanel {
     }
 
     /**
-     * Override-only hook invoked when a Single Play option is chosen.
-     *
-     * Subclasses (or anonymous subclasses) should override this method to
-     * implement behavior for the selected single-player mode. This base
-     * implementation intentionally does nothing.
-     *
-     * @param mode one of "NORMAL", "ITEM"
-     */
-    protected void onSinglePlayConfirmed(String mode) {
-        // no-op: override in subclass to handle single-play selection
-    }
-
-    /**
      * Attach a specialized dialog to the Multi Play menu button. The dialog
      * contains three horizontal radio groups arranged vertically:
      * 1) Mode: Normal / Item / Time Limit
@@ -299,6 +286,19 @@ public class MainPanel extends JPanel {
             dlg.setLocationRelativeTo(win);
             dlg.setVisible(true);
         });
+    }
+
+    /**
+     * Override-only hook invoked when a Single Play option is chosen.
+     *
+     * Subclasses (or anonymous subclasses) should override this method to
+     * implement behavior for the selected single-player mode. This base
+     * implementation intentionally does nothing.
+     *
+     * @param mode one of "NORMAL", "ITEM"
+     */
+    protected void onSinglePlayConfirmed(String mode) {
+        // no-op: override in subclass to handle single-play selection
     }
 
     /**
