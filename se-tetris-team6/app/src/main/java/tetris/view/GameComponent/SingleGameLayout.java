@@ -57,6 +57,7 @@ public class SingleGameLayout extends JPanel {
         gbc.ipadx = 5;
         gbc.ipady = 5;
 
+        comp.setVisible(true);
         this.add(comp, gbc);
     }
 

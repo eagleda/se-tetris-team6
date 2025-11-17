@@ -167,28 +167,28 @@ public class TetrisFrame extends JFrame {
         });
         // local multi game
         mainPanel.localMultiNormalButton.addActionListener(e -> {
-            //
+            multiGameLayout.hideTimer();
             displayPanel(multiGameLayout);
         });
         mainPanel.localMultiItemButton.addActionListener(e -> {
-            //
+            multiGameLayout.hideTimer();
             displayPanel(multiGameLayout);
         });
         mainPanel.localMultiTimeLimitButton.addActionListener(e -> {
-            //
+            multiGameLayout.showTimer();
             displayPanel(multiGameLayout);
         });
         // online multi game
         mainPanel.onlineMultiNormalButton.addActionListener(e -> {
-            //
+            multiGameLayout.hideTimer();
             displayPanel(multiGameLayout);
         });
         mainPanel.onlineMultiItemButton.addActionListener(e -> {
-            //
+            multiGameLayout.hideTimer();
             displayPanel(multiGameLayout);
         });
         mainPanel.onlineMultiTimeLimitButton.addActionListener(e -> {
-            //
+            multiGameLayout.showTimer();
             displayPanel(multiGameLayout);
         });
         // menu
