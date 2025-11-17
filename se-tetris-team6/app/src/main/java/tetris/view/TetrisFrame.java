@@ -155,54 +155,54 @@ public class TetrisFrame extends JFrame {
     }
 
     private void setupMainPanel() {
-        mainPanel = new MainPanel();
+        mainPanel = new MainPanel() {
+            @Override
+            protected void onSinglePlayConfirmed(String mode) {
+                displayPanel(singleGameLayout);
+                switch (mode) {
+                    case "NORMAL":
+                        gameController.startStandardGame();
+                        break;
+                    case "ITEM":
+                        gameController.startItemGame();
+                        break;
+                }
+            }
+
+            @Override
+            protected void onMultiPlayConfirmed(String mode, boolean isOnline, boolean isServer) {
+                if (mode.equals("TIME_LIMIT")) {
+                    multiGameLayout.showTimer();
+                } else {
+                    multiGameLayout.hideTimer();
+                }
+                displayPanel(multiGameLayout);
+                switch (mode) {
+                    case "NORMAL":
+                        break;
+                    case "ITEM":
+                        break;
+                    case "TIME_LIMIT":
+                        break;
+                }
+            }
+            
+            @Override
+            protected void onSettingClicked() {
+                displayPanel(settingPanel);
+            }
+
+            @Override
+            protected void onScoreboardClicked() {
+                displayPanel(scoreboardPanel);
+            }
+
+            @Override
+            protected void onExitClicked() {
+                System.exit(0);
+            }
+        };
         layeredPane.add(mainPanel, JLayeredPane.DEFAULT_LAYER);
-        // single game
-        mainPanel.singleNormalButton.addActionListener(e -> {
-            displayPanel(singleGameLayout);
-            gameController.startStandardGame();
-        });
-        mainPanel.singleItemButton.addActionListener(e -> {
-            displayPanel(singleGameLayout);
-            gameController.startItemGame();
-        });
-        // local multi game
-        mainPanel.localMultiNormalButton.addActionListener(e -> {
-            multiGameLayout.hideTimer();
-            displayPanel(multiGameLayout);
-        });
-        mainPanel.localMultiItemButton.addActionListener(e -> {
-            multiGameLayout.hideTimer();
-            displayPanel(multiGameLayout);
-        });
-        mainPanel.localMultiTimeLimitButton.addActionListener(e -> {
-            multiGameLayout.showTimer();
-            displayPanel(multiGameLayout);
-        });
-        // online multi game
-        mainPanel.onlineMultiNormalButton.addActionListener(e -> {
-            multiGameLayout.hideTimer();
-            displayPanel(multiGameLayout);
-        });
-        mainPanel.onlineMultiItemButton.addActionListener(e -> {
-            multiGameLayout.hideTimer();
-            displayPanel(multiGameLayout);
-        });
-        mainPanel.onlineMultiTimeLimitButton.addActionListener(e -> {
-            multiGameLayout.showTimer();
-            displayPanel(multiGameLayout);
-        });
-        // menu
-        mainPanel.settingButton.addActionListener(e -> {
-            displayPanel(settingPanel);
-        });
-        mainPanel.scoreboardButton.addActionListener(e -> {
-            // ensure leaderboard is refreshed before showing
-            showScoreboardPanel();
-        });
-        mainPanel.exitButton.addActionListener(e -> {
-            System.exit(0);
-        });
     }
 
     private void setupSingleGameLayout() {
