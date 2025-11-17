@@ -198,7 +198,7 @@ public class TetrisFrame extends JFrame {
 
             @Override
             protected void onExitClicked() {
-                System.exit(0);
+                TetrisFrame.this.dispatchEvent(new WindowEvent(TetrisFrame.this, WindowEvent.WINDOW_CLOSING));
             }
         };
         layeredPane.add(mainPanel, JLayeredPane.DEFAULT_LAYER);
@@ -230,22 +230,24 @@ public class TetrisFrame extends JFrame {
     }
 
     private void setupPausePanel() {
-        pausePanel = new PausePanel();
-        layeredPane.add(pausePanel, JLayeredPane.PALETTE_LAYER);
+        pausePanel = new PausePanel() {
+            @Override
+            protected void onContinueClicked() {
+                gameModel.resumeGame();
+            }
 
-        // 버튼 기능 추가
-        pausePanel.continueButton.addActionListener(e -> {
-            gameModel.resumeGame();
-        });
-        pausePanel.goMainButton.addActionListener(e -> {
-            displayPanel(mainPanel);
-            gameModel.quitToMenu();
-        });
-        pausePanel.exitButton.addActionListener(e -> {
-            this.dispatchEvent(new WindowEvent(this, WindowEvent.WINDOW_CLOSING));
-        });
-        pausePanel.exitButton
-                .addActionListener(e -> this.dispatchEvent(new WindowEvent(this, WindowEvent.WINDOW_CLOSING)));
+            @Override
+            protected void onGoMainClicked() {
+                displayPanel(mainPanel);
+                gameModel.quitToMenu();
+            }
+
+            @Override
+            protected void onExitClicked() {
+                TetrisFrame.this.dispatchEvent(new WindowEvent(TetrisFrame.this, WindowEvent.WINDOW_CLOSING));
+            }
+        };
+        layeredPane.add(pausePanel, JLayeredPane.PALETTE_LAYER);
     }
 
     private void setupScoreboardPanel() {
