@@ -1,5 +1,8 @@
 package tetris.view;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dialog.ModalityType;
@@ -8,42 +11,25 @@ import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
-import java.awt.IllegalComponentStateException;
 import java.awt.Insets;
-import java.awt.Point;
-import java.awt.Rectangle;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.awt.BorderLayout;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JDialog;
+import javax.swing.JRadioButton;
+import javax.swing.ButtonGroup;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 
 public class MainPanel extends JPanel {
-    public JButton singleNormalButton;
-    public JButton singleItemButton;
+    private final static Color NORMAL_COLOR = Color.white;
+    private final static Color HIGHLIGHT_COLOR = Color.gray;
 
-    public JButton localMultiNormalButton;
-    public JButton localMultiItemButton;
-    public JButton localMultiTimeLimitButton;
-
-    public JButton onlineMultiNormalButton;
-    public JButton onlineMultiItemButton;
-    public JButton onlineMultiTimeLimitButton;
-
-    public JButton settingButton;
-    public JButton scoreboardButton;
-    public JButton exitButton;
-
-    public Color NORMAL_COLOR = Color.white;
-    public Color HIGHLIGHT_COLOR = Color.gray;
     private List<JButton> buttons;
     private int currentFocusIndex = 0;
 
@@ -73,48 +59,26 @@ public class MainPanel extends JPanel {
         titleText.setHorizontalAlignment(SwingConstants.CENTER);
 
         // 싱글 플레이 버튼 설정
-        JButton singlePlayButton = getMenuButton("Single Play");
-        singleNormalButton = getOptionButton("Normal Mode");
-        singleItemButton = getOptionButton("Item Mode");
-        attachPopupToTrigger(singlePlayButton, "Single Play Options",
-                Arrays.asList(singleNormalButton, singleItemButton));
-
+        JButton singlePlayButton = new JButton("Single Play");
+        attachSinglePlayDialog(singlePlayButton);
         // 멀티 플레이 버튼 설정
-        JButton multiPlayButton = getMenuButton("Multi Play");
-        JButton localMultiButton = getOptionButton("Local");
-
-        localMultiNormalButton = getOptionButton("Normal Mode");
-        localMultiItemButton = getOptionButton("Item Mode");
-        localMultiTimeLimitButton = getOptionButton("Time Limit Mode");
-        attachPopupToTrigger(localMultiButton,
-                "Local Multi Options",
-                Arrays.asList(localMultiNormalButton, localMultiItemButton, localMultiTimeLimitButton));
-        JButton onlineMultiButton = getOptionButton("Online");
-        onlineMultiNormalButton = getOptionButton("Normal Mode");
-        onlineMultiItemButton = getOptionButton("Item Mode");
-        onlineMultiTimeLimitButton = getOptionButton("Time Limit Mode");
-        attachPopupToTrigger(onlineMultiButton,
-                "Online Multi Options",
-                Arrays.asList(onlineMultiNormalButton, onlineMultiItemButton, onlineMultiTimeLimitButton));
-        attachPopupToTrigger(multiPlayButton, "Multi Play Options", Arrays.asList(localMultiButton, onlineMultiButton));
-
-        settingButton = getMenuButton("Setting");
-        scoreboardButton = getMenuButton("Scoreboard");
-        exitButton = getMenuButton("Exit");
-
-        // Add Components to GridBagLayout
-        for (int i = 0; i < 2; i++) {
-            addComponentVertical(new EmptySpace(), gbc);
-        }
-        addComponentVertical(titleText, gbc);
-        addComponentVertical(singlePlayButton, gbc);
-        addComponentVertical(multiPlayButton, gbc);
-        addComponentVertical(settingButton, gbc);
-        addComponentVertical(scoreboardButton, gbc);
-        addComponentVertical(exitButton, gbc);
-        for (int i = 0; i < 8; i++) {
-            addComponentVertical(new EmptySpace(), gbc);
-        }
+        JButton multiPlayButton = new JButton("Multi Play");
+        attachMultiPlayDialog(multiPlayButton);
+        // 설정 버튼 설정
+        JButton settingButton = new JButton("Setting");
+        settingButton.addActionListener(e -> {
+            onSettingClicked();
+        });
+        // 스코어보드 버튼 설정
+        JButton scoreboardButton = new JButton("Scoreboard");
+        scoreboardButton.addActionListener(e -> {
+            onScoreboardClicked();
+        });
+        // 종료 버튼 설정
+        JButton exitButton = new JButton("Exit");
+        exitButton.addActionListener(e -> {
+            onExitClicked();
+        });
 
         // Add button to buttons
         buttons = new ArrayList<>();
@@ -123,14 +87,19 @@ public class MainPanel extends JPanel {
         buttons.add(settingButton);
         buttons.add(scoreboardButton);
         buttons.add(exitButton);
+
+        // Add Components to GridBagLayout
+        addComponentVertical(new EmptySpace(), gbc);
+        addComponentVertical(titleText, gbc);
+        for (JButton button : buttons) {
+            addComponentVertical(button, gbc);
+        }
+        addComponentVertical(new EmptySpace(), gbc);
     }
 
     private void addComponentVertical(Component component, GridBagConstraints gbc) {
-        // If the component is a JButton, wrap it in a center-aligned panel and
-        // fix its preferred size so all menu buttons keep the same horizontal
-        // size regardless of the parent width.
         if (component instanceof JButton button) {
-            // choose a fixed size for menu buttons
+            button.setFont(new Font("SansSerif", Font.BOLD, 18));
             Dimension fixed = new Dimension(240, 44);
             button.setPreferredSize(fixed);
             button.setMaximumSize(fixed);
@@ -145,89 +114,220 @@ public class MainPanel extends JPanel {
         gbc.gridy++;
     }
 
-    private JButton getMenuButton(String text) {
-        JButton button = new JButton(text);
-        button.setFont(new Font("SansSerif", Font.BOLD, 18));
-        button.setPreferredSize(new Dimension(240, 44));
-        // button.setMaximumSize(BUTTON_SIZE);
-        return button;
-    }
-
-    private JButton getOptionButton(String text) {
-        JButton button = new JButton(text);
-        button.setFont(new Font("SansSerif", Font.BOLD, 14));
-        button.setPreferredSize(new Dimension(160, 36));
-        return button;
-    }
-
     /**
-     * Attach a popup to a trigger button. When the trigger is clicked a small
-     * dialog
-     * will appear showing the given option buttons (one per line). Clicking any
-     * option will invoke the original option's action (via doClick()) and close
-     * the popup.
-     *
-     * Notes:
-     * - The popup creates new JButton instances copied from the provided options
-     * to avoid adding listeners to the original buttons repeatedly.
-     * - The popup is non-modal and positioned just below the trigger button.
-     *
-     * @param trigger the button that opens the popup when clicked
-     * @param options list of buttons whose labels and fonts will be used for popup
+     * Attach a simple modal dialog to the Single Play menu button. The dialog
+     * contains a single Mode radio group (Normal / Item) and a Confirm button.
+     * When Confirm is pressed this method calls `onSinglePlayConfirmed(mode)`.
      */
-    public void attachPopupToTrigger(JButton trigger, String title, List<JButton> options) {
-        if (trigger == null || options == null || options.isEmpty())
+    private void attachSinglePlayDialog(JButton trigger) {
+        if (trigger == null)
             return;
 
         trigger.addActionListener(e -> {
             java.awt.Window win = SwingUtilities.getWindowAncestor(this);
-            final JDialog dlg = new JDialog(win, ModalityType.MODELESS);
-            dlg.setTitle(title);
+            final JDialog dlg = new JDialog(win, ModalityType.APPLICATION_MODAL);
+            dlg.setTitle("Single Play Options");
 
-            JPanel panel = new JPanel();
-            panel.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
-            // arrange option buttons horizontally (side-by-side)
-            panel.setLayout(new BoxLayout(panel, BoxLayout.X_AXIS));
-            panel.setAlignmentX(Component.CENTER_ALIGNMENT);
+            JPanel root = new JPanel();
+            root.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
+            root.setLayout(new BoxLayout(root, BoxLayout.Y_AXIS));
 
-            for (JButton opt : options) {
-                // create a lightweight copy so we don't mutate the caller's button
-                JButton copy = new JButton(opt.getText());
-                copy.setFont(opt.getFont());
-                // center vertically within horizontal layout
-                copy.setAlignmentY(Component.CENTER_ALIGNMENT);
-                copy.addActionListener(ae -> {
-                    // forward the click to the original button so existing listeners run
-                    opt.doClick();
-                    dlg.dispose();
-                });
-                panel.add(copy);
-                // horizontal spacing between option buttons
-                panel.add(Box.createHorizontalStrut(6));
-            }
+            JPanel modeRow = new JPanel();
+            modeRow.setLayout(new BoxLayout(modeRow, BoxLayout.X_AXIS));
+            modeRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+            JRadioButton modeNormal = new JRadioButton("Normal");
+            JRadioButton modeItem = new JRadioButton("Item");
+            ButtonGroup modeGroup = new ButtonGroup();
+            modeGroup.add(modeNormal);
+            modeGroup.add(modeItem);
+            modeNormal.setSelected(true);
+            modeRow.add(modeNormal);
+            modeRow.add(Box.createHorizontalStrut(8));
+            modeRow.add(modeItem);
+            root.add(modeRow);
+            root.add(Box.createVerticalStrut(14));
 
-            dlg.getContentPane().add(panel);
+            JPanel btnRow = new JPanel(new FlowLayout(FlowLayout.CENTER, 8, 0));
+            JButton confirm = new JButton("Confirm");
+            confirm.addActionListener(ae -> {
+                String mode = modeNormal.isSelected() ? "NORMAL" : "ITEM";
+                onSinglePlayConfirmed(mode);
+                dlg.dispose();
+            });
+            btnRow.add(confirm);
+            root.add(btnRow);
+
+            dlg.getContentPane().add(root);
             dlg.pack();
             dlg.setResizable(false);
-
-            try {
-                // center the dialog inside the parent window when possible
-                if (win != null) {
-                    Rectangle wb = win.getBounds();
-                    int x = wb.x + (wb.width - dlg.getWidth()) / 2;
-                    int y = wb.y + (wb.height - dlg.getHeight()) / 2;
-                    dlg.setLocation(x, y);
-                } else {
-                    // fallback to positioning below the trigger button
-                    Point p = trigger.getLocationOnScreen();
-                    dlg.setLocation(p.x, p.y + trigger.getHeight());
-                }
-            } catch (IllegalComponentStateException ex) {
-                dlg.setLocationRelativeTo(trigger);
-            }
-
+            dlg.setLocationRelativeTo(win);
             dlg.setVisible(true);
         });
+    }
+
+    /**
+     * Override-only hook invoked when a Single Play option is chosen.
+     *
+     * Subclasses (or anonymous subclasses) should override this method to
+     * implement behavior for the selected single-player mode. This base
+     * implementation intentionally does nothing.
+     *
+     * @param mode one of "NORMAL", "ITEM"
+     */
+    protected void onSinglePlayConfirmed(String mode) {
+        // no-op: override in subclass to handle single-play selection
+    }
+
+    /**
+     * Attach a specialized dialog to the Multi Play menu button. The dialog
+     * contains three horizontal radio groups arranged vertically:
+     * 1) Mode: Normal / Item / Time Limit
+     * 2) Scope: Local / Online
+     * 3) Role: Server / Client (only visible when Online is selected)
+     *
+     * A final Confirm button collects the selections and calls
+     * `onMultiPlayConfirmed(mode, isOnline, isServer)` which is intentionally
+     * left empty so higher-level code can decide what to do.
+     */
+    private void attachMultiPlayDialog(JButton trigger) {
+        if (trigger == null)
+            return;
+
+        trigger.addActionListener(e -> {
+            java.awt.Window win = SwingUtilities.getWindowAncestor(this);
+            final JDialog dlg = new JDialog(win, ModalityType.APPLICATION_MODAL);
+            dlg.setTitle("Multi Play Options");
+
+            JPanel root = new JPanel();
+            root.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
+            root.setLayout(new BoxLayout(root, BoxLayout.Y_AXIS));
+
+            // 1) Mode selection
+            JPanel modeRow = new JPanel();
+            modeRow.setLayout(new BoxLayout(modeRow, BoxLayout.X_AXIS));
+            // align mode row to the left to match scope/role alignment
+            modeRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+            JRadioButton modeNormal = new JRadioButton("Normal");
+            JRadioButton modeItem = new JRadioButton("Item");
+            JRadioButton modeTime = new JRadioButton("Time Limit");
+            ButtonGroup modeGroup = new ButtonGroup();
+            modeGroup.add(modeNormal);
+            modeGroup.add(modeItem);
+            modeGroup.add(modeTime);
+            modeNormal.setSelected(true);
+            modeRow.add(modeNormal);
+            modeRow.add(Box.createHorizontalStrut(8));
+            modeRow.add(modeItem);
+            modeRow.add(Box.createHorizontalStrut(8));
+            modeRow.add(modeTime);
+            root.add(modeRow);
+            root.add(Box.createVerticalStrut(10));
+
+            // 2) Scope selection (Local / Online)
+            JPanel scopeRow = new JPanel();
+            scopeRow.setLayout(new BoxLayout(scopeRow, BoxLayout.X_AXIS));
+            // align the scope row to the left within the vertical BoxLayout
+            scopeRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+            JRadioButton scopeLocal = new JRadioButton("Local");
+            JRadioButton scopeOnline = new JRadioButton("Online");
+            ButtonGroup scopeGroup = new ButtonGroup();
+            scopeGroup.add(scopeLocal);
+            scopeGroup.add(scopeOnline);
+            scopeLocal.setSelected(true);
+            scopeRow.add(scopeLocal);
+            scopeRow.add(Box.createHorizontalStrut(8));
+            scopeRow.add(scopeOnline);
+            root.add(scopeRow);
+            root.add(Box.createVerticalStrut(10));
+
+            // 3) Role selection (Server / Client) - hidden unless Online selected
+            JPanel roleRow = new JPanel();
+            roleRow.setLayout(new BoxLayout(roleRow, BoxLayout.X_AXIS));
+            JRadioButton roleServer = new JRadioButton("Server");
+            JRadioButton roleClient = new JRadioButton("Client");
+            ButtonGroup roleGroup = new ButtonGroup();
+            roleGroup.add(roleServer);
+            roleGroup.add(roleClient);
+            roleServer.setSelected(true);
+            roleRow.add(roleServer);
+            roleRow.add(Box.createHorizontalStrut(8));
+            roleRow.add(roleClient);
+
+            // Wrap roleRow into a fixed-size container so the dialog reserves
+            // the same vertical space even when roleRow's contents are hidden.
+            JPanel roleContainer = new JPanel(new BorderLayout());
+            // align container to the left so its reserved space lines up
+            roleContainer.setAlignmentX(Component.LEFT_ALIGNMENT);
+            // set preferred size from the roleRow's preferred height so the
+            // container reserves that vertical space when the radios are hidden
+            roleContainer.add(roleRow, BorderLayout.CENTER);
+            // ensure the roleRow itself is left-aligned within the container
+            roleRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+            // capture preferred size while the roleRow is still laid out
+            java.awt.Dimension rolePref = roleRow.getPreferredSize();
+            roleContainer.setPreferredSize(rolePref);
+            // hide the actual radio buttons initially but keep the container
+            // so the reserved space remains
+            roleRow.setVisible(false);
+            root.add(roleContainer);
+            root.add(Box.createVerticalStrut(14));
+
+            // Show/hide roleRow depending on scope selection. We toggle the
+            // roleRow visibility but keep roleContainer present so space is
+            // preserved.
+            scopeOnline.addActionListener(ae -> roleRow.setVisible(true));
+            scopeLocal.addActionListener(ae -> roleRow.setVisible(false));
+
+            // Confirm button
+            JPanel btnRow = new JPanel(new FlowLayout(FlowLayout.CENTER, 8, 0));
+            JButton confirm = new JButton("Confirm");
+            confirm.addActionListener(ae -> {
+                String mode = modeNormal.isSelected() ? "NORMAL"
+                        : modeItem.isSelected() ? "ITEM" : "TIME_LIMIT";
+                boolean isOnline = scopeOnline.isSelected();
+                boolean isServer = roleServer.isSelected();
+                // Delegate to handler method (intentionally empty)
+                onMultiPlayConfirmed(mode, isOnline, isServer);
+                dlg.dispose();
+            });
+            btnRow.add(confirm);
+            root.add(btnRow);
+
+            dlg.getContentPane().add(root);
+            dlg.pack();
+            dlg.setResizable(false);
+            dlg.setLocationRelativeTo(win);
+            dlg.setVisible(true);
+        });
+    }
+
+    /**
+     * Override-only hook invoked when the Multi Play dialog Confirm button
+     * is pressed.
+     * <p>
+     * Subclasses (or anonymous subclasses) should override this method to
+     * implement behavior for the current selection. This base implementation
+     * intentionally does nothing.
+     *
+     * @param mode     one of "NORMAL", "ITEM", "TIME_LIMIT"
+     * @param isOnline true if Online was chosen (otherwise Local)
+     * @param isServer true if Server role is chosen (meaningful only when
+     *                 isOnline==true)
+     */
+    protected void onMultiPlayConfirmed(String mode, boolean isOnline, boolean isServer) {
+        // no-op: override in subclass to handle selection
+    }
+
+    protected void onSettingClicked() {
+        // no-op: override in subclass to handle selection
+    }
+
+    protected void onScoreboardClicked() {
+        // no-op: override in subclass to handle selection
+    }
+
+    protected void onExitClicked() {
+        // no-op: override in subclass to handle selection
     }
 
     public void focusButton(int direction) {
