@@ -298,7 +298,7 @@ public class MainPanel extends JPanel {
      * @param mode one of "NORMAL", "ITEM"
      */
     protected void onSinglePlayConfirmed(String mode) {
-        // no-op: override in subclass to handle single-play selection
+         // Override to handle continue action
     }
 
     /**
@@ -315,19 +315,19 @@ public class MainPanel extends JPanel {
      *                 isOnline==true)
      */
     protected void onMultiPlayConfirmed(String mode, boolean isOnline, boolean isServer) {
-        // no-op: override in subclass to handle selection
+         // Override to handle continue action
     }
 
     protected void onSettingClicked() {
-        // no-op: override in subclass to handle selection
+         // Override to handle continue action
     }
 
     protected void onScoreboardClicked() {
-        // no-op: override in subclass to handle selection
+         // Override to handle continue action
     }
 
     protected void onExitClicked() {
-        // no-op: override in subclass to handle selection
+         // Override to handle continue action
     }
 
     public void focusButton(int direction) {

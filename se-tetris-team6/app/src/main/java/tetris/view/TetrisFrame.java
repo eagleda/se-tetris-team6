@@ -334,7 +334,7 @@ public class TetrisFrame extends JFrame {
                     gameModel.pauseGame();
                 } else if (state == GameState.PAUSED) {
                     gameModel.resumeGame();
-                } else {
+                } else if (state != GameState.MENU) {
                     displayPanel(prevPanel);
                 }
             }
