@@ -2,6 +2,8 @@ package tetris.view;
 
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.GridBagConstraints;
@@ -77,13 +79,32 @@ public class PausePanel extends JPanel {
         }
     }
 
-    @Override
-    protected void paintComponent(Graphics g) {
-        super.paintComponent(g);
+    private void addComponentVertical(Component component, GridBagConstraints gbc) {
+        if (component instanceof JButton button) {
+            button.setFont(new Font("SansSerif", Font.BOLD, 18));
+            Dimension fixed = new Dimension(240, 44);
+            button.setPreferredSize(fixed);
+            button.setMaximumSize(fixed);
+
+            JPanel wrapper = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
+            wrapper.setOpaque(false);
+            wrapper.add(button);
+            this.add(wrapper, gbc);
+        } else {
+            this.add(component, gbc);
+        }
+        gbc.gridy++;
     }
 
-    private void addComponentVertical(Component component, GridBagConstraints gbc) {
-        this.add(component, gbc);
-        gbc.gridy++;
+    protected void onContinueClicked() {
+        // Override to handle continue action
+    }
+
+    protected void onGoMainClicked() {
+        // Override to handle go main action
+    }
+
+    protected void onExitClicked() {
+        // Override to handle exit action
     }
 }
