@@ -72,82 +72,35 @@ public class MainPanel extends JPanel {
         titleText.setForeground(Color.BLUE);
         titleText.setHorizontalAlignment(SwingConstants.CENTER);
 
-        settingButton = new JButton() {
-            {
-                setText("Setting");
-                setFont(new Font("SansSerif", Font.BOLD, 18));
-            }
-        };
-        scoreboardButton = new JButton() {
-            {
-                setText("Scoreboard");
-                setFont(new Font("SansSerif", Font.BOLD, 18));
-            }
-        };
-        exitButton = new JButton() {
-            {
-                setText("Exit");
-                setFont(new Font("SansSerif", Font.BOLD, 18));
-            }
-        };
-
         // 싱글 플레이 버튼 설정
-        JButton singlePlayButton = new JButton() {
-            {
-                setText("Single Play");
-                setFont(new Font("SansSerif", Font.BOLD, 18));
-            }
-        };
-        singleNormalButton = new JButton() {
-            {
-                setText("Normal Mode");
-                setFont(new Font("SansSerif", Font.BOLD, 14));
-            }
-        };
-        singleItemButton = new JButton() {
-            {
-                setText("Item Mode");
-                setFont(new Font("SansSerif", Font.BOLD, 14));
-            }
-        };
-        attachPopupToTrigger(singlePlayButton, Arrays.asList(singleNormalButton, singleItemButton));
+        JButton singlePlayButton = getMenuButton("Single Play");
+        singleNormalButton = getOptionButton("Normal Mode");
+        singleItemButton = getOptionButton("Item Mode");
+        attachPopupToTrigger(singlePlayButton, "Single Play Options",
+                Arrays.asList(singleNormalButton, singleItemButton));
 
         // 멀티 플레이 버튼 설정
-        JButton multiPlayButton = new JButton() {
-            {
-                setText("Multi Play");
-                setFont(new Font("SansSerif", Font.BOLD, 18));
-            }
-        };
-        JButton localMultiButton = new JButton() {
-            {
-                setText("Local");
-                setFont(new Font("SansSerif", Font.BOLD, 14));
-            }
-        };
-        localMultiNormalButton = new JButton("Normal Mode");
-        localMultiNormalButton.setFont(new Font("SansSerif", Font.BOLD, 14));
-        localMultiItemButton = new JButton("Item Mode");
-        localMultiItemButton.setFont(new Font("SansSerif", Font.BOLD, 14));
-        localMultiTimeLimitButton = new JButton("Time Limit Mode");
-        localMultiTimeLimitButton.setFont(new Font("SansSerif", Font.BOLD, 14));
+        JButton multiPlayButton = getMenuButton("Multi Play");
+        JButton localMultiButton = getOptionButton("Local");
+
+        localMultiNormalButton = getOptionButton("Normal Mode");
+        localMultiItemButton = getOptionButton("Item Mode");
+        localMultiTimeLimitButton = getOptionButton("Time Limit Mode");
         attachPopupToTrigger(localMultiButton,
+                "Local Multi Options",
                 Arrays.asList(localMultiNormalButton, localMultiItemButton, localMultiTimeLimitButton));
-        JButton onlineMultiButton = new JButton() {
-            {
-                setText("Online");
-                setFont(new Font("SansSerif", Font.BOLD, 14));
-            }
-        };
-        onlineMultiNormalButton = new JButton("Normal Mode");
-        onlineMultiNormalButton.setFont(new Font("SansSerif", Font.BOLD, 14));
-        onlineMultiItemButton = new JButton("Item Mode");
-        onlineMultiItemButton.setFont(new Font("SansSerif", Font.BOLD, 14));
-        onlineMultiTimeLimitButton = new JButton("Time Limit Mode");
-        onlineMultiTimeLimitButton.setFont(new Font("SansSerif", Font.BOLD, 14));
+        JButton onlineMultiButton = getOptionButton("Online");
+        onlineMultiNormalButton = getOptionButton("Normal Mode");
+        onlineMultiItemButton = getOptionButton("Item Mode");
+        onlineMultiTimeLimitButton = getOptionButton("Time Limit Mode");
         attachPopupToTrigger(onlineMultiButton,
+                "Online Multi Options",
                 Arrays.asList(onlineMultiNormalButton, onlineMultiItemButton, onlineMultiTimeLimitButton));
-        attachPopupToTrigger(multiPlayButton, Arrays.asList(localMultiButton, onlineMultiButton));
+        attachPopupToTrigger(multiPlayButton, "Multi Play Options", Arrays.asList(localMultiButton, onlineMultiButton));
+
+        settingButton = getMenuButton("Setting");
+        scoreboardButton = getMenuButton("Scoreboard");
+        exitButton = getMenuButton("Exit");
 
         // Add Components to GridBagLayout
         for (int i = 0; i < 2; i++) {
@@ -192,6 +145,21 @@ public class MainPanel extends JPanel {
         gbc.gridy++;
     }
 
+    private JButton getMenuButton(String text) {
+        JButton button = new JButton(text);
+        button.setFont(new Font("SansSerif", Font.BOLD, 18));
+        button.setPreferredSize(new Dimension(240, 44));
+        // button.setMaximumSize(BUTTON_SIZE);
+        return button;
+    }
+
+    private JButton getOptionButton(String text) {
+        JButton button = new JButton(text);
+        button.setFont(new Font("SansSerif", Font.BOLD, 14));
+        button.setPreferredSize(new Dimension(160, 36));
+        return button;
+    }
+
     /**
      * Attach a popup to a trigger button. When the trigger is clicked a small
      * dialog
@@ -207,13 +175,14 @@ public class MainPanel extends JPanel {
      * @param trigger the button that opens the popup when clicked
      * @param options list of buttons whose labels and fonts will be used for popup
      */
-    public void attachPopupToTrigger(JButton trigger, List<JButton> options) {
+    public void attachPopupToTrigger(JButton trigger, String title, List<JButton> options) {
         if (trigger == null || options == null || options.isEmpty())
             return;
 
         trigger.addActionListener(e -> {
             java.awt.Window win = SwingUtilities.getWindowAncestor(this);
             final JDialog dlg = new JDialog(win, ModalityType.MODELESS);
+            dlg.setTitle(title);
 
             JPanel panel = new JPanel();
             panel.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
