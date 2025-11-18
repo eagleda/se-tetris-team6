@@ -51,7 +51,7 @@ public class TetrisFrame extends JFrame {
 
     private static JPanel prevPanel;
     private static JPanel currPanel;
-    
+
     private GameModel gameModel;
     private GameController gameController;
     private ScoreController scoreController;
@@ -185,7 +185,7 @@ public class TetrisFrame extends JFrame {
                         break;
                 }
             }
-            
+
             @Override
             protected void onSettingClicked() {
                 displayPanel(settingPanel);
@@ -326,15 +326,17 @@ public class TetrisFrame extends JFrame {
             @Override
             public void actionPerformed(ActionEvent e) {
                 GameState state = gameModel.getCurrentState();
-                if (state == null) {
-                    return;
-                }
-                if (state == GameState.PLAYING) {
-                    gameModel.pauseGame();
-                } else if (state == GameState.PAUSED) {
-                    gameModel.resumeGame();
-                } else if (state != GameState.MENU) {
-                    displayPanel(prevPanel);
+                switch (state) {
+                    case MENU:
+                        break;
+                    case PLAYING:
+                        gameModel.pauseGame();
+                        break;
+                    case PAUSED:
+                        gameModel.resumeGame();
+                        break;
+                    default:
+                        displayPanel(prevPanel);
                 }
             }
         });
