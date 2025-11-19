@@ -13,14 +13,14 @@ public enum MessageType {
     CONNECTION_ACCEPTED,    // 서버 → 클라이언트: 연결 승인
     CONNECTION_REJECTED,    // 서버 → 클라이언트: 연결 거부
     DISCONNECT,            // 양방향: 연결 종료 알림
-    
+
     // === 게임 제어 ===
     GAME_MODE_SELECT,      // 서버 → 클라이언트: 게임 모드 선택
     GAME_START,           // 양방향: 게임 시작 신호
     GAME_PAUSE,           // 양방향: 게임 일시정지
     GAME_END,             // 양방향: 게임 종료
     GAME_RESTART,         // 양방향: 재시작 요청
-    
+
     // === 게임 데이터 ===
     PLAYER_INPUT,         // 클라이언트 → 서버: 키 입력 (이동, 회전 등)
     BOARD_STATE,          // 양방향: 보드 상태 동기화
@@ -28,13 +28,13 @@ public enum MessageType {
     LINE_CLEAR,           // 양방향: 줄 삭제 정보
     ATTACK_LINES,         // 양방향: 공격 줄 전송
     SCORE_UPDATE,         // 양방향: 점수 업데이트
-    
+
     // === 네트워크 상태 ===
     PING,                 // 지연시간 측정용 핑
     PONG,                 // 지연시간 측정용 퐁
     LAG_WARNING,          // 지연 경고
     SYNC_REQUEST,         // 동기화 요청
-    
+
     // === 에러 처리 ===
     ERROR,                // 에러 메시지
     TIMEOUT               // 타임아웃 알림
