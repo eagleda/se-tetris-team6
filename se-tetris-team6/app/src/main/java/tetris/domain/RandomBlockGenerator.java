@@ -72,12 +72,19 @@ public final class RandomBlockGenerator implements BlockGenerator {
         if (dirty) {
             recomputeWeights();
         }
-        // Force I-block only selection.
-        return BlockKind.I;
+        double pick = random.nextDouble() * totalWeight;
+        for (int i = 0; i < cumulativeWeights.length; i++) {
+            if (pick < cumulativeWeights[i]) {
+                return kinds[i];
+            }
+        }
+        return kinds[kinds.length - 1];
     }
 
     private void recomputeWeights() {
         Arrays.fill(weights, 1.0);
+        applyDifficultyWeight();
+
         double acc = 0.0;
         for (int i = 0; i < weights.length; i++) {
             acc += weights[i];
@@ -85,5 +92,21 @@ public final class RandomBlockGenerator implements BlockGenerator {
         }
         totalWeight = acc;
         dirty = false;
+    }
+
+    private void applyDifficultyWeight() {
+        int iIndex = BlockKind.I.ordinal();
+        double factor = switch (difficulty) {
+            case EASY -> 1.2;
+            case HARD -> 0.8;
+            default -> 1.0;
+        };
+        if (factor == 1.0) {
+            return;
+        }
+        int kindsCount = kinds.length;
+        double base = 1.0;
+        double adjustedWeight = factor * (kindsCount - 1) * base / (kindsCount - factor);
+        weights[iIndex] = adjustedWeight;
     }
 }

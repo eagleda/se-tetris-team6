@@ -23,7 +23,8 @@
       "`se-tetris-team6/app/src/main/java/tetris/domain/GameModel.java` – 누적 카운터와 임계치 로직 추가.",
       "`se-tetris-team6/app/src/main/java/tetris/domain/model/GameClock.java` – 포트 인터페이스 추출 및 레벨 제어 API 확장.",
       "`se-tetris-team6/app/src/main/java/tetris/view/GameComponent/ScorePanel.java` – 속도/레벨 UI 표시."
-    ]
+    ],
+    "resolved": "O"
   },
   {
     "id": "2-21",
@@ -43,7 +44,8 @@
     "patchPlan": [
       "`se-tetris-team6/app/src/main/java/tetris/domain/RandomBlockGenerator.java` – 테스트 전용 시드/샘플 API 또는 포트 추가.",
       "`se-tetris-team6/app/src/test/java/tetris/domain/RandomBlockGeneratorProbabilityTest.java` – 난이도별 확률 검증 테스트 신설."
-    ]
+    ],
+    "resolved": "X"
   },
   {
     "id": "BUG-HardDropLock",
@@ -65,7 +67,8 @@
       "`se-tetris-team6/app/src/main/java/tetris/domain/engine/GameplayEngine.java` – 하드드랍 명령이 즉시 잠금을 수행하도록 수정.",
       "`se-tetris-team6/app/src/main/java/tetris/domain/GameModel.java` – 하드드랍 상태 플래그 및 입력 무시 로직 추가.",
       "`se-tetris-team6/app/src/main/java/tetris/controller/GameController.java` – 하드드랍 처리 후 추가 이동 호출을 방지하는 가드 추가."
-    ]
+    ],
+    "resolved": "X"
   },
   {
     "id": "2-24",
@@ -89,7 +92,8 @@
       "`se-tetris-team6/app/src/main/java/tetris/domain/setting/Setting.java` – `ColorVisionMode` 열거형과 프로퍼티 추가.",
       "`se-tetris-team6/app/src/main/java/tetris/controller/SettingController.java` – 모드 선택 핸들링.",
       "`se-tetris-team6/app/src/main/java/tetris/view/GameComponent/GamePanel.java` – 팔레트/패턴 분기 렌더링."
-    ]
+    ],
+    "resolved": "X"
   },
   {
     "id": "2-28",
@@ -111,7 +115,8 @@
       "`se-tetris-team6/app/src/main/java/tetris/domain/model/ScoreRuleEngine.java` – 보너스/패널티 전략 추가.",
       "`se-tetris-team6/app/src/main/java/tetris/domain/GameModel.java` – 조건 충족 시 엔진 호출 로직 보강.",
       "`se-tetris-team6/app/src/main/java/tetris/view/ScoreView.java` – 보너스 UI 표시."
-    ]
+    ],
+    "resolved": "X"
   },
   {
     "id": "3-6",
@@ -135,7 +140,8 @@
       "`se-tetris-team6/app/src/main/java/tetris/domain/leaderboard/LeaderboardRepository.java` 및 구현 – 강조 정보 반환.",
       "`se-tetris-team6/app/src/main/java/tetris/controller/GameOverController.java` – 이름 입력 완료 시 뷰 모델 갱신.",
       "`se-tetris-team6/app/src/main/java/tetris/view/ScoreboardPanel.java` – 강조 렌더링."
-    ]
+    ],
+    "resolved": "X"
   },
   {
     "id": "4-2",
@@ -161,7 +167,8 @@
       "`se-tetris-team6/app/src/main/java/tetris/domain/setting/Setting.java` – 키맵 모델 확장.",
       "`se-tetris-team6/app/src/main/java/tetris/domain/setting/SettingService.java` – 검증/저장 API 추가.",
       "`se-tetris-team6/app/src/main/java/tetris/view/SettingPanel.java` – 리매핑 UI 구현."
-    ]
+    ],
+    "resolved": "X"
   },
   {
     "id": "4-3",
@@ -185,7 +192,8 @@
       "`se-tetris-team6/app/src/main/java/tetris/domain/leaderboard/LeaderboardRepository.java` – reset 메서드 정의.",
       "`se-tetris-team6/app/src/main/java/tetris/controller/ScoreController.java` – 초기화 핸들러 추가.",
       "`se-tetris-team6/app/src/main/java/tetris/view/ScoreboardPanel.java` – 버튼/다이얼로그 구현."
-    ]
+    ],
+    "resolved": "X"
   },
   {
     "id": "5-2",
@@ -207,7 +215,8 @@
       "`se-tetris-team6/app/src/main/java/tetris/domain/BlockGenerator.java` – `BlockPreview` DTO 반환.",
       "`se-tetris-team6/app/src/main/java/tetris/domain/GameModel.java` – 아이템 메타데이터 추적 및 공개.",
       "`se-tetris-team6/app/src/main/java/tetris/view/GameComponent/NextBlockPanel.java` – DTO 기반 렌더링."
-    ]
+    ],
+    "resolved": "X"
   },
   {
     "id": "5-4",
@@ -227,7 +236,8 @@
     "patchPlan": [
       "`se-tetris-team6/app/src/main/java/tetris/domain/item/behavior/LineClearBehavior.java` – 동작 로직 구현.",
       "`se-tetris-team6/app/src/main/java/tetris/view/GameComponent/GamePanel.java` – 라벨 렌더링."
-    ]
+    ],
+    "resolved": "X"
   },
   {
     "id": "5-5",
@@ -249,7 +259,8 @@
       "`se-tetris-team6/app/src/main/java/tetris/domain/item/model/ItemBlockModel.java` – 잠금 훅 추가.",
       "`se-tetris-team6/app/src/main/java/tetris/domain/GameModel.java` – LineClear 처리 확장.",
       "`se-tetris-team6/app/src/main/java/tetris/view/GameComponent/GamePanel.java` – 삭제 이펙트."
-    ]
+    ],
+    "resolved": "X"
   },
   {
     "id": "5-6",
@@ -269,7 +280,8 @@
     "patchPlan": [
       "`se-tetris-team6/app/src/main/java/tetris/domain/item/behavior/LineClearBehavior.java` – 라벨 좌표 속성 추가.",
       "`se-tetris-team6/app/src/main/java/tetris/view/GameComponent/GamePanel.java` – 커스텀 좌표 렌더."
-    ]
+    ],
+    "resolved": "X"
   },
   {
     "id": "5-7",
@@ -285,7 +297,8 @@
     "patchPlan": [
       "`se-tetris-team6/app/src/main/java/tetris/domain/GameModel.java` – 아이템 삭제 시 점수 엔진 호출 정합성 확보.",
       "`se-tetris-team6/app/src/main/java/tetris/domain/model/ScoreRuleEngine.java` – 아이템 이벤트 파라미터 수용."
-    ]
+    ],
+    "resolved": "X"
   },
   {
     "id": "5-8",
@@ -306,7 +319,8 @@
       "`se-tetris-team6/app/src/main/java/tetris/domain/item/behavior/WeightBehavior.java` – 파라미터화 및 메타데이터 노출.",
       "`se-tetris-team6/app/src/main/java/tetris/domain/GameModel.java` – 스폰 확률 조정.",
       "`se-tetris-team6/app/src/main/java/tetris/view/GameComponent/GamePanel.java` – 시각화 강화."
-    ]
+    ],
+    "resolved": "X"
   },
   {
     "id": "5-9",
@@ -326,7 +340,8 @@
     "patchPlan": [
       "`se-tetris-team6/app/src/main/java/tetris/domain/item/behavior/WeightBehavior.java` – 경로 삭제 로직 구현.",
       "`se-tetris-team6/app/src/main/java/tetris/domain/Board.java` – 열 삭제 API 추가."
-    ]
+    ],
+    "resolved": "X"
   },
   {
     "id": "5-11",
@@ -346,7 +361,8 @@
     "patchPlan": [
       "`se-tetris-team6/app/src/main/java/tetris/domain/item/behavior/RewindBehavior.java` – 신규 클래스 추가.",
       "`se-tetris-team6/app/src/main/java/tetris/domain/GameModel.java` – 팩토리 등록 및 상태 반영."
-    ]
+    ],
+    "resolved": "X"
   },
   {
     "id": "5-13",
@@ -366,7 +382,8 @@
     "patchPlan": [
       "`se-tetris-team6/app/src/main/java/tetris/domain/item/behavior/RandomHoldBehavior.java` – 신규 구현.",
       "`se-tetris-team6/app/src/main/java/tetris/domain/GameModel.java` – 팩토리/버프 표시."
-    ]
+    ],
+    "resolved": "X"
   },
   {
     "id": "5-15",
@@ -386,7 +403,8 @@
     "patchPlan": [
       "`se-tetris-team6/app/src/main/java/tetris/domain/item/behavior/FieldCleanseBehavior.java` – 신규 클래스.",
       "`se-tetris-team6/app/src/main/java/tetris/domain/GameModel.java` – 팩토리/쿨다운 추적."
-    ]
+    ],
+    "resolved": "X"
   },
   {
     "id": "6-10",
@@ -409,6 +427,7 @@
     "patchPlan": [
       "`se-tetris-team6/app/src/test/java/tetris/nonfunctional/GamePerformanceTest.java` – NFR 테스트 추가.",
       "`se-tetris-team6/app/build.gradle.kts` – 테스트 태스크와 CI 보고서에 포함."
-    ]
+    ],
+    "resolved": "X"
   }
 ]
