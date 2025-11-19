@@ -5,7 +5,6 @@ import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
-import java.awt.Graphics;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
@@ -15,10 +14,6 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 
 public class PausePanel extends JPanel {
-    public JButton continueButton;
-    public JButton goMainButton;
-    public JButton exitButton;
-
     public PausePanel() {
         this.setBackground(Color.gray);
         this.setVisible(false);
@@ -46,25 +41,29 @@ public class PausePanel extends JPanel {
             }
         };
 
-        goMainButton = new JButton() {
-            {
-                setText("Main");
-                setFont(new Font("SansSerif", Font.BOLD, 18));
-            }
-        };
-
-        continueButton = new JButton() {
+        JButton continueButton = new JButton() {
             {
                 setText("Continue");
                 setFont(new Font("SansSerif", Font.BOLD, 18));
             }
         };
-        exitButton = new JButton() {
+        continueButton.addActionListener(e -> onContinueClicked());
+
+        JButton goMainButton = new JButton() {
+            {
+                setText("Main");
+                setFont(new Font("SansSerif", Font.BOLD, 18));
+            }
+        };
+        goMainButton.addActionListener(e -> onGoMainClicked());
+
+        JButton exitButton = new JButton() {
             {
                 setText("Exit");
                 setFont(new Font("SansSerif", Font.BOLD, 18));
             }
         };
+        exitButton.addActionListener(e -> onExitClicked());
 
         // Add Components to GridBagLayout
         for (int i = 0; i < 3; i++) { // 빈 공간

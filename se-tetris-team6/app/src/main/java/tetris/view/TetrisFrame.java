@@ -11,15 +11,12 @@ import java.util.List;
 import javax.swing.AbstractAction;
 import javax.swing.ActionMap;
 import javax.swing.InputMap;
-import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JLayeredPane;
 import javax.swing.JPanel;
 import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
-
-import org.checkerframework.checker.nullness.qual.NonNull;
 
 import tetris.controller.GameController;
 import tetris.controller.GameOverController;
@@ -51,7 +48,7 @@ public class TetrisFrame extends JFrame {
 
     private static JPanel prevPanel;
     private static JPanel currPanel;
-    
+
     private GameModel gameModel;
     private GameController gameController;
     private ScoreController scoreController;
@@ -169,35 +166,48 @@ public class TetrisFrame extends JFrame {
             }
 
             @Override
-            protected void onMultiPlayConfirmed(String mode, boolean isOnline, boolean isServer) {
-                if (mode.equals("TIME_LIMIT")) {
-                    multiGameLayout.showTimer();
-                } else {
-                    multiGameLayout.hideTimer();
-                }
+            protected void onLocalMultiPlayConfirmed(String mode) {
                 displayPanel(multiGameLayout);
-                switch (mode) {
-                    case "NORMAL":
-                        break;
-                    case "ITEM":
-                        break;
-                    case "TIME_LIMIT":
-                        break;
+            }
+
+            @Override
+            protected void onOnlineServerCancelled() {
+                showMainPanel();
+            }
+
+            @Override
+            protected void onOnlineClientCancelled() {
+                showMainPanel();
+            }
+
+            @Override
+            protected String getServerAddress() {
+                try {
+                    // return gameModel.getNetworkAddress();
+                    throw new Exception();
+                } catch (Exception e) {
+                    return null;
                 }
             }
-            
+
             @Override
-            protected void onSettingClicked() {
+            protected void connectToServer(String address) throws Exception {
+                displayPanel(multiGameLayout);
+                // gameModel.startOnlineMultiplayerGame(address);
+            }
+
+            @Override
+            protected void onSettingMenuClicked() {
                 displayPanel(settingPanel);
             }
 
             @Override
-            protected void onScoreboardClicked() {
+            protected void onScoreboardMenuClicked() {
                 displayPanel(scoreboardPanel);
             }
 
             @Override
-            protected void onExitClicked() {
+            protected void onExitMenuClicked() {
                 TetrisFrame.this.dispatchEvent(new WindowEvent(TetrisFrame.this, WindowEvent.WINDOW_CLOSING));
             }
         };
@@ -326,15 +336,17 @@ public class TetrisFrame extends JFrame {
             @Override
             public void actionPerformed(ActionEvent e) {
                 GameState state = gameModel.getCurrentState();
-                if (state == null) {
-                    return;
-                }
-                if (state == GameState.PLAYING) {
-                    gameModel.pauseGame();
-                } else if (state == GameState.PAUSED) {
-                    gameModel.resumeGame();
-                } else {
-                    displayPanel(prevPanel);
+                switch (state) {
+                    // case MENU:
+                    //     break;
+                    case PLAYING:
+                        gameModel.pauseGame();
+                        break;
+                    case PAUSED:
+                        gameModel.resumeGame();
+                        break;
+                    default:
+                        displayPanel(prevPanel);
                 }
             }
         });
