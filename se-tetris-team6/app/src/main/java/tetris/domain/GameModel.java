@@ -138,6 +138,9 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
     private static final int LINES_PER_SPEED_STEP = 4;
     private static final int MAX_SPEED_LEVEL = 20;
     private static final int LINE_CLEAR_HIGHLIGHT_DELAY_MS = 250;
+    private static final long INACTIVITY_STAGE1_MS = 2000;
+    private static final long INACTIVITY_STAGE2_MS = 5000;
+    private static final int INACTIVITY_PENALTY_POINTS = 10;
 
     private ItemBlockModel activeItemBlock;
     private boolean nextBlockIsItem;
@@ -152,6 +155,8 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
     private Supplier<ItemBehavior> behaviorOverride = () -> new TimeSlowBehavior(600, 0.5);
     private int itemSpawnIntervalLines = DEFAULT_ITEM_SPAWN_INTERVAL;
     private int currentGravityLevel;
+    private long lastInputMillis = System.currentTimeMillis();
+    private int inactivityPenaltyStage;
 
     private UiBridge uiBridge = NO_OP_UI_BRIDGE;
     private GameState currentState;
@@ -529,6 +534,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
             itemManager.tick(itemContext, tick);
             refreshBuffs(tick);
         }
+        checkInactivityPenalty();
     }
 
     private Supplier<ItemBehavior> resolveBehaviorOverride(String behaviorId) {
@@ -567,17 +573,53 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         }
     }
 
+    private void checkInactivityPenalty() {
+        long elapsed = System.currentTimeMillis() - lastInputMillis;
+        if (inactivityPenaltyStage < 1 && elapsed >= INACTIVITY_STAGE1_MS) {
+            applyInactivityPenaltyStage(1);
+        }
+        if (inactivityPenaltyStage < 2 && elapsed >= INACTIVITY_STAGE2_MS) {
+            applyInactivityPenaltyStage(2);
+        }
+    }
+
     private void updateGravityProgress() {
         int levelFromBlocks = totalSpawnedBlocks / BLOCKS_PER_SPEED_STEP;
         int levelFromLines = totalClearedLines / LINES_PER_SPEED_STEP;
         int desiredLevel = Math.min(MAX_SPEED_LEVEL, Math.max(levelFromBlocks, levelFromLines));
         if (desiredLevel > currentGravityLevel) {
+            int bonusLevels = desiredLevel - currentGravityLevel;
             currentGravityLevel = desiredLevel;
             if (gameplayEngine != null) {
                 gameplayEngine.setGravityLevel(currentGravityLevel);
             }
+            awardSpeedBonus(bonusLevels);
             uiBridge.refreshBoard();
         }
+    }
+    
+    private void awardSpeedBonus(int bonusLevels) {
+        if (bonusLevels <= 0) {
+            return;
+        }
+        int previousLevel = currentGravityLevel - bonusLevels;
+        long bonus = 0;
+        for (int level = previousLevel + 1; level <= currentGravityLevel; level++) {
+            bonus += level * 1000L;
+        }
+        Score current = scoreRepository.load();
+        int bonusInt = (int) Math.min(Integer.MAX_VALUE, bonus);
+        Score updated = current.withAdditionalPoints(bonusInt);
+        scoreRepository.save(updated);
+        System.out.printf("스피드 증가 : lv.%d -> lv.%d, 보너스 점수 : %d%n",
+                previousLevel, currentGravityLevel, bonusInt);
+    }
+
+    private void applyInactivityPenaltyStage(int stage) {
+        inactivityPenaltyStage = stage;
+        scoreEngine.applyPenalty(INACTIVITY_PENALTY_POINTS);
+        System.out.printf("무입력 패널티(Stage %d) 적용: -%d점%n",
+                stage, INACTIVITY_PENALTY_POINTS);
     }
 
     private void resetInputAxes() {
@@ -585,6 +627,11 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         inputState.setRight(false);
         inputState.setSoftDrop(false);
         inputState.clearOneShotInputs();
+    }
+
+    private void recordPlayerInput() {
+        inactivityPenaltyStage = 0;
+        lastInputMillis = System.currentTimeMillis();
     }
 
     private void resetGameplayState() {
@@ -599,6 +646,8 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         totalClearedLines = 0;
         totalSpawnedBlocks = 0;
         currentGravityLevel = 0;
+        inactivityPenaltyStage = 0;
+        lastInputMillis = System.currentTimeMillis();
         currentTick = 0;
         scoreMultiplier = 1.0;
         doubleScoreUntilTick = 0;
@@ -713,6 +762,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         if (!isPlayingState() || !ensureActiveBlockPresent()) {
             return;
         }
+        recordPlayerInput();
         gameplayEngine.moveBlockLeft();
     }
 
@@ -720,6 +770,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         if (!isPlayingState() || !ensureActiveBlockPresent()) {
             return;
         }
+        recordPlayerInput();
         gameplayEngine.moveBlockRight();
     }
 
@@ -727,6 +778,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         if (!isPlayingState() || !ensureActiveBlockPresent()) {
             return;
         }
+        recordPlayerInput();
         gameplayEngine.moveBlockDown();
     }
 
@@ -734,6 +786,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         if (!isPlayingState() || !ensureActiveBlockPresent()) {
             return;
         }
+        recordPlayerInput();
         gameplayEngine.rotateBlockClockwise();
     }
 
@@ -741,6 +794,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         if (!isPlayingState() || !ensureActiveBlockPresent()) {
             return;
         }
+        recordPlayerInput();
         gameplayEngine.rotateBlockCounterClockwise();
     }
 
@@ -748,6 +802,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         if (!isPlayingState() || !ensureActiveBlockPresent()) {
             return;
         }
+        recordPlayerInput();
         gameplayEngine.hardDropBlock();
     }
 
@@ -755,6 +810,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         if (!isPlayingState()) {
             return;
         }
+        recordPlayerInput();
         gameplayEngine.holdCurrentBlock();
     }
 
