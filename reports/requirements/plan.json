@@ -46,6 +46,28 @@
     ]
   },
   {
+    "id": "BUG-HardDropLock",
+    "title": "하드드랍 직후 즉시 잠금 보장",
+    "acceptanceCriteria": "플레이어가 하드드랍을 사용하면 해당 블록은 즉시 보드에 고정되고, 다음 틱까지 이동하거나 회전하지 못한다. 이어지는 블록 스폰은 잠금 이벤트 이후에만 이루어진다.",
+    "impactedLayers": [
+      "Domain",
+      "Controller"
+    ],
+    "design": {
+      "Domain": "`GameplayEngine`/`GameModel`이 하드드랍 명령 시 즉시 `lockActiveBlock()`을 호출하고, 후속 입력을 무시하도록 상태 플래그를 도입한다.",
+      "Controller": "하드드랍 입력 처리 후 추가 이동 명령을 발행하지 않고, GameModel에서 잠금 완료 콜백을 받을 때까지 입력을 무시한다."
+    },
+    "tests": {
+      "단위": "`GameModel` 시뮬레이션에서 하드드랍 후 `onBlockLocked`가 같은 틱에 호출되는지 검증.",
+      "통합": "컨트롤러 입력 시퀀스 테스트로 하드드랍 직후 이동 키가 무시되는지 확인."
+    },
+    "patchPlan": [
+      "`se-tetris-team6/app/src/main/java/tetris/domain/engine/GameplayEngine.java` – 하드드랍 명령이 즉시 잠금을 수행하도록 수정.",
+      "`se-tetris-team6/app/src/main/java/tetris/domain/GameModel.java` – 하드드랍 상태 플래그 및 입력 무시 로직 추가.",
+      "`se-tetris-team6/app/src/main/java/tetris/controller/GameController.java` – 하드드랍 처리 후 추가 이동 호출을 방지하는 가드 추가."
+    ]
+  },
+  {
     "id": "2-24",
     "title": "색각 보정 모드",
     "acceptanceCriteria": "설정에서 색맹 모드를 선택하면 적녹·청황 색각 이상 사용자도 블록 구분이 가능한 팔레트/패턴이 적용된다.",

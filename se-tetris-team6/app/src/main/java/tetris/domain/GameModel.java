@@ -4,15 +4,13 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Random;
-import java.util.Locale;
 import java.util.function.Supplier;
 
-import tetris.data.score.InMemoryScoreRepository;
-import tetris.data.setting.PreferencesSettingRepository;
 import tetris.domain.setting.SettingService;
 import tetris.domain.block.BlockLike;
 import tetris.domain.handler.GameHandler;
@@ -136,10 +134,14 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
     }
 
     private static final int DEFAULT_ITEM_SPAWN_INTERVAL = 2;
+    private static final int BLOCKS_PER_SPEED_STEP = 12;
+    private static final int LINES_PER_SPEED_STEP = 4;
+    private static final int MAX_SPEED_LEVEL = 20;
 
     private ItemBlockModel activeItemBlock;
     private boolean nextBlockIsItem;
     private int totalClearedLines;
+    private int totalSpawnedBlocks;
     private long currentTick;
     private double scoreMultiplier = 1.0;
     private long doubleScoreUntilTick;
@@ -148,24 +150,21 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
     private ItemContextImpl itemContext;
     private Supplier<ItemBehavior> behaviorOverride = () -> new TimeSlowBehavior(600, 0.5);
     private int itemSpawnIntervalLines = DEFAULT_ITEM_SPAWN_INTERVAL;
+    private int currentGravityLevel;
 
     private UiBridge uiBridge = NO_OP_UI_BRIDGE;
     private GameState currentState;
     private GameHandler currentHandler;
 
-    public GameModel() {
-        this(new RandomBlockGenerator(), new InMemoryScoreRepository());
-    }
-
-    public GameModel(BlockGenerator generator, ScoreRepository scoreRepository) {
+    public GameModel(BlockGenerator generator,
+            ScoreRepository scoreRepository,
+            tetris.domain.leaderboard.LeaderboardRepository leaderboardRepository,
+            SettingService settingService) {
         this.scoreRepository = Objects.requireNonNull(scoreRepository, "scoreRepository");
         this.scoreEngine = new ScoreRuleEngine(scoreRepository);
-        // persistent leaderboard for game-over name saving
-        this.leaderboardRepository = new tetris.data.leaderboard.PreferencesLeaderboardRepository();
-        // lightweight setting service used by handlers that expect model-level setting
-        // operations
-        this.settingService = new SettingService(new PreferencesSettingRepository(), scoreRepository);
-        setBlockGenerator(generator);
+        this.leaderboardRepository = Objects.requireNonNull(leaderboardRepository, "leaderboardRepository");
+        this.settingService = Objects.requireNonNull(settingService, "settingService");
+        setBlockGenerator(generator == null ? new RandomBlockGenerator() : generator);
         registerHandlers();
         changeState(GameState.MENU);
         gameplayEngine = new tetris.domain.engine.GameplayEngine(board, inputState, blockGenerator, scoreEngine,
@@ -270,6 +269,10 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
 
     public ScoreRuleEngine getScoreEngine() {
         return scoreEngine;
+    }
+
+    public int getSpeedLevel() {
+        return currentGravityLevel;
     }
 
     public tetris.domain.leaderboard.LeaderboardRepository getLeaderboardRepository() {
@@ -457,6 +460,8 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         if (block == null) {
             return;
         }
+        totalSpawnedBlocks++;
+        updateGravityProgress();
         if (currentMode != GameMode.ITEM) {
             activeItemBlock = null;
             nextBlockIsItem = false;
@@ -492,6 +497,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
             return;
         }
         totalClearedLines += clearedLines;
+        updateGravityProgress();
         if (currentMode != GameMode.ITEM) {
             return;
         }
@@ -546,6 +552,19 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         }
     }
 
+    private void updateGravityProgress() {
+        int levelFromBlocks = totalSpawnedBlocks / BLOCKS_PER_SPEED_STEP;
+        int levelFromLines = totalClearedLines / LINES_PER_SPEED_STEP;
+        int desiredLevel = Math.min(MAX_SPEED_LEVEL, Math.max(levelFromBlocks, levelFromLines));
+        if (desiredLevel > currentGravityLevel) {
+            currentGravityLevel = desiredLevel;
+            if (gameplayEngine != null) {
+                gameplayEngine.setGravityLevel(currentGravityLevel);
+            }
+            uiBridge.refreshBoard();
+        }
+    }
+
     private void resetInputAxes() {
         inputState.setLeft(false);
         inputState.setRight(false);
@@ -563,12 +582,15 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         activeItemBlock = null;
         nextBlockIsItem = false;
         totalClearedLines = 0;
+        totalSpawnedBlocks = 0;
+        currentGravityLevel = 0;
         currentTick = 0;
         scoreMultiplier = 1.0;
         doubleScoreUntilTick = 0;
         slowFactor = 1.0;
         slowUntilTick = 0;
         gameplayEngine.setActiveBlock(null);
+        gameplayEngine.setGravityLevel(0);
         gameplayEngine.stopClockCompletely();
     }
 

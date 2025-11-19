@@ -69,21 +69,20 @@ public final class RandomBlockGenerator implements BlockGenerator {
     }
 
     private BlockKind sampleByWeights() {
-        // Force-select the I block regardless of weights or difficulty.
         if (dirty) {
             recomputeWeights();
         }
-        return BlockKind.I;
+        double pick = random.nextDouble() * totalWeight;
+        for (int i = 0; i < cumulativeWeights.length; i++) {
+            if (pick < cumulativeWeights[i]) {
+                return kinds[i];
+            }
+        }
+        return kinds[kinds.length - 1];
     }
 
     private void recomputeWeights() {
-        // base uniform weight
-        double baseWeight = 1.0;
-        Arrays.fill(weights, baseWeight);
-        // index of I block is 0 in BlockKind enum
-        int indexI = 0;
-        weights[indexI] = (difficulty == GameDifficulty.EASY) ? baseWeight * 1.2
-            : (difficulty == GameDifficulty.HARD) ? baseWeight * 0.8 : baseWeight;
+        Arrays.fill(weights, 1.0);
 
         double acc = 0.0;
         for (int i = 0; i < weights.length; i++) {

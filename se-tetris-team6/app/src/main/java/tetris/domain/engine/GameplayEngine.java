@@ -69,6 +69,14 @@ public class GameplayEngine implements GameClock.Listener {
         clock.setSpeedModifier(modifier);
     }
 
+    public void setGravityLevel(int level) {
+        clock.setLevel(level);
+    }
+
+    public int getGravityLevel() {
+        return clock.getLevel();
+    }
+
     public Block getActiveBlock() { return activeBlock; }
     public void setActiveBlock(Block b) { this.activeBlock = b; }
 
@@ -249,6 +257,8 @@ public class GameplayEngine implements GameClock.Listener {
             activeBlock.moveBy(0, 1);
             scoreEngine.onBlockDescend();
         }
+        lockActiveBlock();
+        spawnNewBlock();
         uiBridge.refreshBoard();
     }
 

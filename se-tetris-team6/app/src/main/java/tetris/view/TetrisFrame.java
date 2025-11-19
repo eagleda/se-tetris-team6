@@ -7,6 +7,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.WindowEvent;
 import java.util.List;
+import java.util.Objects;
 
 import javax.swing.AbstractAction;
 import javax.swing.ActionMap;
@@ -55,9 +56,10 @@ public class TetrisFrame extends JFrame {
     private GameController gameController;
     private ScoreController scoreController;
 
-    public TetrisFrame() {
+    public TetrisFrame(GameModel gameModel) {
         super(FRAME_TITLE);
-        initializeModelsAndControllers();
+        this.gameModel = Objects.requireNonNull(gameModel, "gameModel");
+        initializeControllers();
         initializeFrame();
         // 전역 키 바인딩 설정 (포커스와 무관하게 동작)
         installRootKeyBindings();
@@ -134,8 +136,7 @@ public class TetrisFrame extends JFrame {
                 this);
     }
 
-    private void initializeModelsAndControllers() {
-        gameModel = new GameModel();
+    private void initializeControllers() {
         gameController = new GameController(gameModel);
         scoreController = null;
     }
