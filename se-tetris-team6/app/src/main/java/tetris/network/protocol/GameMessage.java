@@ -1,6 +1,8 @@
 package tetris.network.protocol;
 
 import java.io.Serializable;
+import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * 네트워크를 통해 주고받는 모든 메시지의 기본 클래스
@@ -10,6 +12,7 @@ import java.io.Serializable;
  */
 public class GameMessage implements Serializable {
     private static final long serialVersionUID = 1L;
+    private static final AtomicInteger sequenceGenerator = new AtomicInteger(0);
 
     // 메시지 타입 (연결, 게임상태, 입력 등)
     private MessageType type;
@@ -27,5 +30,47 @@ public class GameMessage implements Serializable {
     private int sequenceNumber;
 
     // 생성자, getter, setter 메서드들
+    public GameMessage(MessageType type, String senderId, Object payload) {
+        this.type = type;
+        this.senderId = senderId;
+        this.payload = payload;
+        this.timestamp = System.currentTimeMillis();
+        this.sequenceNumber = sequenceGenerator.getAndIncrement();
+    }
+
+    // Getters
+    public MessageType getType() { return type; }
+    public String getSenderId() { return senderId; }
+    public Object getPayload() { return payload; }
+    public long getTimestamp() { return timestamp; }
+    public int getSequenceNumber() { return sequenceNumber; }
+
     // toString() 메서드 (디버깅용)
+    @Override
+    public String toString() {
+        return "GameMessage{" +
+                "type=" + type +
+                ", senderId='" + senderId + '\'' +
+                ", payload=" + payload +
+                ", timestamp=" + timestamp +
+                ", sequenceNumber=" + sequenceNumber +
+                '}';
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        GameMessage that = (GameMessage) o;
+        return timestamp == that.timestamp &&
+                sequenceNumber == that.sequenceNumber &&
+                type == that.type &&
+                Objects.equals(senderId, that.senderId) &&
+                Objects.equals(payload, that.payload);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(type, senderId, payload, timestamp, sequenceNumber);
+    }
 }

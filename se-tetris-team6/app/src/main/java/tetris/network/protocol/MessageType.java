@@ -28,6 +28,7 @@ public enum MessageType {
     LINE_CLEAR,           // 양방향: 줄 삭제 정보
     ATTACK_LINES,         // 양방향: 공격 줄 전송
     SCORE_UPDATE,         // 양방향: 점수 업데이트
+    PLAYER_READY,         // 양측 준비 완료 신호
 
     // === 네트워크 상태 ===
     PING,                 // 지연시간 측정용 핑
