@@ -162,17 +162,20 @@ public class GamePanel extends JPanel {
         if (gameModel == null)
             return;
 
-        // 플래시가 아직 동작중이지 않다면 pending(또는 board)의 가득 찬 줄을 캡처하여 플래시 시작
+        // 플래시가 아직 동작중이지 않다면 실제 삭제된 줄 목록을 확인해 플래시 시작
         if (flashingLines.isEmpty()) {
-            List<Integer> pending = gameModel.getPendingFullLines(); // GameModel에 추가한 메서드 사용
-            if (pending == null || pending.isEmpty()) {
+            List<Integer> cleared = gameModel.getLastClearedLines();
+            if (cleared == null || cleared.isEmpty()) {
                 return;
             }
-            flashingLines = new ArrayList<>(pending);
+            flashingLines = new ArrayList<>(cleared);
             if (flashTimer != null && flashTimer.isRunning())
                 flashTimer.stop();
-            flashTimer = new Timer(50, e -> {
+            flashTimer = new Timer(200, e -> {
                 flashingLines.clear();
+                if (gameModel != null) {
+                     gameModel.clearLastClearedLines();
+                 }
                 repaint();
                 ((Timer) e.getSource()).stop();
             });

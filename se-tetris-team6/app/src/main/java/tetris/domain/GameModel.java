@@ -137,6 +137,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
     private static final int BLOCKS_PER_SPEED_STEP = 12;
     private static final int LINES_PER_SPEED_STEP = 4;
     private static final int MAX_SPEED_LEVEL = 20;
+    private static final int LINE_CLEAR_HIGHLIGHT_DELAY_MS = 250;
 
     private ItemBlockModel activeItemBlock;
     private boolean nextBlockIsItem;
@@ -273,6 +274,19 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
 
     public int getSpeedLevel() {
         return currentGravityLevel;
+    }
+
+    public List<Integer> getLastClearedLines() {
+        if (gameplayEngine == null) {
+            return Collections.emptyList();
+        }
+        return gameplayEngine.getLastClearedRows();
+    }
+
+    public void clearLastClearedLines() {
+        if (gameplayEngine != null) {
+            gameplayEngine.clearLastClearedRows();
+        }
     }
 
     public tetris.domain.leaderboard.LeaderboardRepository getLeaderboardRepository() {
@@ -498,6 +512,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         }
         totalClearedLines += clearedLines;
         updateGravityProgress();
+        gameplayEngine.pauseForLineClear(LINE_CLEAR_HIGHLIGHT_DELAY_MS);
         if (currentMode != GameMode.ITEM) {
             return;
         }
