@@ -26,12 +26,16 @@ import javax.swing.JPanel;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 
+import tetris.domain.GameModel;
+
 public class MainPanel extends JPanel {
     private final static Color NORMAL_COLOR = Color.white;
     private final static Color HIGHLIGHT_COLOR = Color.gray;
 
     private List<JButton> buttons;
     private int currentFocusIndex = 0;
+
+    private GameModel gameModel;
 
     public MainPanel() {
         this.setBackground(Color.black);
@@ -67,17 +71,17 @@ public class MainPanel extends JPanel {
         // 설정 버튼 설정
         JButton settingButton = new JButton("Setting");
         settingButton.addActionListener(e -> {
-            onSettingClicked();
+            onSettingMenuClicked();
         });
         // 스코어보드 버튼 설정
         JButton scoreboardButton = new JButton("Scoreboard");
         scoreboardButton.addActionListener(e -> {
-            onScoreboardClicked();
+            onScoreboardMenuClicked();
         });
         // 종료 버튼 설정
         JButton exitButton = new JButton("Exit");
         exitButton.addActionListener(e -> {
-            onExitClicked();
+            onExitMenuClicked();
         });
 
         // Add button to buttons
@@ -95,6 +99,10 @@ public class MainPanel extends JPanel {
             addComponentVertical(button, gbc);
         }
         addComponentVertical(new EmptySpace(), gbc);
+    }
+
+    public void bindGameModel(GameModel model) {
+        this.gameModel = model;
     }
 
     private void addComponentVertical(Component component, GridBagConstraints gbc) {
@@ -298,7 +306,7 @@ public class MainPanel extends JPanel {
      * @param mode one of "NORMAL", "ITEM"
      */
     protected void onSinglePlayConfirmed(String mode) {
-         // Override to handle continue action
+        // Override to handle continue action
     }
 
     /**
@@ -314,20 +322,145 @@ public class MainPanel extends JPanel {
      * @param isServer true if Server role is chosen (meaningful only when
      *                 isOnline==true)
      */
-    protected void onMultiPlayConfirmed(String mode, boolean isOnline, boolean isServer) {
-         // Override to handle continue action
+    private void onMultiPlayConfirmed(String mode, boolean isOnline, boolean isServer) {
+        if (isOnline) {
+            if (isServer) {
+                java.awt.Window win = SwingUtilities.getWindowAncestor(this);
+                final JDialog dlg = new JDialog(win, ModalityType.APPLICATION_MODAL);
+                dlg.setTitle("Server Address");
+
+                JPanel root = new JPanel(new BorderLayout());
+                root.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
+
+                String address = getServerAddress();
+                String display = (address == null || address.isBlank()) ? "<unknown>" : address;
+                JLabel addrLabel = new JLabel("Server address: " + display, SwingConstants.CENTER);
+                addrLabel.setHorizontalAlignment(SwingConstants.CENTER);
+                root.add(addrLabel, BorderLayout.CENTER);
+
+                JPanel btnRow = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.CENTER, 8, 6));
+                JButton cancel = new JButton("Cancel");
+                cancel.addActionListener(e -> {
+                    onOnlineServerCancelled();
+                    dlg.dispose();
+                });
+                btnRow.add(cancel);
+                root.add(btnRow, BorderLayout.SOUTH);
+
+                dlg.getContentPane().add(root);
+                dlg.pack();
+                dlg.setResizable(false);
+                dlg.setLocationRelativeTo(win);
+                dlg.addWindowListener(new java.awt.event.WindowAdapter() {
+                    @Override
+                    public void windowClosing(java.awt.event.WindowEvent e) {
+                        onOnlineServerCancelled();
+                    }
+                });
+                dlg.setVisible(true);
+            } else {
+                java.awt.Window win = SwingUtilities.getWindowAncestor(this);
+                final JDialog dlg = new JDialog(win, ModalityType.APPLICATION_MODAL);
+                dlg.setTitle("Connect to Server");
+
+                JPanel root = new JPanel(new BorderLayout());
+                root.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
+
+                JPanel center = new JPanel();
+                center.setLayout(new BoxLayout(center, BoxLayout.Y_AXIS));
+                JLabel prompt = new JLabel("Server address:", SwingConstants.LEFT);
+                prompt.setAlignmentX(Component.LEFT_ALIGNMENT);
+                javax.swing.JTextField addrField = new javax.swing.JTextField(24);
+                addrField.setMaximumSize(addrField.getPreferredSize());
+                addrField.setAlignmentX(Component.LEFT_ALIGNMENT);
+                center.add(prompt);
+                center.add(Box.createVerticalStrut(6));
+                center.add(addrField);
+                root.add(center, BorderLayout.CENTER);
+
+                // Bottom: error label + Confirm and Cancel buttons
+                JPanel south = new JPanel();
+                south.setLayout(new BoxLayout(south, BoxLayout.Y_AXIS));
+                JLabel errorLabel = new JLabel(" ");
+                errorLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+                errorLabel.setVisible(false);
+                errorLabel.setForeground(Color.RED);
+                south.add(errorLabel);
+                south.add(Box.createVerticalStrut(6));
+
+                JPanel btnRow = new JPanel(new FlowLayout(FlowLayout.CENTER, 8, 6));
+                JButton confirm = new JButton("Confirm");
+                JButton cancel = new JButton("Cancel");
+
+                confirm.addActionListener(e -> {
+                    try {
+                        connectToServer(addrField.getText() == null ? null : addrField.getText().trim());
+                        dlg.dispose();
+                    } catch (Exception Exception) {
+                        errorLabel.setText("Invalid server address. Please check and try again.");
+                        errorLabel.setVisible(true);
+                        dlg.pack();
+                        addrField.requestFocusInWindow();
+                    }
+                });
+                cancel.addActionListener(e -> {
+                    onOnlineClientCancelled();
+                    dlg.dispose();
+                });
+
+                btnRow.add(confirm);
+                btnRow.add(cancel);
+                south.add(btnRow);
+                root.add(south, BorderLayout.SOUTH);
+
+                dlg.getContentPane().add(root);
+                dlg.pack();
+                dlg.setResizable(false);
+                dlg.setLocationRelativeTo(win);
+                dlg.addWindowListener(new java.awt.event.WindowAdapter() {
+                    @Override
+                    public void windowClosing(java.awt.event.WindowEvent e) {
+                        onOnlineClientCancelled();
+                    }
+                });
+                dlg.setVisible(true);
+            }
+        } else {
+            onLocalMultiPlayConfirmed(mode);
+        }
     }
 
-    protected void onSettingClicked() {
-         // Override to handle continue action
+    protected void onLocalMultiPlayConfirmed(String mode) {
+        // Override to handle continue action
     }
 
-    protected void onScoreboardClicked() {
-         // Override to handle continue action
+    protected void onOnlineServerCancelled() {
+        // Override to handle continue action
     }
 
-    protected void onExitClicked() {
-         // Override to handle continue action
+    protected void onOnlineClientCancelled() {
+        // Override to handle continue action
+    }
+
+    protected String getServerAddress() {
+        // Override to handle continue action
+        return null;
+    }
+
+    protected void connectToServer(String address) throws Exception {
+        // Override to implement connection logic. Throw on failure.
+    }
+
+    protected void onSettingMenuClicked() {
+        // Override to handle continue action
+    }
+
+    protected void onScoreboardMenuClicked() {
+        // Override to handle continue action
+    }
+
+    protected void onExitMenuClicked() {
+        // Override to handle continue action
     }
 
     public void focusButton(int direction) {

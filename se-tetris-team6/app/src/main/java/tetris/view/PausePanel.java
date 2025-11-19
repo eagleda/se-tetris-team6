@@ -41,25 +41,29 @@ public class PausePanel extends JPanel {
             }
         };
 
-        JButton goMainButton = new JButton() {
-            {
-                setText("Main");
-                setFont(new Font("SansSerif", Font.BOLD, 18));
-            }
-        };
-
         JButton continueButton = new JButton() {
             {
                 setText("Continue");
                 setFont(new Font("SansSerif", Font.BOLD, 18));
             }
         };
+        continueButton.addActionListener(e -> onContinueClicked());
+
+        JButton goMainButton = new JButton() {
+            {
+                setText("Main");
+                setFont(new Font("SansSerif", Font.BOLD, 18));
+            }
+        };
+        goMainButton.addActionListener(e -> onGoMainClicked());
+
         JButton exitButton = new JButton() {
             {
                 setText("Exit");
                 setFont(new Font("SansSerif", Font.BOLD, 18));
             }
         };
+        exitButton.addActionListener(e -> onExitClicked());
 
         // Add Components to GridBagLayout
         for (int i = 0; i < 3; i++) { // 빈 공간
