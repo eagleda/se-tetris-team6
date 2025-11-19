@@ -43,12 +43,25 @@ public class Setting {
         s.colorBlindMode = false;
         s.difficulty = GameDifficulty.NORMAL;
         Map<String, Integer> kb = new HashMap<>();
+        // Single-player defaults
         kb.put("MOVE_LEFT", java.awt.event.KeyEvent.VK_LEFT);
         kb.put("MOVE_RIGHT", java.awt.event.KeyEvent.VK_RIGHT);
         kb.put("ROTATE_CW", java.awt.event.KeyEvent.VK_UP);
         kb.put("SOFT_DROP", java.awt.event.KeyEvent.VK_DOWN);
         kb.put("HARD_DROP", java.awt.event.KeyEvent.VK_SPACE);
         kb.put("HOLD", java.awt.event.KeyEvent.VK_C);
+        // Multiplayer Player 1 defaults
+        kb.put("P1_MOVE_LEFT", java.awt.event.KeyEvent.VK_W);
+        kb.put("P1_MOVE_RIGHT", java.awt.event.KeyEvent.VK_D);
+        kb.put("P1_ROTATE_CW", java.awt.event.KeyEvent.VK_W);
+        kb.put("P1_SOFT_DROP", java.awt.event.KeyEvent.VK_S);
+        kb.put("P1_HARD_DROP", java.awt.event.KeyEvent.VK_SPACE);
+        // Multiplayer Player 2 defaults 
+        kb.put("P2_MOVE_LEFT", java.awt.event.KeyEvent.VK_LEFT);
+        kb.put("P2_MOVE_RIGHT", java.awt.event.KeyEvent.VK_RIGHT);
+        kb.put("P2_ROTATE_CW", java.awt.event.KeyEvent.VK_UP);
+        kb.put("P2_SOFT_DROP", java.awt.event.KeyEvent.VK_DOWN);
+        kb.put("P2_HARD_DROP", java.awt.event.KeyEvent.VK_ENTER);
         s.keyBindings = kb;
         return s;
     }
