@@ -1,6 +1,8 @@
 package tetris.domain;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 /**
  * 순수 도메인 보드(격자/충돌/배치/줄삭제만 담당).
@@ -105,6 +107,17 @@ public final class Board {
             return;
         }
         grid[y][x] = value;
+    }
+
+    /** 현재 가득 찬 줄을 아래(큰 y) -> 위 순으로 반환합니다. */
+    public List<Integer> fullRowsSnapshot() {
+        List<Integer> rows = new ArrayList<>();
+        for (int y = H - 1; y >= 0; y--) {
+            if (isFullRow(y)) {
+                rows.add(y);
+            }
+        }
+        return rows;
     }
 
     // 내부 유틸
