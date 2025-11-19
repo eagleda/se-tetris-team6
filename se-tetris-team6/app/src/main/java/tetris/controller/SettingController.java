@@ -115,7 +115,7 @@ public class SettingController {
         // fill key fields
         Integer ml = s.getKeyBinding("MOVE_LEFT");
         Integer mr = s.getKeyBinding("MOVE_RIGHT");
-        Integer rot = s.getKeyBinding("ROTATE");
+        Integer rot = s.getKeyBinding("ROTATE_CW");
         Integer sd = s.getKeyBinding("SOFT_DROP");
         panel.keyMoveLeftField.setText(ml == null ? "" : KeyMapper.keyCodeToName(ml));
         panel.keyMoveRightField.setText(mr == null ? "" : KeyMapper.keyCodeToName(mr));
@@ -135,7 +135,7 @@ public class SettingController {
     code = KeyMapper.nameToKeyCode(panel.keyMoveRightField.getText().trim());
     if (code > 0) kb.put("MOVE_RIGHT", code);
     code = KeyMapper.nameToKeyCode(panel.keyRotateField.getText().trim());
-    if (code > 0) kb.put("ROTATE", code);
+    if (code > 0) kb.put("ROTATE_CW", code);
     code = KeyMapper.nameToKeyCode(panel.keySoftDropField.getText().trim());
     if (code > 0) kb.put("SOFT_DROP", code);
     // other actions can be added similarly

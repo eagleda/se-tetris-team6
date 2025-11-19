@@ -12,12 +12,12 @@ import tetris.domain.GameModel;
 import tetris.view.EmptySpace;
 import tetris.view.GameComponent.GamePanel;
 
-public class GameLayout extends JPanel {
+public class SingleGameLayout extends JPanel {
     private GamePanel gamePanel;
     private NextBlockPanel nextBlockPanel;
     private ScorePanel scoreboard;
 
-    public GameLayout() {
+    public SingleGameLayout() {
         super(new GridBagLayout());
         setOpaque(true);
         setVisible(false);
@@ -57,6 +57,7 @@ public class GameLayout extends JPanel {
         gbc.ipadx = 5;
         gbc.ipady = 5;
 
+        comp.setVisible(true);
         this.add(comp, gbc);
     }
 

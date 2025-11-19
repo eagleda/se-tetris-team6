@@ -2,8 +2,9 @@ package tetris.view;
 
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
 import java.awt.Font;
-import java.awt.Graphics;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
@@ -13,12 +14,7 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 
 public class PausePanel extends JPanel {
-    public JButton continueButton;
-    public JButton goMainButton;
-    public JButton exitButton;
-
     public PausePanel() {
-        this.setSize(TetrisFrame.FRAME_SIZE);
         this.setBackground(Color.gray);
         this.setVisible(false);
         this.setLayout(new GridBagLayout());
@@ -45,25 +41,29 @@ public class PausePanel extends JPanel {
             }
         };
 
-        goMainButton = new JButton() {
-            {
-                setText("Main");
-                setFont(new Font("SansSerif", Font.BOLD, 18));
-            }
-        };
-
-        continueButton = new JButton() {
+        JButton continueButton = new JButton() {
             {
                 setText("Continue");
                 setFont(new Font("SansSerif", Font.BOLD, 18));
             }
         };
-        exitButton = new JButton() {
+        continueButton.addActionListener(e -> onContinueClicked());
+
+        JButton goMainButton = new JButton() {
+            {
+                setText("Main");
+                setFont(new Font("SansSerif", Font.BOLD, 18));
+            }
+        };
+        goMainButton.addActionListener(e -> onGoMainClicked());
+
+        JButton exitButton = new JButton() {
             {
                 setText("Exit");
                 setFont(new Font("SansSerif", Font.BOLD, 18));
             }
         };
+        exitButton.addActionListener(e -> onExitClicked());
 
         // Add Components to GridBagLayout
         for (int i = 0; i < 3; i++) { // 빈 공간
@@ -78,13 +78,32 @@ public class PausePanel extends JPanel {
         }
     }
 
-    @Override
-    protected void paintComponent(Graphics g) {
-        super.paintComponent(g);
+    private void addComponentVertical(Component component, GridBagConstraints gbc) {
+        if (component instanceof JButton button) {
+            button.setFont(new Font("SansSerif", Font.BOLD, 18));
+            Dimension fixed = new Dimension(240, 44);
+            button.setPreferredSize(fixed);
+            button.setMaximumSize(fixed);
+
+            JPanel wrapper = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
+            wrapper.setOpaque(false);
+            wrapper.add(button);
+            this.add(wrapper, gbc);
+        } else {
+            this.add(component, gbc);
+        }
+        gbc.gridy++;
     }
 
-    private void addComponentVertical(Component component, GridBagConstraints gbc) {
-        this.add(component, gbc);
-        gbc.gridy++;
+    protected void onContinueClicked() {
+        // Override to handle continue action
+    }
+
+    protected void onGoMainClicked() {
+        // Override to handle go main action
+    }
+
+    protected void onExitClicked() {
+        // Override to handle exit action
     }
 }

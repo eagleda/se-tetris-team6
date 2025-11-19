@@ -1,5 +1,6 @@
 package tetris.domain.setting;
 
+import java.awt.Dimension;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -12,7 +13,19 @@ import tetris.domain.GameDifficulty;
 public class Setting {
 
     public enum ScreenSize {
-        SMALL, MEDIUM, LARGE
+        SMALL(new Dimension(1120, 720)),
+        MEDIUM(new Dimension(1400, 900)),
+        LARGE(new Dimension(1560, 1000));
+
+        private final Dimension dimension;
+
+        ScreenSize(Dimension d) {
+            this.dimension = d;
+        }
+
+        public Dimension getDimension() {
+            return new Dimension(dimension);
+        }
     }
 
     private ScreenSize screenSize;
@@ -32,7 +45,7 @@ public class Setting {
         Map<String, Integer> kb = new HashMap<>();
         kb.put("MOVE_LEFT", java.awt.event.KeyEvent.VK_LEFT);
         kb.put("MOVE_RIGHT", java.awt.event.KeyEvent.VK_RIGHT);
-        kb.put("ROTATE", java.awt.event.KeyEvent.VK_UP);
+        kb.put("ROTATE_CW", java.awt.event.KeyEvent.VK_UP);
         kb.put("SOFT_DROP", java.awt.event.KeyEvent.VK_DOWN);
         kb.put("HARD_DROP", java.awt.event.KeyEvent.VK_SPACE);
         kb.put("HOLD", java.awt.event.KeyEvent.VK_C);
