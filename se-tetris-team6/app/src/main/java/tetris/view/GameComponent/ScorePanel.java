@@ -15,6 +15,7 @@ import tetris.domain.GameModel;
 public class ScorePanel extends JPanel {
 
     private JTextPane scoreText;
+    private JTextPane speedText;
 
     private GameModel gameModel;
 
@@ -44,6 +45,15 @@ public class ScorePanel extends JPanel {
         scoreText.setFont(new Font("SansSerif", Font.BOLD, 24));
         scoreText.setFocusable(false);
         add(scoreText, BorderLayout.CENTER);
+
+        speedText = new JTextPane();
+        speedText.setText("Speed Lv. 0");
+        speedText.setEditable(false);
+        speedText.setOpaque(false);
+        speedText.setForeground(Color.LIGHT_GRAY);
+        speedText.setFont(new Font("SansSerif", Font.BOLD, 14));
+        speedText.setFocusable(false);
+        add(speedText, BorderLayout.SOUTH);
     }
 
     public void bindGameModel(GameModel model) {
@@ -55,11 +65,16 @@ public class ScorePanel extends JPanel {
         scoreText.setText(String.valueOf(points));
     }
 
+    private void updateSpeedDisplay(int level) {
+        speedText.setText(String.format("Speed Lv. %d", level));
+    }
+
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
         if (gameModel == null) return;
         int pts = gameModel.getScore().getPoints();
         updateScoreDisplay(pts);
+        updateSpeedDisplay(gameModel.getSpeedLevel());
     }
 }

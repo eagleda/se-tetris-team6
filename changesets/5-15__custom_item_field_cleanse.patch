@@ -1,0 +1,25 @@
+diff --git a/se-tetris-team6/app/src/main/java/tetris/domain/item/behavior/FieldCleanseBehavior.java b/se-tetris-team6/app/src/main/java/tetris/domain/item/behavior/FieldCleanseBehavior.java
+new file mode 100644
+--- /dev/null
++++ b/se-tetris-team6/app/src/main/java/tetris/domain/item/behavior/FieldCleanseBehavior.java
+@@
++package tetris.domain.item.behavior;
++
++import tetris.domain.item.ItemBehavior;
++import tetris.domain.item.ItemContext;
++
++/**
++ * TODO(5-15): Implement field-cleanse item that clears garbage rows with a cooldown gate.
++ */
++public final class FieldCleanseBehavior implements ItemBehavior {
++    private long cooldownUntil;
++
++    @Override
++    public void onLock(ItemContext context) {
++        // clear targeted garbage rows and set cooldown timestamp
++    }
++
++    public boolean isOnCooldown(long tick) {
++        return tick < cooldownUntil;
++    }
++}

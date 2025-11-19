@@ -4,14 +4,13 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Random;
 import java.util.function.Supplier;
 
-import tetris.data.score.InMemoryScoreRepository;
-import tetris.data.setting.PreferencesSettingRepository;
 import tetris.domain.setting.SettingService;
 import tetris.domain.block.BlockLike;
 import tetris.domain.handler.GameHandler;
@@ -29,6 +28,8 @@ import tetris.domain.item.ItemType;
 import tetris.domain.item.behavior.BombBehavior;
 import tetris.domain.item.behavior.DoubleScoreBehavior;
 import tetris.domain.item.behavior.TimeSlowBehavior;
+import tetris.domain.item.behavior.LineClearBehavior;
+import tetris.domain.item.behavior.WeightBehavior;
 import tetris.domain.item.model.ItemBlockModel;
 import tetris.domain.model.Block;
 import tetris.domain.model.GameState;
@@ -104,7 +105,9 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
     private final List<Supplier<ItemBehavior>> behaviorFactories = List.of(
             () -> new DoubleScoreBehavior(600, 2.0),
             () -> new TimeSlowBehavior(600, 0.5),
-            () -> new BombBehavior(1));
+            () -> new BombBehavior(1),
+            () -> new LineClearBehavior(),
+            WeightBehavior::new);
 
     public static final class ActiveItemInfo {
         private final BlockLike block;
@@ -130,33 +133,38 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         }
     }
 
+    private static final int DEFAULT_ITEM_SPAWN_INTERVAL = 2;
+    private static final int BLOCKS_PER_SPEED_STEP = 12;
+    private static final int LINES_PER_SPEED_STEP = 4;
+    private static final int MAX_SPEED_LEVEL = 20;
+
     private ItemBlockModel activeItemBlock;
     private boolean nextBlockIsItem;
     private int totalClearedLines;
+    private int totalSpawnedBlocks;
     private long currentTick;
     private double scoreMultiplier = 1.0;
     private long doubleScoreUntilTick;
     private double slowFactor = 1.0;
     private long slowUntilTick;
     private ItemContextImpl itemContext;
+    private Supplier<ItemBehavior> behaviorOverride = () -> new TimeSlowBehavior(600, 0.5);
+    private int itemSpawnIntervalLines = DEFAULT_ITEM_SPAWN_INTERVAL;
+    private int currentGravityLevel;
 
     private UiBridge uiBridge = NO_OP_UI_BRIDGE;
     private GameState currentState;
     private GameHandler currentHandler;
 
-    public GameModel() {
-        this(new RandomBlockGenerator(), new InMemoryScoreRepository());
-    }
-
-    public GameModel(BlockGenerator generator, ScoreRepository scoreRepository) {
+    public GameModel(BlockGenerator generator,
+            ScoreRepository scoreRepository,
+            tetris.domain.leaderboard.LeaderboardRepository leaderboardRepository,
+            SettingService settingService) {
         this.scoreRepository = Objects.requireNonNull(scoreRepository, "scoreRepository");
         this.scoreEngine = new ScoreRuleEngine(scoreRepository);
-        // persistent leaderboard for game-over name saving
-        this.leaderboardRepository = new tetris.data.leaderboard.PreferencesLeaderboardRepository();
-        // lightweight setting service used by handlers that expect model-level setting
-        // operations
-        this.settingService = new SettingService(new PreferencesSettingRepository(), scoreRepository);
-        setBlockGenerator(generator);
+        this.leaderboardRepository = Objects.requireNonNull(leaderboardRepository, "leaderboardRepository");
+        this.settingService = Objects.requireNonNull(settingService, "settingService");
+        setBlockGenerator(generator == null ? new RandomBlockGenerator() : generator);
         registerHandlers();
         changeState(GameState.MENU);
         gameplayEngine = new tetris.domain.engine.GameplayEngine(board, inputState, blockGenerator, scoreEngine,
@@ -261,6 +269,10 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
 
     public ScoreRuleEngine getScoreEngine() {
         return scoreEngine;
+    }
+
+    public int getSpeedLevel() {
+        return currentGravityLevel;
     }
 
     public tetris.domain.leaderboard.LeaderboardRepository getLeaderboardRepository() {
@@ -379,6 +391,26 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         return blockGenerator;
     }
 
+    public void setItemSpawnIntervalLines(int interval) {
+        if (interval <= 0) {
+            throw new IllegalArgumentException("interval must be positive");
+        }
+        this.itemSpawnIntervalLines = interval;
+    }
+
+    public void setItemBehaviorOverride(String behaviorId) {
+        if (behaviorId == null || behaviorId.isBlank()) {
+            this.behaviorOverride = null;
+            return;
+        }
+        this.behaviorOverride = resolveBehaviorOverride(behaviorId);
+    }
+
+    public void resetItemTestingConfig() {
+        this.behaviorOverride = () -> new TimeSlowBehavior(600, 0.5);
+        this.itemSpawnIntervalLines = DEFAULT_ITEM_SPAWN_INTERVAL;
+    }
+
     /**
      * Return a preview of the next BlockKind without consuming the generator.
      * This is used by UI components to render a "next block" preview.
@@ -428,6 +460,8 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         if (block == null) {
             return;
         }
+        totalSpawnedBlocks++;
+        updateGravityProgress();
         if (currentMode != GameMode.ITEM) {
             activeItemBlock = null;
             nextBlockIsItem = false;
@@ -463,10 +497,11 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
             return;
         }
         totalClearedLines += clearedLines;
+        updateGravityProgress();
         if (currentMode != GameMode.ITEM) {
             return;
         }
-        if (totalClearedLines % 10 == 0) {
+        if (itemSpawnIntervalLines > 0 && totalClearedLines % itemSpawnIntervalLines == 0) {
             nextBlockIsItem = true;
         }
         itemManager.onLineClear(itemContext, null);
@@ -481,7 +516,22 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         }
     }
 
+    private Supplier<ItemBehavior> resolveBehaviorOverride(String behaviorId) {
+        String key = behaviorId.toLowerCase(Locale.ROOT);
+        return switch (key) {
+            case "line_clear", "lineclear", "line-clear" -> LineClearBehavior::new;
+            case "double_score", "doublescore", "double-score", "double" -> () -> new DoubleScoreBehavior(600, 2.0);
+            case "time_slow", "timeslow", "slow" -> () -> new TimeSlowBehavior(600, 0.5);
+            case "bomb" -> () -> new BombBehavior(1);
+            case "weight", "weight_drop", "weight-drop" -> WeightBehavior::new;
+            default -> throw new IllegalArgumentException("Unknown item behavior: " + behaviorId);
+        };
+    }
+
     private ItemBehavior rollBehavior() {
+        if (behaviorOverride != null) {
+            return behaviorOverride.get();
+        }
         if (behaviorFactories.isEmpty()) {
             return new DoubleScoreBehavior(600, 2.0);
         }
@@ -502,6 +552,19 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         }
     }
 
+    private void updateGravityProgress() {
+        int levelFromBlocks = totalSpawnedBlocks / BLOCKS_PER_SPEED_STEP;
+        int levelFromLines = totalClearedLines / LINES_PER_SPEED_STEP;
+        int desiredLevel = Math.min(MAX_SPEED_LEVEL, Math.max(levelFromBlocks, levelFromLines));
+        if (desiredLevel > currentGravityLevel) {
+            currentGravityLevel = desiredLevel;
+            if (gameplayEngine != null) {
+                gameplayEngine.setGravityLevel(currentGravityLevel);
+            }
+            uiBridge.refreshBoard();
+        }
+    }
+
     private void resetInputAxes() {
         inputState.setLeft(false);
         inputState.setRight(false);
@@ -519,12 +582,15 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         activeItemBlock = null;
         nextBlockIsItem = false;
         totalClearedLines = 0;
+        totalSpawnedBlocks = 0;
+        currentGravityLevel = 0;
         currentTick = 0;
         scoreMultiplier = 1.0;
         doubleScoreUntilTick = 0;
         slowFactor = 1.0;
         slowUntilTick = 0;
         gameplayEngine.setActiveBlock(null);
+        gameplayEngine.setGravityLevel(0);
         gameplayEngine.stopClockCompletely();
     }
 

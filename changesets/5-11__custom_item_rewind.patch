@@ -1,0 +1,25 @@
+diff --git a/se-tetris-team6/app/src/main/java/tetris/domain/item/behavior/RewindBehavior.java b/se-tetris-team6/app/src/main/java/tetris/domain/item/behavior/RewindBehavior.java
+new file mode 100644
+--- /dev/null
++++ b/se-tetris-team6/app/src/main/java/tetris/domain/item/behavior/RewindBehavior.java
+@@
++package tetris.domain.item.behavior;
++
++import tetris.domain.item.ItemBehavior;
++import tetris.domain.item.ItemContext;
++
++/**
++ * TODO(5-11): Implement rewind item that restores the board and score to a previous snapshot.
++ */
++public final class RewindBehavior implements ItemBehavior {
++
++    @Override
++    public void onSpawn(ItemContext context) {
++        // capture snapshot metadata here
++    }
++
++    @Override
++    public void onLock(ItemContext context) {
++        // restore previous board / active block state here
++    }
++}
