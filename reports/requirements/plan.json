@@ -45,7 +45,7 @@
       "`se-tetris-team6/app/src/main/java/tetris/domain/RandomBlockGenerator.java` – 테스트 전용 시드/샘플 API 또는 포트 추가.",
       "`se-tetris-team6/app/src/test/java/tetris/domain/RandomBlockGeneratorProbabilityTest.java` – 난이도별 확률 검증 테스트 신설."
     ],
-    "resolved": "X"
+    "resolved": "O"
   },
   {
     "id": "BUG-HardDropLock",
@@ -68,7 +68,7 @@
       "`se-tetris-team6/app/src/main/java/tetris/domain/GameModel.java` – 하드드랍 상태 플래그 및 입력 무시 로직 추가.",
       "`se-tetris-team6/app/src/main/java/tetris/controller/GameController.java` – 하드드랍 처리 후 추가 이동 호출을 방지하는 가드 추가."
     ],
-    "resolved": "X"
+    "resolved": "O"
   },
   {
     "id": "2-24",
