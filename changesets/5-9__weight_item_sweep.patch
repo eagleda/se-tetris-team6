@@ -1,0 +1,5 @@
+diff --git a/se-tetris-team6/app/src/main/java/tetris/domain/Board.java b/se-tetris-team6/app/src/main/java/tetris/domain/Board.java
+--- a/se-tetris-team6/app/src/main/java/tetris/domain/Board.java
++++ b/se-tetris-team6/app/src/main/java/tetris/domain/Board.java
+@@
++// TODO(5-9): Add API to clear blocks along the weight drop path.

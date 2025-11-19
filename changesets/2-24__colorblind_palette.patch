@@ -1,0 +1,5 @@
+diff --git a/se-tetris-team6/app/src/main/java/tetris/domain/setting/Setting.java b/se-tetris-team6/app/src/main/java/tetris/domain/setting/Setting.java
+--- a/se-tetris-team6/app/src/main/java/tetris/domain/setting/Setting.java
++++ b/se-tetris-team6/app/src/main/java/tetris/domain/setting/Setting.java
+@@
++// TODO(2-24): Persist ColorVisionMode setting and expose palette presets.

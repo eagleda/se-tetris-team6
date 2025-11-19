@@ -1,0 +1,5 @@
+diff --git a/se-tetris-team6/app/src/main/java/tetris/domain/GameModel.java b/se-tetris-team6/app/src/main/java/tetris/domain/GameModel.java
+--- a/se-tetris-team6/app/src/main/java/tetris/domain/GameModel.java
++++ b/se-tetris-team6/app/src/main/java/tetris/domain/GameModel.java
+@@
++// TODO(2-8): Add progression hooks to ramp gravity speed once thresholds are met.

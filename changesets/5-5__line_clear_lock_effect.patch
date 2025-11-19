@@ -1,0 +1,5 @@
+diff --git a/se-tetris-team6/app/src/main/java/tetris/domain/item/model/ItemBlockModel.java b/se-tetris-team6/app/src/main/java/tetris/domain/item/model/ItemBlockModel.java
+--- a/se-tetris-team6/app/src/main/java/tetris/domain/item/model/ItemBlockModel.java
++++ b/se-tetris-team6/app/src/main/java/tetris/domain/item/model/ItemBlockModel.java
+@@
++// TODO(5-5): Invoke line-clear behavior when the carrier block locks.

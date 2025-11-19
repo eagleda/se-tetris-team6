@@ -1,0 +1,5 @@
+diff --git a/se-tetris-team6/app/src/main/java/tetris/view/ScoreboardPanel.java b/se-tetris-team6/app/src/main/java/tetris/view/ScoreboardPanel.java
+--- a/se-tetris-team6/app/src/main/java/tetris/view/ScoreboardPanel.java
++++ b/se-tetris-team6/app/src/main/java/tetris/view/ScoreboardPanel.java
+@@
++// TODO(3-6): Highlight the newly added score entry after name submission.

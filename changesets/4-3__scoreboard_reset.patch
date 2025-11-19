@@ -1,0 +1,5 @@
+diff --git a/se-tetris-team6/app/src/main/java/tetris/controller/ScoreController.java b/se-tetris-team6/app/src/main/java/tetris/controller/ScoreController.java
+--- a/se-tetris-team6/app/src/main/java/tetris/controller/ScoreController.java
++++ b/se-tetris-team6/app/src/main/java/tetris/controller/ScoreController.java
+@@
++// TODO(4-3): Handle reset action and delegate to LeaderboardService.
