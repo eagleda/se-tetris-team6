@@ -71,6 +71,8 @@ public class SettingPanel extends JPanel {
     public JButton saveButton;
     public JButton backToMainButton;
     public JComboBox<GameDifficulty> difficultyCombo;
+    private KeyEventDispatcher activeCaptureDispatcher;
+    private JButton activeCaptureButton;
 
     public SettingPanel() {
         super(new GridBagLayout());
@@ -281,6 +283,8 @@ public class SettingPanel extends JPanel {
 
     private void installCapture(JButton captureKeyButton, JTextField targetField) {
         captureKeyButton.addActionListener(e -> {
+            cancelActiveCapture();
+            activeCaptureButton = captureKeyButton;
             captureKeyButton.setText("Press a key...");
             captureKeyButton.setEnabled(false);
             // prevent the text field from accepting KEY_TYPED events while capturing
@@ -300,6 +304,10 @@ public class SettingPanel extends JPanel {
                         captureKeyButton.setText("Capture");
                         captureKeyButton.setEnabled(true);
                         KeyboardFocusManager.getCurrentKeyboardFocusManager().removeKeyEventDispatcher(this);
+                        if (activeCaptureDispatcher == this) {
+                            activeCaptureDispatcher = null;
+                            activeCaptureButton = null;
+                        }
                         return true; // consumed
                     }
                     // Also consume any KEY_TYPED events while capturing to avoid stray input
@@ -310,8 +318,20 @@ public class SettingPanel extends JPanel {
                     return false;
                 }
             };
-
             java.awt.KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(dispatcher);
+            activeCaptureDispatcher = dispatcher;
         });
+    }
+
+    public void cancelActiveCapture() {
+        if (activeCaptureDispatcher != null) {
+            KeyboardFocusManager.getCurrentKeyboardFocusManager().removeKeyEventDispatcher(activeCaptureDispatcher);
+            activeCaptureDispatcher = null;
+        }
+        if (activeCaptureButton != null) {
+            activeCaptureButton.setText("Capture");
+            activeCaptureButton.setEnabled(true);
+            activeCaptureButton = null;
+        }
     }
 }

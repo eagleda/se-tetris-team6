@@ -44,6 +44,7 @@ public class SettingController {
         panel.saveButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
+                panel.cancelActiveCapture();
                 persistFromPanel();
                 applyCurrentSettingsToRuntime();
             }
@@ -53,6 +54,7 @@ public class SettingController {
         panel.resetDefaultsButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
+                panel.cancelActiveCapture();
                 service.resetToDefaults();
                 loadToPanel();
                 applyCurrentSettingsToRuntime();
@@ -63,6 +65,7 @@ public class SettingController {
         panel.resetScoresButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
+                panel.cancelActiveCapture();
                 service.resetScoreboard();
             }
         });
@@ -71,6 +74,7 @@ public class SettingController {
         panel.backToMainButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
+                panel.cancelActiveCapture();
                 service.reload();
                 loadToPanel();
                 applyCurrentSettingsToRuntime();
