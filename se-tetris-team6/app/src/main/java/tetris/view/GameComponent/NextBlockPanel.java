@@ -15,6 +15,7 @@ import tetris.domain.BlockKind;
 import tetris.domain.BlockShape;
 import tetris.domain.GameModel;
 import tetris.domain.model.Block;
+import tetris.view.palette.ColorPaletteProvider;
 
 public class NextBlockPanel extends JPanel {
     private static final int BOARD_COLS = 5;
@@ -138,14 +139,15 @@ public class NextBlockPanel extends JPanel {
     
 
     private Color colorFor(int value) {
+        Color[] palette = ColorPaletteProvider.palette(gameModel != null && gameModel.isColorBlindMode());
         if (value <= 0) {
-            return BLOCK_COLORS[0];
+            return palette[0];
         }
-        int idx = value % BLOCK_COLORS.length;
+        int idx = value % palette.length;
         if (idx == 0) {
-            idx = BLOCK_COLORS.length - 1;
+            idx = palette.length - 1;
         }
-        return BLOCK_COLORS[idx];
+        return palette[idx];
     }
 
     private void drawItemBadge(Graphics2D g2, int originX, int originY, int width, int height) {

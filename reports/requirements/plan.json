@@ -93,7 +93,7 @@
       "`se-tetris-team6/app/src/main/java/tetris/controller/SettingController.java` – 모드 선택 핸들링.",
       "`se-tetris-team6/app/src/main/java/tetris/view/GameComponent/GamePanel.java` – 팔레트/패턴 분기 렌더링."
     ],
-    "resolved": "X"
+    "resolved": "O"
   },
   {
     "id": "2-28",

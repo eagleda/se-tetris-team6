@@ -155,6 +155,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
     private Supplier<ItemBehavior> behaviorOverride = () -> new TimeSlowBehavior(600, 0.5);
     private int itemSpawnIntervalLines = DEFAULT_ITEM_SPAWN_INTERVAL;
     private int currentGravityLevel;
+    private boolean colorBlindMode;
     private long lastInputMillis = System.currentTimeMillis();
     private int inactivityPenaltyStage;
 
@@ -170,6 +171,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         this.scoreEngine = new ScoreRuleEngine(scoreRepository);
         this.leaderboardRepository = Objects.requireNonNull(leaderboardRepository, "leaderboardRepository");
         this.settingService = Objects.requireNonNull(settingService, "settingService");
+        this.colorBlindMode = this.settingService.getSettings().isColorBlindMode();
         setBlockGenerator(generator == null ? new RandomBlockGenerator() : generator);
         registerHandlers();
         changeState(GameState.MENU);
@@ -279,6 +281,19 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
 
     public int getSpeedLevel() {
         return currentGravityLevel;
+    }
+
+    public boolean isColorBlindMode() {
+        return colorBlindMode;
+    }
+
+    public void setColorBlindMode(boolean enabled) {
+        if (this.colorBlindMode == enabled) {
+            return;
+        }
+        this.colorBlindMode = enabled;
+        settingService.getSettings().setColorBlindMode(enabled);
+        uiBridge.refreshBoard();
     }
 
     public List<Integer> getLastClearedLines() {

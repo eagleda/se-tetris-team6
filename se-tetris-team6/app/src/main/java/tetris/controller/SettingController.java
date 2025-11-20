@@ -45,6 +45,7 @@ public class SettingController {
             @Override
             public void actionPerformed(ActionEvent e) {
                 persistFromPanel();
+                applyCurrentSettingsToRuntime();
             }
         });
 
@@ -54,6 +55,7 @@ public class SettingController {
             public void actionPerformed(ActionEvent e) {
                 service.resetToDefaults();
                 loadToPanel();
+                applyCurrentSettingsToRuntime();
             }
         });
 
@@ -69,6 +71,9 @@ public class SettingController {
         panel.backToMainButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
+                service.reload();
+                loadToPanel();
+                applyCurrentSettingsToRuntime();
                 if (frame != null) {
                     frame.showMainPanel();
                 }
@@ -191,7 +196,8 @@ public class SettingController {
     // other actions can be added similarly
 
     service.setKeyBindings(kb);
-        service.setColorBlindMode(panel.colorBlindCheckbox.isSelected());
+        boolean colorBlindEnabled = panel.colorBlindCheckbox.isSelected();
+        service.setColorBlindMode(colorBlindEnabled);
         Object sel = panel.sizeCombo.getSelectedItem();
         if (sel instanceof Setting.ScreenSize) {
             service.setScreenSize((Setting.ScreenSize) sel);
@@ -201,13 +207,17 @@ public class SettingController {
             ? (GameDifficulty) diffSel : GameDifficulty.NORMAL;
         service.setDifficulty(difficulty);
         service.save();
+        applyCurrentSettingsToRuntime();
+    }
 
-        // Apply keybindings to runtime GameController
-        if (gameController != null) {
-            // service.getSettings().getKeyBindings() already contains int codes
-            java.util.Map<String, Integer> mapped = new java.util.HashMap<>(service.getSettings().getKeyBindings());
-            gameController.applyKeyBindings(mapped);
-            gameController.applyDifficulty(difficulty);
+    private void applyCurrentSettingsToRuntime() {
+        if (gameController == null) {
+            return;
         }
+        Setting current = service.getSettings();
+        Map<String, Integer> bindings = new HashMap<>(current.getKeyBindings());
+        gameController.applyKeyBindings(bindings);
+        gameController.applyDifficulty(current.getDifficulty());
+        gameController.applyColorBlindMode(current.isColorBlindMode());
     }
 }
