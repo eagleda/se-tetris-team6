@@ -77,11 +77,13 @@ public class GameOverPanel extends JPanel {
         Objects.requireNonNull(score, "score");
         scoreLabel.setText(String.format("Score: %d | Lines: %d | Level: %d",
             score.getPoints(), score.getClearedLines(), score.getLevel()));
+        // 항상 새 입력을 위해 필드를 비우고 포커스를 맞춘다.
+        nameField.setText("");
         nameField.setVisible(allowNameEntry);
         saveButton.setVisible(allowNameEntry);
         skipButton.setVisible(allowNameEntry);
         this.setVisible(true);
-        this.requestFocusInWindow();
+        nameField.requestFocusInWindow();
     }
 
     public void hidePanel() {

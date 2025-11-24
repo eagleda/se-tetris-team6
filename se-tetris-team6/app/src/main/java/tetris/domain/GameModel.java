@@ -707,15 +707,8 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
     public void showGameOverScreen() {
         // Prepare data for UI and determine whether name entry should be allowed.
         tetris.domain.score.Score finalScore = scoreRepository.load();
-        boolean qualifies = false;
-        List<tetris.domain.leaderboard.LeaderboardEntry> top = loadTopScores(lastMode, 10);
-        if (top.isEmpty() || top.size() < 10) {
-            qualifies = true;
-        } else {
-            int lastPoints = top.get(top.size() - 1).getPoints();
-            qualifies = finalScore.getPoints() > lastPoints;
-        }
-        uiBridge.showGameOverOverlay(finalScore, qualifies);
+        // 이름 입력은 항상 허용해, 순위 밖이어도 기록을 남길 수 있게 한다.
+        uiBridge.showGameOverOverlay(finalScore, true);
     }
 
     public void loadSettings() {
