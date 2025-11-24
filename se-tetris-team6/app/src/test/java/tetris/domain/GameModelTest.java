@@ -30,6 +30,9 @@ class GameModelTest {
             return Collections.emptyList();
         }
         @Override public void saveEntry(LeaderboardEntry entry) { }
+        @Override public tetris.domain.leaderboard.LeaderboardResult saveAndHighlight(LeaderboardEntry entry) {
+            return new tetris.domain.leaderboard.LeaderboardResult(Collections.emptyList(), -1);
+        }
         @Override public void reset() { }
     }
 
