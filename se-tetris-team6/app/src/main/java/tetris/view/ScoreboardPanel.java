@@ -80,7 +80,8 @@ public class ScoreboardPanel extends JPanel implements ScoreView {
         list.setFont(new Font("SansSerif", Font.PLAIN, 16));
         list.setFocusable(false);
 
-        list.setSelectionBackground(new Color(255, 255, 255, 50));
+        // 강조 색상을 일반적인 붉은색으로 설정해 새 기록이 뚜렷하게 보이도록 한다.
+        list.setSelectionBackground(new Color(220, 0, 0, 160));
         list.setSelectionForeground(Color.WHITE);
 
         JScrollPane scroll = new JScrollPane(list);
