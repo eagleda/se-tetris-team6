@@ -141,7 +141,7 @@
       "`se-tetris-team6/app/src/main/java/tetris/controller/GameOverController.java` – 이름 입력 완료 시 뷰 모델 갱신.",
       "`se-tetris-team6/app/src/main/java/tetris/view/ScoreboardPanel.java` – 강조 렌더링."
     ],
-    "resolved": "X"
+    "resolved": "O"
   },
   {
     "id": "4-2",

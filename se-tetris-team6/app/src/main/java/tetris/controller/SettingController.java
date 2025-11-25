@@ -2,6 +2,7 @@ package tetris.controller;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import javax.swing.JOptionPane;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -66,7 +67,18 @@ public class SettingController {
             @Override
             public void actionPerformed(ActionEvent e) {
                 panel.cancelActiveCapture();
-                service.resetScoreboard();
+                int choice = JOptionPane.showConfirmDialog(panel,
+                        "정말로 스코어보드를 초기화할까요?",
+                        "Reset Scoreboard",
+                        JOptionPane.YES_NO_OPTION,
+                        JOptionPane.WARNING_MESSAGE);
+                if (choice == JOptionPane.YES_OPTION) {
+                    service.resetScoreboard(); // 기존 점수 저장소 초기화
+                    if (frame != null && frame.getGameModel() != null) {
+                        // 리더보드까지 초기화
+                        frame.getGameModel().getLeaderboardRepository().reset();
+                    }
+                }
             }
         });
 

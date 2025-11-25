@@ -271,6 +271,20 @@ public class TetrisFrame extends JFrame {
             displayPanel(mainPanel);
             gameModel.quitToMenu();
         });
+        scoreboardPanel.setResetAction(e -> {
+            int result = javax.swing.JOptionPane.showConfirmDialog(
+                    this,
+                    "정말로 모든 스코어보드 기록을 초기화하시겠습니까?",
+                    "Reset Scores",
+                    javax.swing.JOptionPane.YES_NO_OPTION,
+                    javax.swing.JOptionPane.WARNING_MESSAGE);
+            if (result == javax.swing.JOptionPane.YES_OPTION) {
+                gameModel.getLeaderboardRepository().reset();
+                // 초기화 후 리스트를 비우고 하이라이트도 제거
+                scoreboardPanel.renderLeaderboard(GameMode.STANDARD, java.util.Collections.emptyList(), -1);
+                scoreboardPanel.renderLeaderboard(GameMode.ITEM, java.util.Collections.emptyList(), -1);
+            }
+        });
     }
 
     public void displayPanel(JPanel panel) {
