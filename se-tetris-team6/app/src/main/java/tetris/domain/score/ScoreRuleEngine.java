@@ -61,6 +61,14 @@ public final class ScoreRuleEngine {
             .withAdditionalPoints(delta));
     }
 
+    public void applyPenalty(int penalty) {
+        int delta = Math.max(0, penalty);
+        if (delta <= 0) {
+            return;
+        }
+        apply(score -> score.minusPoints(delta));
+    }
+
     public void resetScore() {
         repository.reset();
         notifyListeners(repository.load());

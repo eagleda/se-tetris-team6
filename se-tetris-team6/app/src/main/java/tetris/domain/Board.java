@@ -1,6 +1,10 @@
 package tetris.domain;
 
+import java.util.ArrayList;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+import java.util.List;
 
 /**
  * 순수 도메인 보드(격자/충돌/배치/줄삭제만 담당).
@@ -58,15 +62,30 @@ public final class Board {
      * @return 삭제된 줄 수
      */
     public int clearLines() {
-        int cleared = 0;
+        return clearLinesAndGetRows().size();
+    }
+
+    /**
+     * 삭제된 줄 인덱스를 아래(큰 y) -> 위(작은 y) 순으로 반환하면서 줄을 삭제합니다.
+     */
+    public List<Integer> clearLinesAndGetRows() {
+        List<Integer> clearedRows = new ArrayList<>();
+        int writeRow = H - 1;
         for (int y = H - 1; y >= 0; y--) {
             if (isFullRow(y)) {
-                clearRow(y);
-                cleared++;
-                y++; // 위가 내려왔으니 같은 y를 재검사
+                clearedRows.add(y);
+                continue;
             }
+            if (writeRow != y) {
+                System.arraycopy(grid[y], 0, grid[writeRow], 0, W);
+            }
+            writeRow--;
         }
-        return cleared;
+        while (writeRow >= 0) {
+            Arrays.fill(grid[writeRow], 0);
+            writeRow--;
+        }
+        return clearedRows;
     }
 
     /** 스폰 가능 여부(초기 배치 가능?) */
@@ -105,6 +124,44 @@ public final class Board {
             return;
         }
         grid[y][x] = value;
+    }
+
+    /** 주어진 줄들을 삭제하고 위 줄을 아래로 내립니다. */
+    public void clearRows(List<Integer> rows) {
+        if (rows == null || rows.isEmpty()) {
+            return;
+        }
+        boolean[] toClear = new boolean[H];
+        for (int row : rows) {
+            if (row >= 0 && row < H) {
+                toClear[row] = true;
+            }
+        }
+        int write = H - 1;
+        for (int read = H - 1; read >= 0; read--) {
+            if (toClear[read]) {
+                continue;
+            }
+            if (write != read) {
+                System.arraycopy(grid[read], 0, grid[write], 0, W);
+            }
+            write--;
+        }
+        while (write >= 0) {
+            Arrays.fill(grid[write], 0);
+            write--;
+        }
+    }
+
+    /** 현재 가득 찬 줄을 아래(큰 y) -> 위 순으로 반환합니다. */
+    public List<Integer> fullRowsSnapshot() {
+        List<Integer> rows = new ArrayList<>();
+        for (int y = H - 1; y >= 0; y--) {
+            if (isFullRow(y)) {
+                rows.add(y);
+            }
+        }
+        return rows;
     }
 
     // 내부 유틸

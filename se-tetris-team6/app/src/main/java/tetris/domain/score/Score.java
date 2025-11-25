@@ -55,4 +55,12 @@ public final class Score {
         }
         return new Score(points, newLevel, clearedLines);
     }
+
+    public Score minusPoints(int delta) {
+        if (delta <= 0) {
+            return this;
+        }
+        int nextPoints = Math.max(0, points - delta);
+        return new Score(nextPoints, level, clearedLines);
+    }
 }
