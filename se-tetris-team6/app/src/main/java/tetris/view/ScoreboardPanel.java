@@ -24,6 +24,8 @@ import javax.swing.JList;
 import tetris.domain.GameMode;
 import tetris.domain.leaderboard.LeaderboardEntry;
 import tetris.domain.score.Score;
+import tetris.view.ScoreboardComponent.StandardModePanel;
+import tetris.view.ScoreboardComponent.ItemModePanel;
 
 public class ScoreboardPanel extends JPanel implements ScoreView {
 
@@ -54,7 +56,7 @@ public class ScoreboardPanel extends JPanel implements ScoreView {
         gbc.weightx = 0.5;
         gbc.weighty = 1.0;
 
-        center.add(createListPanel("STANDARD", standardList), gbc);
+        center.add(new StandardModePanel(standardList), gbc);
 
         gbc.gridx = 1;
         gbc.weightx = 0.0;
@@ -64,7 +66,7 @@ public class ScoreboardPanel extends JPanel implements ScoreView {
         gbc.gridx = 2;
         gbc.weightx = 0.5;
         gbc.insets = new Insets(12, 12, 12, 12);
-        center.add(createListPanel("ITEM", itemList), gbc);
+        center.add(new ItemModePanel(itemList), gbc);
 
         add(center, BorderLayout.CENTER);
 
