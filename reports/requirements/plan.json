@@ -193,7 +193,7 @@
       "`se-tetris-team6/app/src/main/java/tetris/controller/ScoreController.java` – 초기화 핸들러 추가.",
       "`se-tetris-team6/app/src/main/java/tetris/view/ScoreboardPanel.java` – 버튼/다이얼로그 구현."
     ],
-    "resolved": "X"
+    "resolved": "O"
   },
   {
     "id": "5-2",
