@@ -17,6 +17,7 @@ import tetris.domain.GameModel;
 import tetris.domain.BlockShape;
 import tetris.domain.GameModel.ActiveItemInfo;
 import tetris.domain.model.Block;
+import tetris.view.palette.ColorPaletteProvider;
 
 public class GamePanel extends JPanel {
     // 플래시 중인 행 및 타이머
@@ -27,17 +28,6 @@ public class GamePanel extends JPanel {
     private static final int BOARD_ROWS = Board.H;
     private static final Color BACKGROUND_COLOR = new Color(18, 18, 18);
     private static final Color GRID_COLOR = new Color(48, 48, 48, 180);
-    private static final Color[] BLOCK_COLORS = {
-            new Color(30, 30, 30), // 0: 빈 칸
-            new Color(0, 240, 240), // I
-            new Color(0, 0, 240), // J
-            new Color(240, 160, 0), // L
-            new Color(240, 240, 0), // O
-            new Color(0, 240, 0), // S
-            new Color(160, 0, 240), // T
-            new Color(240, 0, 0) // Z
-    };
-
     private GameModel gameModel;
     private static final Color ITEM_OUTLINE_COLOR = new Color(255, 215, 0, 210);
     private static final Color ITEM_LABEL_BACKGROUND = new Color(0, 0, 0, 180);
@@ -162,17 +152,20 @@ public class GamePanel extends JPanel {
         if (gameModel == null)
             return;
 
-        // 플래시가 아직 동작중이지 않다면 pending(또는 board)의 가득 찬 줄을 캡처하여 플래시 시작
+        // 플래시가 아직 동작중이지 않다면 실제 삭제된 줄 목록을 확인해 플래시 시작
         if (flashingLines.isEmpty()) {
-            List<Integer> pending = gameModel.getPendingFullLines(); // GameModel에 추가한 메서드 사용
-            if (pending == null || pending.isEmpty()) {
+            List<Integer> cleared = gameModel.getLastClearedLines();
+            if (cleared == null || cleared.isEmpty()) {
                 return;
             }
-            flashingLines = new ArrayList<>(pending);
+            flashingLines = new ArrayList<>(cleared);
             if (flashTimer != null && flashTimer.isRunning())
                 flashTimer.stop();
-            flashTimer = new Timer(50, e -> {
+            flashTimer = new Timer(200, e -> {
                 flashingLines.clear();
+                if (gameModel != null) {
+                     gameModel.clearLastClearedLines();
+                 }
                 repaint();
                 ((Timer) e.getSource()).stop();
             });
@@ -207,12 +200,13 @@ public class GamePanel extends JPanel {
     }
 
     private Color colorFor(int value) {
+        Color[] palette = ColorPaletteProvider.palette(gameModel != null && gameModel.isColorBlindMode());
         if (value <= 0)
-            return BLOCK_COLORS[0];
-        int idx = value % BLOCK_COLORS.length;
+            return palette[0];
+        int idx = value % palette.length;
         if (idx == 0)
-            idx = BLOCK_COLORS.length - 1;
-        return BLOCK_COLORS[idx];
+            idx = palette.length - 1;
+        return palette[idx];
     }
 
     private String itemLabel(String id) {

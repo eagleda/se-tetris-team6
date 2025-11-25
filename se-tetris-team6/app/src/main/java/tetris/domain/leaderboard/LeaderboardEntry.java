@@ -27,4 +27,18 @@ public final class LeaderboardEntry {
     public LeaderboardEntry withMode(GameMode newMode) {
         return new LeaderboardEntry(name, points, newMode);
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof LeaderboardEntry other)) return false;
+        return points == other.points
+                && name.equals(other.name)
+                && mode == other.mode;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(name, points, mode);
+    }
 }

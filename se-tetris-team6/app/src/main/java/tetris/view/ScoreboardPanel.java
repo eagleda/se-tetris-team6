@@ -2,6 +2,7 @@ package tetris.view;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
@@ -10,7 +11,9 @@ import java.awt.event.ActionListener;
 import java.util.List;
 
 import javax.swing.BorderFactory;
+import javax.swing.DefaultListCellRenderer;
 import javax.swing.DefaultListModel;
+import javax.swing.DefaultListSelectionModel;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -31,6 +34,8 @@ public class ScoreboardPanel extends JPanel implements ScoreView {
     private final JList<String> standardList = new JList<>(standardModel);
     private final JList<String> itemList = new JList<>(itemModel);
     private final JButton backButton = new JButton("Back to Menu");
+    private int standardHighlight = -1;
+    private int itemHighlight = -1;
 
     public ScoreboardPanel() {
         setBackground(Color.darkGray);
@@ -81,9 +86,14 @@ public class ScoreboardPanel extends JPanel implements ScoreView {
         list.setForeground(Color.WHITE);
         list.setFont(new Font("SansSerif", Font.PLAIN, 16));
         list.setFocusable(false);
-
-        list.setSelectionBackground(new Color(255, 255, 255, 50));
-        list.setSelectionForeground(Color.WHITE);
+        // 사용자 selection으로 하이라이트가 덮이지 않도록 selection 변경을 막고 커스텀 렌더러에서 강조 처리
+        list.setSelectionModel(new DefaultListSelectionModel() {
+            @Override
+            public void setSelectionInterval(int index0, int index1) {
+                // no-op
+            }
+        });
+        installHighlightRenderer(list, list == itemList);
 
         JScrollPane scroll = new JScrollPane(list);
         scroll.getViewport().setOpaque(false);
@@ -91,6 +101,27 @@ public class ScoreboardPanel extends JPanel implements ScoreView {
         scroll.setBorder(BorderFactory.createEmptyBorder());
         panel.add(scroll, BorderLayout.CENTER);
         return panel;
+    }
+
+    private void installHighlightRenderer(JList<String> list, boolean isItemList) {
+        list.setCellRenderer(new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(JList<?> jList, Object value, int index,
+                    boolean isSelected, boolean cellHasFocus) {
+                Component c = super.getListCellRendererComponent(jList, value, index, false, false);
+                int highlight = isItemList ? itemHighlight : standardHighlight;
+                if (index == highlight) {
+                    c.setBackground(new Color(220, 0, 0, 160));
+                    c.setForeground(Color.WHITE);
+                    setOpaque(true);
+                } else {
+                    c.setBackground(new Color(0, 0, 0, 0));
+                    c.setForeground(Color.WHITE);
+                    setOpaque(false);
+                }
+                return c;
+            }
+        });
     }
 
     private JPanel createHeader() {
@@ -135,15 +166,40 @@ public class ScoreboardPanel extends JPanel implements ScoreView {
     }
 
     public void renderLeaderboard(GameMode mode, List<LeaderboardEntry> entries) {
+        renderLeaderboard(mode, entries, -1);
+    }
+
+    public void renderLeaderboard(GameMode mode, List<LeaderboardEntry> entries, int highlightIndex) {
         DefaultListModel<String> target = mode == GameMode.ITEM ? itemModel : standardModel;
         target.clear();
+        if (mode == GameMode.ITEM) {
+            itemHighlight = highlightIndex;
+        } else {
+            standardHighlight = highlightIndex;
+        }
         if (entries == null || entries.isEmpty()) {
             target.addElement("No entries yet.");
+            selectHighlight(mode);
             return;
         }
         int index = 1;
         for (LeaderboardEntry entry : entries) {
             target.addElement(String.format("%2d. %s — %d", index++, entry.getName(), entry.getPoints()));
         }
+        selectHighlight(mode);
+    }
+
+    private void selectHighlight(GameMode mode) {
+        if (mode == GameMode.ITEM) {
+            if (itemHighlight >= 0 && itemHighlight < itemModel.size()) {
+                itemList.ensureIndexIsVisible(itemHighlight);
+            }
+        } else {
+            if (standardHighlight >= 0 && standardHighlight < standardModel.size()) {
+                standardList.ensureIndexIsVisible(standardHighlight);
+            }
+        }
+        itemList.repaint();
+        standardList.repaint();
     }
 }

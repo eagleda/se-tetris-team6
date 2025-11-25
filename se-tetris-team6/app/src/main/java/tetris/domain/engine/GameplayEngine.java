@@ -10,7 +10,11 @@ import tetris.domain.model.InputState;
 import tetris.domain.score.ScoreRuleEngine;
 import tetris.domain.GameModel.UiBridge;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
+import javax.swing.Timer;
 
 /**
  * Encapsulates gameplay responsibilities previously inside GameModel:
@@ -37,6 +41,10 @@ public class GameplayEngine implements GameClock.Listener {
     private boolean clockStarted;
     private GameplayEvents events;
     private long tickCounter;
+    private List<Integer> lastClearedRows = Collections.emptyList();
+    private Timer lineClearPauseTimer;
+    private List<Integer> pendingClearRows = Collections.emptyList();
+    private boolean awaitingLineClearCommit;
 
     public GameplayEngine(Board board, InputState inputState, BlockGenerator generator, ScoreRuleEngine scoreEngine, UiBridge uiBridge) {
         this.board = Objects.requireNonNull(board);
@@ -77,6 +85,42 @@ public class GameplayEngine implements GameClock.Listener {
         return clock.getLevel();
     }
 
+    public List<Integer> getLastClearedRows() {
+        return lastClearedRows;
+    }
+
+    public void clearLastClearedRows() {
+        lastClearedRows = Collections.emptyList();
+    }
+
+    public void pauseForLineClear(int durationMs) {
+        if (!clockStarted) {
+            return;
+        }
+        clock.pause();
+        if (lineClearPauseTimer != null && lineClearPauseTimer.isRunning()) {
+            lineClearPauseTimer.stop();
+        }
+        int delay = Math.max(50, durationMs);
+        lineClearPauseTimer = new Timer(delay, e -> {
+            ((Timer) e.getSource()).stop();
+            commitPendingLineClear();
+        });
+        lineClearPauseTimer.setRepeats(false);
+        lineClearPauseTimer.start();
+    }
+
+    private void commitPendingLineClear() {
+        if (awaitingLineClearCommit) {
+            board.clearRows(pendingClearRows);
+            pendingClearRows = Collections.emptyList();
+            awaitingLineClearCommit = false;
+            spawnNewBlock();
+            uiBridge.refreshBoard();
+        }
+        clock.resume();
+    }
+
     public Block getActiveBlock() { return activeBlock; }
     public void setActiveBlock(Block b) { this.activeBlock = b; }
 
@@ -107,6 +151,9 @@ public class GameplayEngine implements GameClock.Listener {
             clock.stop();
             clockStarted = false;
         }
+        if (lineClearPauseTimer != null && lineClearPauseTimer.isRunning()) {
+            lineClearPauseTimer.stop();
+        }
     }
 
     private boolean spawnNewBlock() {
@@ -129,16 +176,23 @@ public class GameplayEngine implements GameClock.Listener {
         BlockShape shape = current.getShape();
         int blockId = shape.kind().ordinal() + 1;
         board.place(shape, current.getX(), current.getY(), blockId);
+        List<Integer> rowsToClear = board.fullRowsSnapshot();
         activeBlock = null;
-        int cleared = board.clearLines();
-        if (cleared > 0) {
-            scoreEngine.onLinesCleared(cleared);
+        if (rowsToClear.isEmpty()) {
+            lastClearedRows = Collections.emptyList();
+            if (events != null) {
+                events.onBlockLocked(current);
+            }
+            spawnNewBlock();
+            return;
         }
+        lastClearedRows = rowsToClear;
+        pendingClearRows = new ArrayList<>(rowsToClear);
+        awaitingLineClearCommit = true;
+        scoreEngine.onLinesCleared(rowsToClear.size());
         if (events != null) {
             events.onBlockLocked(current);
-            if (cleared > 0) {
-                events.onLinesCleared(cleared);
-            }
+            events.onLinesCleared(rowsToClear.size());
         }
     }
 
@@ -197,7 +251,6 @@ public class GameplayEngine implements GameClock.Listener {
             scoreEngine.onBlockDescend();
         } else {
             lockActiveBlock();
-            spawnNewBlock();
         }
         uiBridge.refreshBoard();
     }
@@ -258,7 +311,6 @@ public class GameplayEngine implements GameClock.Listener {
             scoreEngine.onBlockDescend();
         }
         lockActiveBlock();
-        spawnNewBlock();
         uiBridge.refreshBoard();
     }
 

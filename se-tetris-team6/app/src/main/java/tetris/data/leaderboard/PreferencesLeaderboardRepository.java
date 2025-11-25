@@ -12,6 +12,7 @@ import java.util.prefs.Preferences;
 import tetris.domain.GameMode;
 import tetris.domain.leaderboard.LeaderboardEntry;
 import tetris.domain.leaderboard.LeaderboardRepository;
+import tetris.domain.leaderboard.LeaderboardResult;
 
 /**
  * Preferences-backed leaderboard. Stores entries as encoded lines under a single
@@ -48,6 +49,11 @@ public final class PreferencesLeaderboardRepository implements LeaderboardReposi
 
     @Override
     public synchronized void saveEntry(LeaderboardEntry entry) {
+        saveAndHighlight(entry);
+    }
+
+    @Override
+    public synchronized LeaderboardResult saveAndHighlight(LeaderboardEntry entry) {
         List<LeaderboardEntry> standard = new ArrayList<>();
         List<LeaderboardEntry> item = new ArrayList<>();
         for (LeaderboardEntry existing : readAllEntries()) {
@@ -70,12 +76,17 @@ public final class PreferencesLeaderboardRepository implements LeaderboardReposi
         trimToCapacity(standard);
         trimToCapacity(item);
 
+        List<LeaderboardEntry> target = entry.getMode() == GameMode.ITEM ? item : standard;
+        int highlight = target.indexOf(entry.getMode() == GameMode.ITEM ? entry : entry.withMode(GameMode.STANDARD));
+
         StringBuilder sb = new StringBuilder();
         writeEntries(sb, standard);
         if (!standard.isEmpty() && !item.isEmpty()) sb.append('\n');
         writeEntries(sb, item);
         prefs.put(KEY_ENTRIES, sb.toString());
         try { prefs.flush(); } catch (Exception ex) { /* best-effort */ }
+
+        return new LeaderboardResult(Collections.unmodifiableList(target), highlight);
     }
 
     @Override

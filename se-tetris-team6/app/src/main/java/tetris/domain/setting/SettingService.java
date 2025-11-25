@@ -45,6 +45,10 @@ public class SettingService {
         // keep method for compatibility but not used elsewhere
     }
 
+    public void reload() {
+        cached = repository.load();
+    }
+
     public void resetToDefaults() {
         Setting d = Setting.defaults();
         cached = d;

@@ -8,6 +8,7 @@ import java.util.List;
 import tetris.domain.GameMode;
 import tetris.domain.leaderboard.LeaderboardEntry;
 import tetris.domain.leaderboard.LeaderboardRepository;
+import tetris.domain.leaderboard.LeaderboardResult;
 
 /** A simple in-memory leaderboard that keeps top entries by points. */
 public final class InMemoryLeaderboardRepository implements LeaderboardRepository {
@@ -38,6 +39,11 @@ public final class InMemoryLeaderboardRepository implements LeaderboardRepositor
 
     @Override
     public synchronized void saveEntry(LeaderboardEntry entry) {
+        saveAndHighlight(entry);
+    }
+
+    @Override
+    public synchronized LeaderboardResult saveAndHighlight(LeaderboardEntry entry) {
         entries.add(entry);
         // sort by mode then points
         entries.sort((a, b) -> {
@@ -48,6 +54,14 @@ public final class InMemoryLeaderboardRepository implements LeaderboardRepositor
 
         trimMode(GameMode.STANDARD);
         trimMode(GameMode.ITEM);
+        List<LeaderboardEntry> target = new ArrayList<>();
+        for (LeaderboardEntry e : entries) {
+            if (e.getMode() == entry.getMode()) {
+                target.add(e);
+            }
+        }
+        int highlight = target.indexOf(entry);
+        return new LeaderboardResult(Collections.unmodifiableList(target), highlight);
     }
 
     @Override

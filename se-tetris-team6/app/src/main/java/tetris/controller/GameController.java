@@ -56,6 +56,10 @@ public class GameController {
         }
     }
 
+    public void applyColorBlindMode(boolean enabled) {
+        gameModel.setColorBlindMode(enabled);
+    }
+
     /**
      * 기본 키 바인딩 초기화
      * 설정에서 변경 가능하도록 Map으로 관리

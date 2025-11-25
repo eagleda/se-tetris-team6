@@ -6,6 +6,7 @@ import tetris.domain.GameMode;
 import tetris.domain.leaderboard.LeaderboardEntry;
 import java.util.List;
 import tetris.domain.leaderboard.LeaderboardRepository;
+import tetris.domain.leaderboard.LeaderboardResult;
 import tetris.domain.score.Score;
 import tetris.domain.score.ScoreRepository;
 import tetris.view.GameComponent.GameOverPanel;
@@ -67,6 +68,9 @@ public final class GameOverController {
         // after saving, update only the GameOverPanel's left leaderboard (do not change overlay)
         var entries = leaderboardRepository.loadTop(10, mode);
         panel.updateLeaderboardModel(mode, entries);
+        LeaderboardResult result = leaderboardRepository.saveAndHighlight(entry);
+        frame.setPendingLeaderboard(mode, result);
+        hideAndShowScoreboard();
     }
 
     private void hideAndShowScoreboard() {

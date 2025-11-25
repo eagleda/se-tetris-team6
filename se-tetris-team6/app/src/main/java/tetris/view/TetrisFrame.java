@@ -25,6 +25,7 @@ import tetris.controller.ScoreController;
 import tetris.domain.GameMode;
 import tetris.domain.GameModel;
 import tetris.domain.leaderboard.LeaderboardEntry;
+import tetris.domain.leaderboard.LeaderboardResult;
 import tetris.domain.model.GameState;
 import tetris.domain.setting.Setting;
 import tetris.view.GameComponent.SingleGameLayout;
@@ -54,6 +55,8 @@ public class TetrisFrame extends JFrame {
     private GameController gameController;
     private ScoreController scoreController;
     private GameOverController gameOverController;
+    private LeaderboardResult pendingStandardHighlight;
+    private LeaderboardResult pendingItemHighlight;
 
     public TetrisFrame(GameModel gameModel) {
         super(FRAME_TITLE);
@@ -280,10 +283,20 @@ public class TetrisFrame extends JFrame {
         // leaderboard repo
         if (panel == scoreboardPanel) {
             try {
-                List<LeaderboardEntry> standard = gameModel.loadTopScores(GameMode.STANDARD, 10);
-                List<LeaderboardEntry> item = gameModel.loadTopScores(GameMode.ITEM, 10);
-                scoreboardPanel.renderLeaderboard(GameMode.STANDARD, standard);
-                scoreboardPanel.renderLeaderboard(GameMode.ITEM, item);
+                LeaderboardResult std = pendingStandardHighlight;
+                LeaderboardResult itm = pendingItemHighlight;
+                List<LeaderboardEntry> standard = std != null
+                        ? std.entries()
+                        : gameModel.loadTopScores(GameMode.STANDARD, 10);
+                List<LeaderboardEntry> item = itm != null
+                        ? itm.entries()
+                        : gameModel.loadTopScores(GameMode.ITEM, 10);
+                int stdHighlight = std != null ? std.highlightIndex() : -1;
+                int itemHighlight = itm != null ? itm.highlightIndex() : -1;
+                scoreboardPanel.renderLeaderboard(GameMode.STANDARD, standard, stdHighlight);
+                scoreboardPanel.renderLeaderboard(GameMode.ITEM, item, itemHighlight);
+                pendingStandardHighlight = null;
+                pendingItemHighlight = null;
             } catch (Exception ex) {
                 // ignore; show existing data if loading fails
             }
@@ -324,6 +337,17 @@ public class TetrisFrame extends JFrame {
     /** Convenience to show the scoreboard panel. */
     public void showScoreboardPanel() {
         displayPanel(scoreboardPanel);
+    }
+
+    /**
+     * 이름 입력 직후 새 기록을 강조하기 위해, 스코어보드 전환 전에 하이라이트 정보를 보관한다.
+     */
+    public void setPendingLeaderboard(GameMode mode, LeaderboardResult result) {
+        if (mode == GameMode.ITEM) {
+            pendingItemHighlight = result;
+        } else {
+            pendingStandardHighlight = result;
+        }
     }
 
     // 전역 키 설정
