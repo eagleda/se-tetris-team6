@@ -7,6 +7,7 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.util.concurrent.atomic.AtomicInteger; // 추가: 스레드 안전한 카운터 사용
 
 /**
  * 서버에서 개별 클라이언트와의 통신을 담당
@@ -15,13 +16,25 @@ import java.io.ObjectOutputStream;
  * - 클라이언트에게 메시지 전송
  * - 연결 상태 모니터링 및 예외 처리
  */
-public class ServerHandler implements Runnable {
+    public class ServerHandler implements Runnable {
+
+        // 정적 ID 카운터 추가 (테스트 요구사항 충족을 위해)
+        private static final AtomicInteger clientCounter = new AtomicInteger(1); // ADDED
 
         // 생성자 - 클라이언트 소켓과 서버 참조 받음
-    public ServerHandler(Socket clientSocket, GameServer server) {
+        public ServerHandler(Socket clientSocket, GameServer server) {
         this.clientSocket = clientSocket;
         this.server = server;
-        this.isConnected = true;
+        this.clientId = "UNASSIGNED";
+
+        try {
+            // ObjectOutputStream을 먼저 초기화하여 Deadlock을 피하고, 필드명 통일
+            this.outputStream = new ObjectOutputStream(clientSocket.getOutputStream());
+            this.inputStream = new ObjectInputStream(clientSocket.getInputStream());
+        } catch (IOException e) {
+            System.err.println("Error initializing streams for client: " + e.getMessage());
+            disconnect();
+        }
     }
 
     // === 네트워크 관련 ===
@@ -60,13 +73,15 @@ public class ServerHandler implements Runnable {
         }
     }
 
-    
-
     // 클라이언트에게 메시지 전송
     public void sendMessage(GameMessage message) {
         try {
+            if (outputStream != null) {
             outputStream.writeObject(message);
-            outputStream.flush();
+            // 💡 핵심 수정: 버퍼링된 데이터를 즉시 전송합니다.
+            outputStream.flush(); 
+            System.out.println("ServerHandler sent message: " + message.getType());
+            }
         } catch (IOException e) {
             System.err.println("Error sending message to client " + clientId + ": " + e.getMessage());
             disconnect();
@@ -75,21 +90,19 @@ public class ServerHandler implements Runnable {
 
     // 연결 초기화 - 스트림 설정 및 클라이언트 ID 할당
     private void initializeConnection() throws IOException, ClassNotFoundException {
-        // 스트림 설정 시 ObjectOutputStream을 먼저 초기화해야 Deadlock을 피할 수 있습니다.
-        outputStream = new ObjectOutputStream(clientSocket.getOutputStream());
-        inputStream = new ObjectInputStream(clientSocket.getInputStream());
 
         // 1. 클라이언트의 CONNECTION_REQUEST를 받습니다.
         GameMessage request = (GameMessage) inputStream.readObject();
 
         if (request.getType() == MessageType.CONNECTION_REQUEST) {
-            // 2. 클라이언트 ID를 할당 (예시로 소켓 주소를 사용)
-            this.clientId = clientSocket.getInetAddress().getHostAddress() + ":" + clientSocket.getPort();
+            // 2. 클라이언트 ID를 할당 (테스트 요구사항에 맞춰 "Player-" 접두사 사용)
+            this.clientId = "Player-" + clientCounter.getAndIncrement(); // MODIFIED
             
             // 3. CONNECTION_ACCEPTED 메시지를 클라이언트에게 전송합니다.
             GameMessage acceptance = new GameMessage(MessageType.CONNECTION_ACCEPTED, "SERVER", this.clientId);
             sendMessage(acceptance);
             System.out.println("Connection accepted for client: " + this.clientId);
+            this.isConnected = true;
         } else {
             // 요청 타입이 잘못된 경우
             throw new IOException("Invalid connection request type.");

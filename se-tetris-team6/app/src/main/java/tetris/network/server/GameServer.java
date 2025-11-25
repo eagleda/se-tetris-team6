@@ -5,10 +5,8 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-
 import tetris.domain.model.GameState;
 import tetris.network.protocol.GameMessage;
-
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -48,6 +46,7 @@ public class GameServer {
             while (isRunning) {
                 try {
                     Socket clientSocket = serverSocket.accept();
+                    System.out.println("New client connected: " + clientSocket.getInetAddress());
                     acceptClient(clientSocket);
                 } catch (IOException e) {
                     if (isRunning) {
@@ -63,8 +62,9 @@ public class GameServer {
     public void stopServer() {
         this.isRunning = false;
         try {
-            if (serverSocket != null) {
+            if (serverSocket != null && !serverSocket.isClosed()) {
                 serverSocket.close();
+                System.out.println("GameServer stopped.");
             }
             clientThreadPool.shutdownNow();
             // 모든 connectedClients에게 DISCONNECT 메시지 전송 및 연결 종료 로직 추가 예정
@@ -77,8 +77,18 @@ public class GameServer {
     private void acceptClient(Socket clientSocket) {
         System.out.println("New client connected: " + clientSocket.getInetAddress());
         ServerHandler handler = new ServerHandler(clientSocket, this);
-        connectedClients.add(handler);
+        // connectedClients.add(handler); 핸드셰이크 성공 후 추가하는 것이 더 안전
         clientThreadPool.submit(handler); // 핸들러를 스레드 풀에서 실행
+    }
+
+
+    /**
+     * ServerHandler가 연결 성공을 알릴 때 호출됩니다.
+     * 
+     */
+    public void notifyClientConnected(ServerHandler handler) {
+        connectedClients.add(handler);
+        System.out.println("Client connected successfully. Total clients: " + connectedClients.size());
     }
 
     // 클라이언트 연결 해제 처리
@@ -89,7 +99,10 @@ public class GameServer {
 
      // 모든 클라이언트에게 메시지 브로드캐스트
     public void broadcastMessage(GameMessage message) {
-        /* Step 3 구현 예정 */ }
+        for (ServerHandler handler : connectedClients) {
+            handler.sendMessage(message);
+        }
+    }
 
     // 특정 클라이언트에게만 메시지 전송
     public void sendToClient(String clientId, GameMessage message){

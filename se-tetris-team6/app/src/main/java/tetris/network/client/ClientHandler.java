@@ -4,6 +4,8 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.util.concurrent.CountDownLatch;
+
 import tetris.network.protocol.GameMessage;
 
 /**
@@ -26,14 +28,17 @@ public class ClientHandler implements Runnable {
     private long currentLatency;               // 현재 지연시간
     private boolean waitingForPong;            // 퐁 응답 대기 중
 
+    private CountDownLatch handshakeLatch;
+
     // === 주요 메서드들 ===
 
     // 생성자 - 스트림과 클라이언트 참조 받음
-    public ClientHandler(ObjectInputStream input, ObjectOutputStream output, GameClient client) {
-        this.inputStream = input;
-        this.outputStream = output;
-        this.client = client;
-    }
+    public ClientHandler(ObjectInputStream input, ObjectOutputStream output, GameClient client, CountDownLatch latch) {
+    this.inputStream = input;
+    this.outputStream = output;
+    this.client = client;
+    this.handshakeLatch = latch; // Latch 저장
+}
 
     // 스레드 실행 메서드 - 서버 메시지 수신 루프
     @Override
@@ -69,14 +74,20 @@ public class ClientHandler implements Runnable {
     }
 
     // 서버에게 메시지 전송
+
     public void sendMessage(GameMessage message) {
         try {
-            outputStream.writeObject(message);
-            outputStream.flush();
+            if (outputStream != null) {
+                outputStream.writeObject(message);
+                // 💡 핵심 수정: 버퍼링된 데이터를 즉시 전송합니다.
+                outputStream.flush(); 
+                System.out.println("ClientHandler sent message: " + message.getType());
+            }
         } catch (IOException e) {
-            handleError(e);
+            System.err.println("Error sending message from client: " + e.getMessage());
         }
     }
+
 
     // 연결 승인 처리 - 서버가 연결을 승인했을 때
     private void handleConnectionAccepted(GameMessage message) {
@@ -84,6 +95,11 @@ public class ClientHandler implements Runnable {
         client.setPlayerId((String) message.getPayload()); 
         System.out.println("Connection accepted. My ID is: " + client.getPlayerId());
         // 이 시점에서 UI에 '연결 성공'을 표시하거나 다음 단계로 넘어갈 수 있습니다.
+
+         // **핸드셰이크 완료 신호 전송**
+        if (handshakeLatch != null) {
+            handshakeLatch.countDown();
+        }
     }
 
     

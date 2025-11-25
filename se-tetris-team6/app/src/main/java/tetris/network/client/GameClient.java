@@ -5,6 +5,8 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CountDownLatch;
+import tetris.network.protocol.AttackLine;
 import tetris.network.protocol.GameMessage;
 import tetris.network.protocol.MessageType;
 import tetris.network.protocol.PlayerInput;
@@ -35,28 +37,34 @@ public class GameClient {
     private String playerId;                   // 내 플레이어 ID
     private GameStateListener gameStateListener;  // 게임 상태 변경 리스너
 
+    private CountDownLatch handshakeLatch;
+
     // === 주요 메서드들 ===
 
     // 서버에 연결 시도
-    public boolean connectToServer(String ip, int port) {
+    public boolean connectToServer(String ip, int port, CountDownLatch latch) {
+        this.handshakeLatch = latch;
         this.serverIP = ip;
         this.serverPort = port;
         try {
-            // 1. 소켓 연결
             this.serverSocket = new Socket(ip, port);
-            
-            // 2. 스트림 초기화 (서버와 마찬가지로 Output을 먼저)
+        
+            // 2. 스트림 초기화 및 flush (이전 단계에서 수정했다고 가정)
             ObjectOutputStream output = new ObjectOutputStream(serverSocket.getOutputStream());
+            output.flush(); // 💡 중요: 헤더 전송
             ObjectInputStream input = new ObjectInputStream(serverSocket.getInputStream());
 
-            // 3. ClientHandler 초기화 및 시작
-            this.clientHandler = new ClientHandler(input, output, this);
-            handlerThread = new Thread(clientHandler);
-            handlerThread.start();
-
-            // 4. CONNECTION_REQUEST 전송 (핸드셰이크 시작)
+            // 3. CONNECTION_REQUEST 전송 (핸드셰이크 시작)
             GameMessage request = new GameMessage(MessageType.CONNECTION_REQUEST, "CLIENT", null);
-            clientHandler.sendMessage(request);
+            
+            // 💡 핵심 수정: 핸들러 스레드를 시작하기 전에 직접 메시지를 보냅니다.
+            output.writeObject(request);
+            output.flush(); 
+
+            // 4. ClientHandler 초기화 및 시작
+            this.clientHandler = new ClientHandler(input, output, this, handshakeLatch);
+            handlerThread = new Thread(clientHandler);
+            handlerThread.start(); // <--- 이제 ClientHandler는 서버의 응답을 기다립니다.
 
             this.isConnected = true;
             System.out.println("Successfully connected to server at " + ip + ":" + port);
