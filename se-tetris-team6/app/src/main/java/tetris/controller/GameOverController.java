@@ -4,6 +4,7 @@ import java.util.Objects;
 
 import tetris.domain.GameMode;
 import tetris.domain.leaderboard.LeaderboardEntry;
+import java.util.List;
 import tetris.domain.leaderboard.LeaderboardRepository;
 import tetris.domain.score.Score;
 import tetris.domain.score.ScoreRepository;
@@ -47,6 +48,9 @@ public final class GameOverController {
     }
 
     public void show(Score score, boolean allowNameEntry) {
+        GameMode mode = frame.getGameModel().getLastMode();
+        List<LeaderboardEntry> entries = leaderboardRepository.loadTop(10, mode);
+        panel.renderLeaderboard(mode, entries);
         panel.show(score, allowNameEntry);
     }
 
@@ -60,7 +64,9 @@ public final class GameOverController {
         GameMode mode = frame.getGameModel().getLastMode();
         var entry = new LeaderboardEntry(name.trim(), score.getPoints(), mode);
         leaderboardRepository.saveEntry(entry);
-        hideAndShowScoreboard();
+        // after saving, update only the GameOverPanel's left leaderboard (do not change overlay)
+        var entries = leaderboardRepository.loadTop(10, mode);
+        panel.updateLeaderboardModel(mode, entries);
     }
 
     private void hideAndShowScoreboard() {
