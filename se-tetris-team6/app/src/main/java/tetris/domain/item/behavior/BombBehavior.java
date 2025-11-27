@@ -13,6 +13,10 @@ public final class BombBehavior implements ItemBehavior {
     private final int radius;
     private boolean triggered;    
 
+    public BombBehavior() {
+        this(2);
+    }
+
     public BombBehavior(int radius) {
         this.radius = Math.max(0, radius);
     }

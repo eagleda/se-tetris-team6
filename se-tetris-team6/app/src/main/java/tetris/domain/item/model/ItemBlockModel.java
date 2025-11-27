@@ -17,10 +17,52 @@ public final class ItemBlockModel implements BlockLike {
 
     private final BlockLike delegate;
     private final List<ItemBehavior> behaviors;
+    private int itemCellX = -1; // 아이템 칸의 블록 내 상대 x 좌표
+    private int itemCellY = -1; // 아이템 칸의 블록 내 상대 y 좌표
 
     public ItemBlockModel(BlockLike delegate, List<ItemBehavior> behaviors) {
         this.delegate = delegate;
         this.behaviors = new ArrayList<>(behaviors);
+    }
+    
+    public ItemBlockModel(BlockLike delegate, List<ItemBehavior> behaviors, int itemCellX, int itemCellY) {
+        this.delegate = delegate;
+        this.behaviors = new ArrayList<>(behaviors);
+        this.itemCellX = itemCellX;
+        this.itemCellY = itemCellY;
+    }
+    
+    public boolean hasItemCell() {
+        return itemCellX >= 0 && itemCellY >= 0;
+    }
+    
+    public int getItemCellX() {
+        return itemCellX;
+    }
+    
+    public int getItemCellY() {
+        return itemCellY;
+    }
+    
+    public void setItemCell(int x, int y) {
+        this.itemCellX = x;
+        this.itemCellY = y;
+    }
+    
+    public void updateItemCellAfterRotation() {
+        if (!hasItemCell()) {
+            return;
+        }
+        // 회전 전 shape을 기준으로 변환 (회전 전 높이 사용)
+        BlockShape currentShape = getShape();
+        // 역회전하여 원래 크기 확인
+        BlockShape prevShape = currentShape.rotatedCW().rotatedCW().rotatedCW();
+        int h = prevShape.height();
+        // 시계방향 90도 회전: (x, y) -> (h-1-y, x)
+        int newX = h - 1 - itemCellY;
+        int newY = itemCellX;
+        itemCellX = newX;
+        itemCellY = newY;
     }
 
     public List<ItemBehavior> getBehaviors() {

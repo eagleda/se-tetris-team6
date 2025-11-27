@@ -37,9 +37,15 @@ public final class LineClearBehavior implements ItemBehavior {
         if (triggered) {
             return;
         }
-        int y = block.getY();
-        ctx.requestClearCells(0, y, assumedBoardWidth, 1);
-        ctx.spawnParticles(block.getX(), y, "text:L");
+        // 아이템 칸의 위치 사용 (회전 적용됨)
+        int itemX = block.getX();
+        int itemY = block.getY();
+        if (block.hasItemCell()) {
+            itemX += block.getItemCellX();
+            itemY += block.getItemCellY();
+        }
+        ctx.requestClearCells(0, itemY, assumedBoardWidth, 1);
+        ctx.spawnParticles(itemX, itemY, "text:L");
         ctx.playSfx("line_clear_item");
         triggered = true;
     }
