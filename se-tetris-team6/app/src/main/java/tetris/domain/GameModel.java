@@ -113,11 +113,15 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         private final BlockLike block;
         private final String label;
         private final ItemType type;
+        private final int itemCellX;
+        private final int itemCellY;
 
-        public ActiveItemInfo(BlockLike block, String label, ItemType type) {
+        public ActiveItemInfo(BlockLike block, String label, ItemType type, int itemCellX, int itemCellY) {
             this.block = block;
             this.label = label;
             this.type = type;
+            this.itemCellX = itemCellX;
+            this.itemCellY = itemCellY;
         }
 
         public BlockLike block() {
@@ -130,6 +134,18 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
 
         public ItemType type() {
             return type;
+        }
+        
+        public int itemCellX() {
+            return itemCellX;
+        }
+        
+        public int itemCellY() {
+            return itemCellY;
+        }
+        
+        public boolean hasItemCell() {
+            return itemCellX >= 0 && itemCellY >= 0;
         }
     }
 
@@ -152,7 +168,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
     private double slowFactor = 1.0;
     private long slowUntilTick;
     private ItemContextImpl itemContext;
-    private Supplier<ItemBehavior> behaviorOverride = () -> new BombBehavior();
+    private Supplier<ItemBehavior> behaviorOverride = null;
     private int itemSpawnIntervalLines = DEFAULT_ITEM_SPAWN_INTERVAL;
     private int currentGravityLevel;
     private boolean colorBlindMode;
@@ -395,7 +411,9 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         ItemBehavior primary = activeItemBlock.getBehaviors().isEmpty() ? null : activeItemBlock.getBehaviors().get(0);
         String label = primary != null ? primary.id() : null;
         ItemType type = primary != null ? primary.type() : ItemType.INSTANT;
-        return new ActiveItemInfo(activeItemBlock.getDelegate(), label, type);
+        int itemCellX = activeItemBlock.getItemCellX();
+        int itemCellY = activeItemBlock.getItemCellY();
+        return new ActiveItemInfo(activeItemBlock.getDelegate(), label, type, itemCellX, itemCellY);
     }
 
     public void spawnParticles(int x, int y, String type) {
@@ -515,7 +533,28 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
             
             List<ItemBehavior> behaviors = new ArrayList<>();
             behaviors.add(behavior);
-            ItemBlockModel itemBlock = new ItemBlockModel(block, behaviors);
+            
+            // Weight나 Bomb가 아닌 경우 랜덤 아이템 칸 선택
+            int itemCellX = -1;
+            int itemCellY = -1;
+            if (!"weight".equals(behaviorId) && !"bomb".equals(behaviorId)) {
+                BlockShape shape = block.getShape();
+                List<int[]> filledCells = new ArrayList<>();
+                for (int y = 0; y < shape.height(); y++) {
+                    for (int x = 0; x < shape.width(); x++) {
+                        if (shape.filled(x, y)) {
+                            filledCells.add(new int[]{x, y});
+                        }
+                    }
+                }
+                if (!filledCells.isEmpty()) {
+                    int[] selected = filledCells.get(itemRandom.nextInt(filledCells.size()));
+                    itemCellX = selected[0];
+                    itemCellY = selected[1];
+                }
+            }
+            
+            ItemBlockModel itemBlock = new ItemBlockModel(block, behaviors, itemCellX, itemCellY);
             activeItemBlock = itemBlock;
             itemManager.add(itemBlock);
             itemBlock.onSpawn(itemContext);
@@ -533,6 +572,18 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         if (activeItemBlock != null && activeItemBlock.getDelegate() == block) {
             itemManager.onLock(itemContext, activeItemBlock);
             activeItemBlock = null;
+        }
+    }
+
+    @Override
+    public void onBlockRotated(Block block, int times) {
+        if (currentMode != GameMode.ITEM) {
+            return;
+        }
+        if (activeItemBlock != null && activeItemBlock.getDelegate() == block) {
+            for (int i = 0; i < times; i++) {
+                activeItemBlock.updateItemCellAfterRotation();
+            }
         }
     }
 
