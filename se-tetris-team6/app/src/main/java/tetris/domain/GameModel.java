@@ -105,9 +105,9 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
     private final List<Supplier<ItemBehavior>> behaviorFactories = List.of(
             () -> new DoubleScoreBehavior(600, 2.0),
             () -> new TimeSlowBehavior(600, 0.5),
-            () -> new BombBehavior(1),
+            () -> new BombBehavior(),
             () -> new LineClearBehavior(),
-            WeightBehavior::new);
+            () -> new WeightBehavior());
 
     public static final class ActiveItemInfo {
         private final BlockLike block;
@@ -152,7 +152,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
     private double slowFactor = 1.0;
     private long slowUntilTick;
     private ItemContextImpl itemContext;
-    private Supplier<ItemBehavior> behaviorOverride = () -> new TimeSlowBehavior(600, 0.5);
+    private Supplier<ItemBehavior> behaviorOverride = () -> new BombBehavior();
     private int itemSpawnIntervalLines = DEFAULT_ITEM_SPAWN_INTERVAL;
     private int currentGravityLevel;
     private boolean colorBlindMode;
@@ -503,8 +503,18 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
             return;
         }
         if (nextBlockIsItem) {
+            ItemBehavior behavior = rollBehavior();
+            String behaviorId = behavior.id();
+            
+            // Weight나 Bomb 아이템인 경우 블록 형태 강제
+            if ("weight".equals(behaviorId) && block.getKind() != BlockKind.W) {
+                block.setShape(BlockShape.of(BlockKind.W));
+            } else if ("bomb".equals(behaviorId) && block.getKind() != BlockKind.B) {
+                block.setShape(BlockShape.of(BlockKind.B));
+            }
+            
             List<ItemBehavior> behaviors = new ArrayList<>();
-            behaviors.add(rollBehavior());
+            behaviors.add(behavior);
             ItemBlockModel itemBlock = new ItemBlockModel(block, behaviors);
             activeItemBlock = itemBlock;
             itemManager.add(itemBlock);
@@ -559,7 +569,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
             case "line_clear", "lineclear", "line-clear" -> LineClearBehavior::new;
             case "double_score", "doublescore", "double-score", "double" -> () -> new DoubleScoreBehavior(600, 2.0);
             case "time_slow", "timeslow", "slow" -> () -> new TimeSlowBehavior(600, 0.5);
-            case "bomb" -> () -> new BombBehavior(1);
+            case "bomb" -> () -> new BombBehavior();
             case "weight", "weight_drop", "weight-drop" -> WeightBehavior::new;
             default -> throw new IllegalArgumentException("Unknown item behavior: " + behaviorId);
         };
