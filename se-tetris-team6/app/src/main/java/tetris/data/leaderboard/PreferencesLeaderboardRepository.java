@@ -86,6 +86,12 @@ public final class PreferencesLeaderboardRepository implements LeaderboardReposi
         prefs.put(KEY_ENTRIES, sb.toString());
         try { prefs.flush(); } catch (Exception ex) { /* best-effort */ }
 
+        System.out.printf("[LB][Prefs] mode=%s size=%d highlight=%d name=%s pts=%d%n",
+                entry.getMode(),
+                target.size(),
+                highlight,
+                entry.getName(),
+                entry.getPoints());
         return new LeaderboardResult(Collections.unmodifiableList(target), highlight);
     }
 

@@ -22,14 +22,11 @@ public class ItemModePanel extends JPanel {
 		label.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
 		add(label, BorderLayout.NORTH);
 
-		list.setOpaque(false);
-		list.setBackground(new Color(0, 0, 0, 0));
+		list.setOpaque(true);
+		list.setBackground(new Color(24, 24, 24));
 		list.setForeground(Color.WHITE);
 		list.setFont(new Font("SansSerif", Font.PLAIN, 16));
 		list.setFocusable(false);
-
-		list.setSelectionBackground(new Color(255, 255, 255, 50));
-		list.setSelectionForeground(Color.WHITE);
 
 		JScrollPane scroll = new JScrollPane(list);
 		scroll.getViewport().setOpaque(false);
