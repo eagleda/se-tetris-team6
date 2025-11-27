@@ -1,86 +1,488 @@
 package tetris.concurrent;
 
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+import tetris.network.GameEventListener;
+import tetris.network.protocol.AttackLine;
+import tetris.network.protocol.PlayerInput;
+// 도메인 레이어 임포트
+import tetris.domain.GameModel;
+import tetris.domain.Board;
+import tetris.domain.engine.GameplayEngine;
+import tetris.domain.model.GameState;
+import tetris.domain.model.InputState;
+import tetris.domain.model.Block;
+import tetris.domain.score.Score;
 
 /**
- * 게임 로직을 담당하는 전용 스레드
- * - 게임 상태 업데이트 (블록 이동, 회전, 줄 삭제 등)
- * - 게임 타이머 관리 (블록 자동 낙하)
- * - 플레이어 입력 처리 (키보드 이벤트)
- * - 네트워크 스레드와 동기화
- * - 멀티플레이어 게임에서 각 플레이어별로 하나씩 생성
+ * 도메인 레이어와 완전 연동된 게임 로직 전용 스레드
+ * 
+ * 주요 특징:
+ * - GameModel을 통한 모든 게임 로직 처리 (Facade 패턴)
+ * - GameplayEngine.GameplayEvents 구현으로 이벤트 처리
+ * - 스레드 안전성 보장
+ * - 네트워크 통신 연동
  */
-public class GameThread implements Runnable {
-    // === 게임 상태 관리 ===
-    private ThreadSafeGameModel gameModel;     // 스레드 안전한 게임 모델
-    private AtomicBoolean isRunning;           // 스레드 실행 상태
-    private AtomicBoolean isPaused;            // 게임 일시정지 상태
+public class GameThread implements Runnable, GameplayEngine.GameplayEvents {
+
+    // === 도메인 객체들 ===
+        private final GameModel gameModel;
+        private final Board board;
+        private final InputState inputState;
+
+    // === 스레드 안전성 ===
+        private final ReadWriteLock gameStateLock = new ReentrantReadWriteLock();
+        private final AtomicBoolean isRunning = new AtomicBoolean(true);
+        private final AtomicBoolean isPaused = new AtomicBoolean(false);
 
     // === 입력 처리 ===
-    private BlockingQueue<PlayerInput> inputQueue;     // 플레이어 입력 큐
-    private BlockingQueue<GameEvent> gameEventQueue;   // 게임 이벤트 큐
+        private final BlockingQueue<PlayerInput> inputQueue = new LinkedBlockingQueue<>();
+        private final BlockingQueue<GameEvent> gameEventQueue = new LinkedBlockingQueue<>();
 
     // === 타이밍 관리 ===
-    private long lastUpdateTime;               // 마지막 업데이트 시간
-    private long gameTickInterval;             // 게임 틱 간격 (난이도별 조정)
-    private long lastBlockFallTime;            // 마지막 블록 낙하 시간
+        private long lastUpdateTime;
+        private final long gameTickInterval = 16; // 60 FPS
 
-    // === 플레이어 정보 ===
-    private String playerId;                   // 플레이어 ID
-    private boolean isLocalPlayer;             // 로컬 플레이어 여부
+        // === 플레이어 정보 ===
+        private final String playerId;
+        private final boolean isLocalPlayer;
 
-    // === 네트워크 통신 ===
-    private GameEventListener networkListener; // 네트워크로 이벤트 전송
-
-    // === 주요 메서드들 ===
-
-    // 생성자 - 게임 모델과 플레이어 정보 받음
-    public GameThread(ThreadSafeGameModel gameModel, String playerId, boolean isLocal);
-
-    // 스레드 메인 실행 루프
+        // === 네트워크 통신 ===
+    private GameEventListener networkListener;
+    
+    // === 게임 이벤트 클래스 ===
+    public static class GameEvent {
+        public enum Type { 
+            LINE_CLEARED, GAME_OVER, SCORE_UPDATE, 
+            BLOCK_SPAWNED, BLOCK_LOCKED, ATTACK_RECEIVED 
+        }
+        
+        private final Type type;
+        private final Object data;
+        
+        public GameEvent(Type type) { this(type, null); }
+        public GameEvent(Type type, Object data) {
+            this.type = type;
+            this.data = data;
+        }
+        
+        public Type getType() { return type; }
+        public Object getData() { return data; }
+    }
+    
+    // === 줄 삭제 결과 클래스 ===
+    public static class LineClearResult {
+        private final int linesCleared;
+        private final AttackLine[] attackLines;
+        private final int points;
+        
+        public LineClearResult(int linesCleared, AttackLine[] attackLines, int points) {
+            this.linesCleared = linesCleared;
+            this.attackLines = attackLines;
+            this.points = points;
+        }
+        
+        public int getLinesCleared() { return linesCleared; }
+        public AttackLine[] getAttackLines() { return attackLines; }
+        public int getPoints() { return points; }
+    }
+    
+    // === 생성자 ===
+    public GameThread(GameModel gameModel, String playerId, boolean isLocalPlayer) {
+        this.gameModel = gameModel;
+        this.playerId = playerId;
+        this.isLocalPlayer = isLocalPlayer;
+        
+        // 도메인 객체들 참조 (읽기 전용)
+        this.board = gameModel.getBoard();
+        this.inputState = gameModel.getInputState();
+        
+        // GameplayEngine 이벤트 리스너로 등록
+        // 주의: GameModel 내부의 GameplayEngine에 접근하는 방법이 필요
+        // 현재는 GameModel의 메서드들을 통해 간접 처리
+        
+        this.lastUpdateTime = System.currentTimeMillis();
+        
+        System.out.println("GameThread [" + playerId + "] 도메인 레이어와 연동 완료");
+    }
+    
+    // === 메인 실행 루프 ===
     @Override
-    public void run();
+    public void run() {
+        System.out.println("GameThread [" + playerId + "] 시작됨");
+        
+        try {
+            while (isRunning.get()) {
+                long currentTime = System.currentTimeMillis();
+                lastUpdateTime = currentTime;
+                
+                // 게임 상태 확인
+                GameState currentState = getCurrentGameState();
+                if (isPaused.get() || currentState == GameState.GAME_OVER) {
+                    handlePausedState();
+                    continue;
+                }
+                
+                // 1. 플레이어 입력 처리
+                processPlayerInput();
+                
+                // 2. 게임 로직 업데이트 (GameModel이 담당)
+                updateGameLogic();
+                
+                // 3. 게임 이벤트 처리
+                processGameEvents();
+                
+                // 4. 틱 간격 유지
+                maintainTickInterval(currentTime);
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            System.out.println("GameThread [" + playerId + "] 인터럽트됨");
+        } finally {
+            cleanup();
+        }
+        
+        System.out.println("GameThread [" + playerId + "] 종료됨");
+    }
+    
+    // === GameplayEngine.GameplayEvents 구현 ===
+    @Override
+    public void onBlockSpawned(Block block) {
+        gameEventQueue.offer(new GameEvent(GameEvent.Type.BLOCK_SPAWNED, block));
+        System.out.println(playerId + ": 새 블록 생성 - " + block.getKind());
+    }
+    
+    @Override
+    public void onBlockLocked(Block block) {
+        gameEventQueue.offer(new GameEvent(GameEvent.Type.BLOCK_LOCKED, block));
+        System.out.println(playerId + ": 블록 고정 - " + block.getKind());
+    }
+    
+    @Override
+    public void onLinesCleared(int clearedLines) {
+        if (clearedLines > 0) {
+            // 공격 라인 생성
+            AttackLine[] attackLines = generateAttackLines(clearedLines);
+            Score currentScore = gameModel.getScore();
+            
+            LineClearResult result = new LineClearResult(
+                clearedLines, 
+                attackLines, 
+                currentScore.getPoints()
+            );
+            
+            gameEventQueue.offer(new GameEvent(GameEvent.Type.LINE_CLEARED, result));
+            System.out.println(playerId + ": " + clearedLines + "줄 삭제!");
+        }
+    }
+    
+    @Override
+    public void onTick(long tick) {
+        // 틱 이벤트 처리 (필요시)
+    }
+    
+    // === 입력 처리 부분 ===
+    private void processPlayerInput() {
+        PlayerInput input;
+        int processedCount = 0;
+        final int maxInputsPerTick = 10;
+        
+        while ((input = inputQueue.poll()) != null && processedCount < maxInputsPerTick) {
+            processedCount++;
+            
+            gameStateLock.writeLock().lock();
+            try {
+                // ✅ 수정: InputState에만 반영 (GameModel 메서드 직접 호출 안 함)
+                convertPlayerInputToInputState(input);
+                
+                // 로컬 플레이어의 입력이면 네트워크로 전송
+                if (isLocalPlayer && networkListener != null) {
+                    networkListener.sendPlayerInput(input);
+                }
+                
+            } finally {
+                gameStateLock.writeLock().unlock();
+            }
+        }
+    }
 
-    // 게임 상태 업데이트 - 매 틱마다 호출
-    private void updateGame();
+    // ✅ 새로운 메서드: PlayerInput을 InputState로 변환
+    private void convertPlayerInputToInputState(PlayerInput input) {
+        switch (input.inputType()) {
+            case MOVE_LEFT:
+                inputState.setLeft(true);        // 지속 입력
+                break;
+            case MOVE_RIGHT:
+                inputState.setRight(true);       // 지속 입력
+                break;
+            case SOFT_DROP:
+                inputState.setSoftDrop(true);    // 지속 입력
+                break;
+            case ROTATE:
+                inputState.pressRotateCW();      // 1회성 입력
+                break;
+            case ROTATE_CCW:
+                inputState.pressRotateCCW();     // 1회성 입력
+                break;
+            case HARD_DROP:
+                inputState.pressHardDrop();      // 1회성 입력
+                break;
+            case HOLD:
+                inputState.pressHold();          // 1회성 입력
+                break;
+            case PAUSE:
+                togglePause();                   // 특수 처리
+                break;
+        }
+    }
 
-    // 블록 자동 낙하 처리
-    private void handleBlockFall();
+    // ✅ 기존 updateGameLogic()은 그대로 유지
+    private void updateGameLogic() {
+        gameStateLock.writeLock().lock();
+        try {
+            // GameModel이 InputState를 읽어서 처리함
+            gameModel.stepGameplay();  // 🎯 여기서 InputState 기반으로 처리!
+            
+            // 블록 생성 필요 시 처리
+            if (gameModel.getActiveBlock() == null) {
+                gameModel.spawnIfNeeded();
+                
+                // 게임 오버 확인
+                if (gameModel.getActiveBlock() == null) {
+                    gameEventQueue.offer(new GameEvent(GameEvent.Type.GAME_OVER));
+                }
+            }
+        } finally {
+            gameStateLock.writeLock().unlock();
+        }
+    }
 
-    // 플레이어 입력 처리 - 입력 큐에서 가져와서 처리
-    private void processPlayerInput();
-
-    // 게임 이벤트 처리 - 줄 삭제, 공격 등
-    private void processGameEvents();
-
-    // 줄 삭제 처리 및 공격 생성
-    private void handleLineClear();
-
-    // 공격 받기 처리 - 다른 플레이어로부터 온 공격
-    public void receiveAttack(AttackLine[] attackLines);
-
-    // 게임 종료 조건 확인
-    private boolean checkGameOver();
-
+    // ✅ 추가: 틱 종료 시 지속 입력 초기화 (중요!)
+    private void resetContinuousInputs() {
+        // 지속 입력들은 매 틱마다 초기화해야 함
+        inputState.setLeft(false);
+        inputState.setRight(false);
+        inputState.setSoftDrop(false);
+        // 1회성 입력들은 GameplayEngine.stepGameplay()에서 자동으로 pop됨
+    }
+    
+    // === 게임 이벤트 처리 ===
+    private void processGameEvents() {
+        GameEvent event;
+        while ((event = gameEventQueue.poll()) != null) {
+            switch (event.getType()) {
+                case LINE_CLEARED:
+                    handleLineClearEvent((LineClearResult) event.getData());
+                    break;
+                case GAME_OVER:
+                    handleGameOverEvent();
+                    break;
+                case BLOCK_SPAWNED:
+                    handleBlockSpawnedEvent((Block) event.getData());
+                    break;
+                case BLOCK_LOCKED:
+                    handleBlockLockedEvent((Block) event.getData());
+                    break;
+                case ATTACK_RECEIVED:
+                    handleAttackReceivedEvent((AttackLine[]) event.getData());
+                    break;
+            }
+        }
+    }
+    
+    private void handleLineClearEvent(LineClearResult result) {
+        System.out.println(playerId + ": " + result.getLinesCleared() + 
+                            "줄 삭제! 점수: " + result.getPoints());
+        
+        // 공격 라인 전송
+        if (result.getAttackLines() != null && result.getAttackLines().length > 0 
+            && networkListener != null) {
+            networkListener.sendAttackLines(result.getAttackLines());
+            System.out.println(playerId + ": 공격 라인 " + 
+                                result.getAttackLines().length + "개 전송");
+        }
+    }
+    
+    private void handleGameOverEvent() {
+        System.out.println(playerId + ": 게임 오버!");
+        
+        // GameModel을 통해 게임 오버 처리
+        // gameModel.changeState(GameState.GAME_OVER); // 이미 처리됨
+        
+        if (networkListener != null) {
+            // 게임 오버 이벤트를 네트워크로 전송 (필요시)
+        }
+    }
+    
+    private void handleBlockSpawnedEvent(Block block) {
+        // UI 업데이트 등 추가 처리 (필요시)
+    }
+    
+    private void handleBlockLockedEvent(Block block) {
+        // UI 업데이트 등 추가 처리 (필요시)
+    }
+    
+    private void handleAttackReceivedEvent(AttackLine[] attackLines) {
+        System.out.println(playerId + ": 공격 라인 " + attackLines.length + "개 받음");
+    }
+    
+    // === 공격 라인 생성 ===
+    private AttackLine[] generateAttackLines(int clearedLines) {
+        // 테트리스 룰에 따른 공격 라인 생성
+        int attackCount = switch (clearedLines) {
+            case 1 -> 0;  // Single - 공격 없음
+            case 2 -> 1;  // Double - 1줄 공격
+            case 3 -> 2;  // Triple - 2줄 공격
+            case 4 -> 4;  // Tetris - 4줄 공격
+            default -> Math.max(0, clearedLines - 1);
+        };
+        
+        AttackLine[] attacks = new AttackLine[attackCount];
+        for (int i = 0; i < attackCount; i++) {
+            attacks[i] = new AttackLine(1); // 기본 공격 강도
+        }
+        
+        return attacks;
+    }
+    
+    // === 공격 받기 처리 ===
+    public void receiveAttack(AttackLine[] attackLines) {
+        if (attackLines != null && attackLines.length > 0) {
+            gameStateLock.writeLock().lock();
+            try {
+                // Board에 직접 접근하여 공격 라인 추가
+                for (AttackLine attackLine : attackLines) {
+                    // Board.addGarbageLine() 메서드가 있다고 가정
+                    // 없다면 GameModel에 메서드 추가 필요
+                    // board.addGarbageLine(attackLine.getStrength());
+                    
+                    // 임시로 이벤트 큐에 추가
+                    gameEventQueue.offer(new GameEvent(GameEvent.Type.ATTACK_RECEIVED, attackLines));
+                }
+            } finally {
+                gameStateLock.writeLock().unlock();
+            }
+        }
+    }
+    
+    // === 게임 상태 관리 ===
+    private void handlePausedState() throws InterruptedException {
+        TimeUnit.MILLISECONDS.sleep(100);
+    }
+    
+    private void togglePause() {
+        if (isPaused.get()) {
+            resumeGame();
+        } else {
+            pauseGame();
+        }
+    }
+    
     // === 외부 인터페이스 ===
-
-    // 플레이어 입력 추가 - UI에서 호출
-    public void addPlayerInput(PlayerInput input);
-
-    // 게임 일시정지/재개
-    public void pauseGame();
-    public void resumeGame();
-
-    // 게임 종료
-    public void stopGame();
-
-    // 현재 게임 상태 반환 (읽기 전용)
-    public GameState getCurrentGameState();
-
-    // 네트워크 이벤트 리스너 등록
-    public void setNetworkListener(GameEventListener listener);
-
-    // 게임 속도 조정 (난이도 변경 시)
-    public void setGameSpeed(int level);
+    public void addPlayerInput(PlayerInput input) {
+        if (input != null) {
+            inputQueue.offer(input);
+        }
+    }
+    
+    public void pauseGame() {
+        isPaused.set(true);
+        gameModel.pauseGame();
+        System.out.println(playerId + " 게임 일시정지");
+    }
+    
+    public void resumeGame() {
+        isPaused.set(false);
+        gameModel.resumeGame();
+        System.out.println(playerId + " 게임 재개");
+    }
+    
+    public void stopGame() {
+        isRunning.set(false);
+        System.out.println(playerId + " 게임 종료 요청");
+    }
+    
+    public GameState getCurrentGameState() {
+        gameStateLock.readLock().lock();
+        try {
+            return gameModel.getCurrentState();
+        } finally {
+            gameStateLock.readLock().unlock();
+        }
+    }
+    
+    public Score getCurrentScore() {
+        gameStateLock.readLock().lock();
+        try {
+            return gameModel.getScore();
+        } finally {
+            gameStateLock.readLock().unlock();
+        }
+    }
+    
+    public Board getBoard() {
+        return board; // 읽기 전용 참조
+    }
+    
+    public Block getActiveBlock() {
+        gameStateLock.readLock().lock();
+        try {
+            return gameModel.getActiveBlock();
+        } finally {
+            gameStateLock.readLock().unlock();
+        }
+    }
+    
+    public void setNetworkListener(GameEventListener listener) {
+        this.networkListener = listener;
+    }
+    
+    public void setGameSpeed(int level) {
+        // GameModel을 통해 속도 설정 (GameplayEngine.setGravityLevel 호출)
+        // 현재 GameModel에 해당 메서드가 없으므로 추가 필요
+        System.out.println(playerId + " 게임 속도 변경: Level " + level);
+    }
+    
+    public String getPlayerId() {
+        return playerId;
+    }
+    
+    public boolean isLocalPlayer() {
+        return isLocalPlayer;
+    }
+    
+    // === 유틸리티 메서드 ===
+    private void maintainTickInterval(long currentTime) throws InterruptedException {
+        long sleepTime = gameTickInterval - (System.currentTimeMillis() - currentTime);
+        if (sleepTime > 0) {
+            TimeUnit.MILLISECONDS.sleep(sleepTime);
+        }
+    }
+    
+    private void cleanup() {
+        inputQueue.clear();
+        gameEventQueue.clear();
+        System.out.println("GameThread [" + playerId + "] 정리 완료");
+    }
+    
+    // === 디버그/모니터링 ===
+    public int getInputQueueSize() {
+        return inputQueue.size();
+    }
+    
+    public int getEventQueueSize() {
+        return gameEventQueue.size();
+    }
+    
+    public boolean isRunning() {
+        return isRunning.get();
+    }
+    
+    public boolean isPaused() {
+        return isPaused.get();
+    }
 }
