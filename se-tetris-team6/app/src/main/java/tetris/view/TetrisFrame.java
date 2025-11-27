@@ -255,9 +255,9 @@ public class TetrisFrame extends JFrame {
             protected void onGoMainClicked() {
                 System.out.println("[UI] PausePanel: Main clicked");
                 pausePanel.setVisible(false);
-                prevPanel = null;
+                // 다음 전환 시 메인 패널로 돌아가도록 이전 패널을 메인으로 지정
+                prevPanel = mainPanel;
                 gameModel.quitToMenu();
-                displayPanel(mainPanel);
             }
 
             @Override
@@ -293,9 +293,13 @@ public class TetrisFrame extends JFrame {
     }
 
     public void displayPanel(JPanel panel) {
-        System.out.printf("[UI] displayPanel: from=%s to=%s%n",
-                currPanel == null ? "null" : currPanel.getClass().getSimpleName(),
-                panel == null ? "null" : panel.getClass().getSimpleName());
+        if (panel == null) {
+            System.out.println("[UI][WARN] displayPanel called with null panel — aborting swap");
+            return;
+        }
+        String fromName = currPanel == null ? "null" : resolvePanelName(currPanel);
+        String toName = resolvePanelName(panel);
+        System.out.printf("[UI] displayPanel: from=%s to=%s%n", fromName, toName);
         if (currPanel != null && currPanel != prevPanel) {
             System.out.printf("[UI] hiding current panel: %s%n", currPanel.getClass().getSimpleName());
             currPanel.setVisible(false);
@@ -329,7 +333,7 @@ public class TetrisFrame extends JFrame {
         // if (prevPanel != null)
         // prevPanel.setVisible(false);
         panel.setVisible(true);
-        System.out.printf("[UI] now showing panel: %s%n", panel.getClass().getSimpleName());
+        System.out.printf("[UI] now showing panel: %s%n", toName);
         panel.requestFocusInWindow();
         layeredPane.moveToFront(panel);
         layeredPane.revalidate();
@@ -341,7 +345,26 @@ public class TetrisFrame extends JFrame {
     }
 
     private void hidePauseOverlayPanel() {
-        displayPanel(prevPanel);
+        if (prevPanel != null) {
+            displayPanel(prevPanel);
+        } else {
+            displayPanel(mainPanel);
+        }
+    }
+
+    /**
+    * 익명 서브클래스인 경우에도 의미 있는 이름을 반환한다.
+    */
+    private String resolvePanelName(JPanel panel) {
+        if (panel == null) return "null";
+        String name = panel.getClass().getSimpleName();
+        if (name == null || name.isBlank()) {
+            Class<?> sup = panel.getClass().getSuperclass();
+            if (sup != null) {
+                name = sup.getSimpleName();
+            }
+        }
+        return name == null || name.isBlank() ? panel.getClass().getName() : name;
     }
 
     // showPauseOverlayPanel, hidePauseOverlayPanel 대체 가능

@@ -158,6 +158,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
     private boolean colorBlindMode;
     private long lastInputMillis = System.currentTimeMillis();
     private int inactivityPenaltyStage;
+    private long pauseStartedAt = -1;
 
     private UiBridge uiBridge = NO_OP_UI_BRIDGE;
     private GameState currentState;
@@ -659,6 +660,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         resetInputAxes();
         inactivityPenaltyStage = 0;
         lastInputMillis = System.currentTimeMillis();
+        pauseStartedAt = -1;
         currentTick = 0;
         scoreMultiplier = 1.0;
         slowFactor = 1.0;
@@ -766,12 +768,18 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
 
     public void pauseGame() {
         if (currentState == GameState.PLAYING) {
+            pauseStartedAt = System.currentTimeMillis();
             changeState(GameState.PAUSED);
         }
     }
 
     public void resumeGame() {
         if (currentState == GameState.PAUSED) {
+            if (pauseStartedAt > 0) {
+                long pausedDuration = System.currentTimeMillis() - pauseStartedAt;
+                lastInputMillis += pausedDuration;
+                pauseStartedAt = -1;
+            }
             changeState(GameState.PLAYING);
         }
     }
