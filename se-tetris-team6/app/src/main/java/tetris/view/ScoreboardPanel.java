@@ -34,6 +34,7 @@ public class ScoreboardPanel extends JPanel implements ScoreView {
     private final JList<String> standardList = new JList<>(standardModel);
     private final JList<String> itemList = new JList<>(itemModel);
     private final JButton backButton = new JButton("Back to Menu");
+    private final JButton resetButton = new JButton("Reset Scores");
     private int standardHighlight = -1;
     private int itemHighlight = -1;
 
@@ -70,56 +71,42 @@ public class ScoreboardPanel extends JPanel implements ScoreView {
 
         add(center, BorderLayout.CENTER);
 
-    }
+        // 커스텀 하이라이트 렌더러 및 선택 방지 설정
+        installNoSelection(standardList);
+        installNoSelection(itemList);
+        installHighlightRenderer(standardList, false);
+        installHighlightRenderer(itemList, true);
 
-    private JPanel createListPanel(String title, JList<String> list) {
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.setOpaque(false);
-        JLabel label = new JLabel(title, JLabel.CENTER);
-        label.setFont(new Font("SansSerif", Font.BOLD, 22));
-        label.setForeground(Color.WHITE);
-        label.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
-        panel.add(label, BorderLayout.NORTH);
-
-        list.setOpaque(false);
-        list.setBackground(new Color(0, 0, 0, 0));
-        list.setForeground(Color.WHITE);
-        list.setFont(new Font("SansSerif", Font.PLAIN, 16));
-        list.setFocusable(false);
-        // 사용자 selection으로 하이라이트가 덮이지 않도록 selection 변경을 막고 커스텀 렌더러에서 강조 처리
-        list.setSelectionModel(new DefaultListSelectionModel() {
-            @Override
-            public void setSelectionInterval(int index0, int index1) {
-                // no-op
-            }
-        });
-        installHighlightRenderer(list, list == itemList);
-
-        JScrollPane scroll = new JScrollPane(list);
-        scroll.getViewport().setOpaque(false);
-        scroll.setOpaque(false);
-        scroll.setBorder(BorderFactory.createEmptyBorder());
-        panel.add(scroll, BorderLayout.CENTER);
-        return panel;
     }
 
     private void installHighlightRenderer(JList<String> list, boolean isItemList) {
+        list.setOpaque(true);
         list.setCellRenderer(new DefaultListCellRenderer() {
             @Override
             public Component getListCellRendererComponent(JList<?> jList, Object value, int index,
                     boolean isSelected, boolean cellHasFocus) {
                 Component c = super.getListCellRendererComponent(jList, value, index, false, false);
                 int highlight = isItemList ? itemHighlight : standardHighlight;
-                if (index == highlight) {
+                boolean isHighlight = index == highlight;
+                if (isHighlight) {
                     c.setBackground(new Color(220, 0, 0, 160));
-                    c.setForeground(Color.WHITE);
-                    setOpaque(true);
                 } else {
-                    c.setBackground(new Color(0, 0, 0, 0));
-                    c.setForeground(Color.WHITE);
-                    setOpaque(false);
+                    c.setBackground(list.getBackground());
+                }
+                c.setForeground(Color.WHITE);
+                if (c instanceof javax.swing.JComponent jc) {
+                    jc.setOpaque(true);
                 }
                 return c;
+            }
+        });
+    }
+
+    private void installNoSelection(JList<String> list) {
+        list.setSelectionModel(new DefaultListSelectionModel() {
+            @Override
+            public void setSelectionInterval(int index0, int index1) {
+                // no-op
             }
         });
     }
@@ -132,6 +119,11 @@ public class ScoreboardPanel extends JPanel implements ScoreView {
         styleBackButton(backButton);
         left.add(backButton);
         wrapper.add(left, BorderLayout.WEST);
+        JPanel right = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT));
+        right.setOpaque(false);
+        styleResetButton(resetButton);
+        right.add(resetButton);
+        wrapper.add(right, BorderLayout.EAST);
         return wrapper;
     }
 
@@ -153,11 +145,27 @@ public class ScoreboardPanel extends JPanel implements ScoreView {
         button.setBorder(BorderFactory.createEmptyBorder(8, 16, 8, 16));
     }
 
+    private void styleResetButton(JButton button) {
+        button.setText("Reset Scores");
+        button.setFont(new Font("SansSerif", Font.BOLD, 16));
+        button.setFocusPainted(false);
+        button.setBackground(new Color(120, 0, 0));
+        button.setForeground(Color.WHITE);
+        button.setBorder(BorderFactory.createEmptyBorder(8, 16, 8, 16));
+    }
+
     public void setBackAction(ActionListener listener) {
         for (ActionListener l : backButton.getActionListeners()) {
             backButton.removeActionListener(l);
         }
         backButton.addActionListener(listener);
+    }
+
+    public void setResetAction(ActionListener listener) {
+        for (ActionListener l : resetButton.getActionListeners()) {
+            resetButton.removeActionListener(l);
+        }
+        resetButton.addActionListener(listener);
     }
 
     @Override
@@ -177,6 +185,8 @@ public class ScoreboardPanel extends JPanel implements ScoreView {
         } else {
             standardHighlight = highlightIndex;
         }
+        System.out.printf("[UI] ScoreboardPanel.render mode=%s size=%d highlight=%d%n",
+                mode, entries == null ? 0 : entries.size(), highlightIndex);
         if (entries == null || entries.isEmpty()) {
             target.addElement("No entries yet.");
             selectHighlight(mode);

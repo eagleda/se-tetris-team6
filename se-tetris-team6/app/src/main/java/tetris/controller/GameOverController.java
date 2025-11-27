@@ -64,11 +64,9 @@ public final class GameOverController {
         var score = scoreRepository.load();
         GameMode mode = frame.getGameModel().getLastMode();
         var entry = new LeaderboardEntry(name.trim(), score.getPoints(), mode);
-        leaderboardRepository.saveEntry(entry);
-        // after saving, update only the GameOverPanel's left leaderboard (do not change overlay)
-        var entries = leaderboardRepository.loadTop(10, mode);
-        panel.updateLeaderboardModel(mode, entries);
         LeaderboardResult result = leaderboardRepository.saveAndHighlight(entry);
+        System.out.printf("[UI][GameOver] saved entry name=%s pts=%d mode=%s highlight=%d size=%d%n",
+                entry.getName(), entry.getPoints(), mode, result.highlightIndex(), result.entries().size());
         frame.setPendingLeaderboard(mode, result);
         hideAndShowScoreboard();
     }

@@ -61,6 +61,8 @@ public final class InMemoryLeaderboardRepository implements LeaderboardRepositor
             }
         }
         int highlight = target.indexOf(entry);
+        System.out.printf("[LB][Memory] mode=%s size=%d highlight=%d name=%s pts=%d%n",
+                entry.getMode(), target.size(), highlight, entry.getName(), entry.getPoints());
         return new LeaderboardResult(Collections.unmodifiableList(target), highlight);
     }
 

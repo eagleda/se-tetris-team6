@@ -247,17 +247,22 @@ public class TetrisFrame extends JFrame {
         pausePanel = new PausePanel() {
             @Override
             protected void onContinueClicked() {
+                System.out.println("[UI] PausePanel: Continue clicked");
                 gameModel.resumeGame();
             }
 
             @Override
             protected void onGoMainClicked() {
-                displayPanel(mainPanel);
+                System.out.println("[UI] PausePanel: Main clicked");
+                pausePanel.setVisible(false);
+                // 다음 전환 시 메인 패널로 돌아가도록 이전 패널을 메인으로 지정
+                prevPanel = mainPanel;
                 gameModel.quitToMenu();
             }
 
             @Override
             protected void onExitClicked() {
+                System.out.println("[UI] PausePanel: Exit clicked");
                 TetrisFrame.this.dispatchEvent(new WindowEvent(TetrisFrame.this, WindowEvent.WINDOW_CLOSING));
             }
         };
@@ -271,10 +276,32 @@ public class TetrisFrame extends JFrame {
             displayPanel(mainPanel);
             gameModel.quitToMenu();
         });
+        scoreboardPanel.setResetAction(e -> {
+            int result = javax.swing.JOptionPane.showConfirmDialog(
+                    this,
+                    "정말로 모든 스코어보드 기록을 초기화하시겠습니까?",
+                    "Reset Scores",
+                    javax.swing.JOptionPane.YES_NO_OPTION,
+                    javax.swing.JOptionPane.WARNING_MESSAGE);
+            if (result == javax.swing.JOptionPane.YES_OPTION) {
+                gameModel.getLeaderboardRepository().reset();
+                // 초기화 후 리스트를 비우고 하이라이트도 제거
+                scoreboardPanel.renderLeaderboard(GameMode.STANDARD, java.util.Collections.emptyList(), -1);
+                scoreboardPanel.renderLeaderboard(GameMode.ITEM, java.util.Collections.emptyList(), -1);
+            }
+        });
     }
 
     public void displayPanel(JPanel panel) {
+        if (panel == null) {
+            System.out.println("[UI][WARN] displayPanel called with null panel — aborting swap");
+            return;
+        }
+        String fromName = currPanel == null ? "null" : resolvePanelName(currPanel);
+        String toName = resolvePanelName(panel);
+        System.out.printf("[UI] displayPanel: from=%s to=%s%n", fromName, toName);
         if (currPanel != null && currPanel != prevPanel) {
+            System.out.printf("[UI] hiding current panel: %s%n", currPanel.getClass().getSimpleName());
             currPanel.setVisible(false);
         }
         prevPanel = currPanel;
@@ -283,6 +310,7 @@ public class TetrisFrame extends JFrame {
         // leaderboard repo
         if (panel == scoreboardPanel) {
             try {
+                System.out.println("[UI] loading scoreboard data (with pending highlight if any)");
                 LeaderboardResult std = pendingStandardHighlight;
                 LeaderboardResult itm = pendingItemHighlight;
                 List<LeaderboardEntry> standard = std != null
@@ -293,17 +321,21 @@ public class TetrisFrame extends JFrame {
                         : gameModel.loadTopScores(GameMode.ITEM, 10);
                 int stdHighlight = std != null ? std.highlightIndex() : -1;
                 int itemHighlight = itm != null ? itm.highlightIndex() : -1;
+                System.out.printf("[UI] scoreboard render standard size=%d highlight=%d, item size=%d highlight=%d%n",
+                        standard.size(), stdHighlight, item.size(), itemHighlight);
                 scoreboardPanel.renderLeaderboard(GameMode.STANDARD, standard, stdHighlight);
                 scoreboardPanel.renderLeaderboard(GameMode.ITEM, item, itemHighlight);
                 pendingStandardHighlight = null;
                 pendingItemHighlight = null;
             } catch (Exception ex) {
                 // ignore; show existing data if loading fails
+                System.out.printf("[UI][WARN] scoreboard load failed: %s%n", ex.getMessage());
             }
         }
         // if (prevPanel != null)
         // prevPanel.setVisible(false);
         panel.setVisible(true);
+        System.out.printf("[UI] now showing panel: %s%n", toName);
         panel.requestFocusInWindow();
         layeredPane.moveToFront(panel);
         layeredPane.revalidate();
@@ -315,7 +347,26 @@ public class TetrisFrame extends JFrame {
     }
 
     private void hidePauseOverlayPanel() {
-        displayPanel(prevPanel);
+        if (prevPanel != null) {
+            displayPanel(prevPanel);
+        } else {
+            displayPanel(mainPanel);
+        }
+    }
+
+    /**
+    * 익명 서브클래스인 경우에도 의미 있는 이름을 반환한다.
+    */
+    private String resolvePanelName(JPanel panel) {
+        if (panel == null) return "null";
+        String name = panel.getClass().getSimpleName();
+        if (name == null || name.isBlank()) {
+            Class<?> sup = panel.getClass().getSuperclass();
+            if (sup != null) {
+                name = sup.getSimpleName();
+            }
+        }
+        return name == null || name.isBlank() ? panel.getClass().getName() : name;
     }
 
     // showPauseOverlayPanel, hidePauseOverlayPanel 대체 가능

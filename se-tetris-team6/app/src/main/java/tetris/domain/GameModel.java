@@ -158,6 +158,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
     private boolean colorBlindMode;
     private long lastInputMillis = System.currentTimeMillis();
     private int inactivityPenaltyStage;
+    private long pauseStartedAt = -1;
 
     private UiBridge uiBridge = NO_OP_UI_BRIDGE;
     private GameState currentState;
@@ -589,6 +590,9 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
     }
 
     private void checkInactivityPenalty() {
+        if (currentState != GameState.PLAYING) {
+            return; // 일시정지/메뉴 등에서는 패널티를 계산하지 않는다.
+        }
         long elapsed = System.currentTimeMillis() - lastInputMillis;
         if (inactivityPenaltyStage < 1 && elapsed >= INACTIVITY_STAGE1_MS) {
             applyInactivityPenaltyStage(1);
@@ -647,6 +651,25 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
     private void recordPlayerInput() {
         inactivityPenaltyStage = 0;
         lastInputMillis = System.currentTimeMillis();
+    }
+
+    /**
+     * 메뉴로 돌아갈 때 남아있는 타이머/패널티/속도 상태를 정리한다.
+     */
+    private void resetRuntimeForMenu() {
+        resetInputAxes();
+        inactivityPenaltyStage = 0;
+        lastInputMillis = System.currentTimeMillis();
+        pauseStartedAt = -1;
+        currentTick = 0;
+        scoreMultiplier = 1.0;
+        slowFactor = 1.0;
+        slowUntilTick = 0;
+        doubleScoreUntilTick = 0;
+        gameplayEngine.setSpeedModifier(1.0);
+        gameplayEngine.setGravityLevel(0);
+        gameplayEngine.setActiveBlock(null);
+        stopClockCompletely();
     }
 
     private void resetGameplayState() {
@@ -745,19 +768,25 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
 
     public void pauseGame() {
         if (currentState == GameState.PLAYING) {
+            pauseStartedAt = System.currentTimeMillis();
             changeState(GameState.PAUSED);
         }
     }
 
     public void resumeGame() {
         if (currentState == GameState.PAUSED) {
+            if (pauseStartedAt > 0) {
+                long pausedDuration = System.currentTimeMillis() - pauseStartedAt;
+                lastInputMillis += pausedDuration;
+                pauseStartedAt = -1;
+            }
             changeState(GameState.PLAYING);
         }
     }
 
     public void quitToMenu() {
         if (currentState != GameState.MENU) {
-            stopClockCompletely();
+            resetRuntimeForMenu();
             changeState(GameState.MENU);
         }
     }

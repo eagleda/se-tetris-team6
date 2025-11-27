@@ -141,7 +141,7 @@
       "`se-tetris-team6/app/src/main/java/tetris/controller/GameOverController.java` – 이름 입력 완료 시 뷰 모델 갱신.",
       "`se-tetris-team6/app/src/main/java/tetris/view/ScoreboardPanel.java` – 강조 렌더링."
     ],
-    "resolved": "X"
+    "resolved": "O"
   },
   {
     "id": "4-2",
@@ -193,7 +193,7 @@
       "`se-tetris-team6/app/src/main/java/tetris/controller/ScoreController.java` – 초기화 핸들러 추가.",
       "`se-tetris-team6/app/src/main/java/tetris/view/ScoreboardPanel.java` – 버튼/다이얼로그 구현."
     ],
-    "resolved": "X"
+    "resolved": "O"
   },
   {
     "id": "5-2",
