@@ -339,7 +339,22 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
     }
 
     public void clearBoardRegion(int x, int y, int width, int height) {
-        board.clearArea(x, y, width, height);
+        if (width <= 0 || height <= 0) {
+            return;
+        }
+        // Line-clear 아이템: 보드 전체 폭을 덮는 영역이면 실제 줄 삭제처럼 처리해 위 블록을 한 칸씩 내린다.
+        boolean clearsFullRows = x <= 0 && x + width >= Board.W;
+        if (clearsFullRows) {
+            java.util.List<Integer> rows = new ArrayList<>();
+            int start = Math.max(0, y);
+            int end = Math.min(Board.H, y + height);
+            for (int row = start; row < end; row++) {
+                rows.add(row);
+            }
+            board.clearRows(rows);
+        } else {
+            board.clearArea(x, y, width, height);
+        }
         uiBridge.refreshBoard();
     }
 
