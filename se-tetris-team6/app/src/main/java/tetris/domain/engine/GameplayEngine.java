@@ -29,6 +29,7 @@ public class GameplayEngine implements GameClock.Listener {
         void onBlockLocked(Block block);
         void onLinesCleared(int clearedLines);
         void onTick(long tick);
+        void onBlockRotated(Block block, int times); // times: 시계방향 회전 횟수
     }
 
     private final Board board;
@@ -291,6 +292,7 @@ public class GameplayEngine implements GameClock.Listener {
         BlockShape rotated = activeBlock.getShape().rotatedCW();
         if (board.canPlace(rotated, activeBlock.getX(), activeBlock.getY())) {
             activeBlock.setShape(rotated);
+            events.onBlockRotated(activeBlock, 1); // 시계방향 1회
         }
         uiBridge.refreshBoard();
     }
@@ -300,6 +302,7 @@ public class GameplayEngine implements GameClock.Listener {
         BlockShape rotated = activeBlock.getShape().rotatedCW().rotatedCW().rotatedCW();
         if (board.canPlace(rotated, activeBlock.getX(), activeBlock.getY())) {
             activeBlock.setShape(rotated);
+            events.onBlockRotated(activeBlock, 3); // 반시계방향 = 시계방향 3회
         }
         uiBridge.refreshBoard();
     }

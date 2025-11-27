@@ -121,7 +121,15 @@ public class GamePanel extends JPanel {
                     continue;
                 int px = originX + boardX * cellSize;
                 int py = originY + boardY * cellSize;
-                g2.fillRect(px, py, cellSize, cellSize);
+                
+                // 아이템 칸인 경우 흰색으로 표시
+                if (highlightItem && itemInfo.hasItemCell() && sx == itemInfo.itemCellX() && sy == itemInfo.itemCellY()) {
+                    g2.setColor(Color.WHITE);
+                    g2.fillRect(px, py, cellSize, cellSize);
+                    g2.setColor(colorFor(colorIndex)); // 원래 색으로 복원
+                } else {
+                    g2.fillRect(px, py, cellSize, cellSize);
+                }
             }
         }
 

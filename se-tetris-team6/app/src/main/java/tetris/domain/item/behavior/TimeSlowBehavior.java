@@ -37,10 +37,17 @@ public final class TimeSlowBehavior implements ItemBehavior {
         if (triggered) {
             return;
         }
+        // 아이템 칸의 위치 사용 (회전 적용됨)
+        int itemX = block.getX();
+        int itemY = block.getY();
+        if (block.hasItemCell()) {
+            itemX += block.getItemCellX();
+            itemY += block.getItemCellY();
+        }
         Map<String, Object> meta = new HashMap<>();
         meta.put("factor", factor);
         ctx.addGlobalBuff(id(), durationTicks, meta);
-        ctx.spawnParticles(block.getX(), block.getY(), "text:Slow");
+        ctx.spawnParticles(itemX, itemY, "text:Slow");
         ctx.playSfx("slow_on");
         triggered = true;
     }
