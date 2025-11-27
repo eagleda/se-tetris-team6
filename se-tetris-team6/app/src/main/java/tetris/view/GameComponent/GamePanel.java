@@ -121,7 +121,32 @@ public class GamePanel extends JPanel {
                     continue;
                 int px = originX + boardX * cellSize;
                 int py = originY + boardY * cellSize;
+                
+                // 먼저 기본 블록 색상으로 칸 채우기
                 g2.fillRect(px, py, cellSize, cellSize);
+                
+                // 아이템 칸인 경우 표시
+                if (highlightItem && itemInfo.hasItemCell() && sx == itemInfo.itemCellX() && sy == itemInfo.itemCellY()) {
+                    String itemId = itemInfo.label();
+                    if ("line_clear".equals(itemId)) {
+                        // LineClear 아이템: 흰색 'L' 글자 표시
+                        Graphics2D textG = (Graphics2D) g2.create();
+                        textG.setColor(Color.WHITE);
+                        Font cellFont = new Font("SansSerif", Font.BOLD, (int)(cellSize * 0.6f));
+                        textG.setFont(cellFont);
+                        int textWidth = textG.getFontMetrics().stringWidth("L");
+                        int textHeight = textG.getFontMetrics().getAscent();
+                        int textX = px + (cellSize - textWidth) / 2;
+                        int textY = py + (cellSize + textHeight) / 2 - textG.getFontMetrics().getDescent();
+                        textG.drawString("L", textX, textY);
+                        textG.dispose();
+                    } else {
+                        // 다른 아이템: 흰색으로 칸 채우기
+                        g2.setColor(Color.WHITE);
+                        g2.fillRect(px, py, cellSize, cellSize);
+                        g2.setColor(colorFor(colorIndex)); // 원래 색으로 복원
+                    }
+                }
             }
         }
 

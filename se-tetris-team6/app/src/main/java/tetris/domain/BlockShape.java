@@ -63,6 +63,13 @@ public final class BlockShape implements ShapeView {
                     { false, false, true },
                     { true,  true,  true }
             });
+            case W: return new BlockShape(k, new boolean[][]{
+                    { false, true, true, false },
+                    { true, true, true, true }
+            });
+            case B: return new BlockShape(k, new boolean[][]{
+                    { true} 
+            });
             default: throw new IllegalArgumentException("Unknown kind: " + k);
         }
     }
