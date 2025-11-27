@@ -1,104 +1,198 @@
 package tetris.concurrent;
 
+import java.time.Duration;
+import java.util.ArrayDeque;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Queue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import tetris.network.protocol.GameMessage;
+import tetris.network.protocol.MessageType;
 
 /**
- * 네트워크 통신을 담당하는 전용 스레드
- * - 네트워크 메시지 송수신 처리
- * - 게임 상태 동기화
- * - 지연시간 측정 및 모니터링
- * - 연결 상태 관리 및 재연결 처리
- * - 메시지 큐 관리 및 우선순위 처리
+ * 네트워크 스레드의 최소 구현체. 연결 관리/재연결, 송수신 큐 등 필수 구성만
+ * 남겨 multiplayer 코드를 컴파일 가능하게 한다.
  */
 public class NetworkThread implements Runnable {
-    // === 네트워크 관리 ===
-    private NetworkManager networkManager;     // 네트워크 매니저 참조
-    private AtomicBoolean isRunning;           // 스레드 실행 상태
-    private AtomicBoolean isConnected;         // 네트워크 연결 상태
+    private static final Duration LOOP_SLEEP = Duration.ofMillis(10);
+    private static final Duration SYNC_INTERVAL = Duration.ofSeconds(1);
+    private static final long LATENCY_WARNING_THRESHOLD = 200L;
 
-    // === 메시지 큐 관리 ===
-    private BlockingQueue<GameMessage> outgoingQueue;    // 송신 대기 메시지
-    private BlockingQueue<GameMessage> incomingQueue;    // 수신된 메시지
-    private BlockingQueue<GameMessage> priorityQueue;    // 우선순위 메시지 (핑, 에러 등)
+    private final NetworkManager networkManager;
+    private final AtomicBoolean isRunning = new AtomicBoolean(false);
+    private final AtomicBoolean isConnected = new AtomicBoolean(false);
 
-    // === 동기화 관리 ===
-    private Map<String, Long> lastSyncTime;             // 플레이어별 마지막 동기화 시간
-    private long syncInterval;                          // 동기화 간격
+    private final BlockingQueue<GameMessage> outgoingQueue = new LinkedBlockingQueue<>();
+    private final BlockingQueue<GameMessage> incomingQueue = new LinkedBlockingQueue<>();
+    private final BlockingQueue<GameMessage> priorityQueue = new LinkedBlockingQueue<>();
 
-    // === 지연시간 관리 ===
-    private long currentLatency;               // 현재 지연시간
-    private Queue<Long> latencyHistory;        // 지연시간 히스토리
-    private long lastPingTime;                 // 마지막 핑 시간
+    private final Map<String, Long> lastSyncTime = new ConcurrentHashMap<>();
+    private final Queue<Long> latencyHistory = new ArrayDeque<>();
 
-    // === 재연결 관리 ===
-    private int reconnectAttempts;             // 재연결 시도 횟수
-    private long lastReconnectTime;            // 마지막 재연결 시도 시간
+    private volatile long currentLatency = 0L;
+    private volatile long lastPingTime = 0L;
+    private volatile int reconnectAttempts = 0;
+    private volatile long lastReconnectTime = 0L;
 
-    // === 주요 메서드들 ===
+    private volatile long messagesSent = 0L;
+    private volatile long messagesReceived = 0L;
 
-    // 생성자 - 네트워크 매니저 참조 받음
-    public NetworkThread(NetworkManager networkManager);
+    public NetworkThread(NetworkManager networkManager) {
+        this.networkManager = Objects.requireNonNull(networkManager, "networkManager");
+    }
 
-    // 스레드 메인 실행 루프
     @Override
-    public void run();
+    public void run() {
+        if (!isRunning.compareAndSet(false, true)) {
+            return;
+        }
 
-    // 송신 메시지 처리 - 큐에서 메시지를 가져와 전송
-    private void processSendQueue();
+        try {
+            while (isRunning.get()) {
+                processPriorityMessages();
+                processSendQueue();
+                processReceiveQueue();
+                synchronizeGameState();
+                measureLatency();
+                monitorConnection();
+                sleepLoop();
+            }
+        } finally {
+            isRunning.set(false);
+            networkManager.close();
+        }
+    }
 
-    // 수신 메시지 처리 - 네트워크에서 받은 메시지 처리
-    private void processReceiveQueue();
+    private void processSendQueue() {
+        GameMessage message;
+        while ((message = outgoingQueue.poll()) != null) {
+            if (networkManager.send(message)) {
+                messagesSent++;
+            } else {
+                onNetworkError(new IllegalStateException("Failed to send message"));
+                break;
+            }
+        }
+    }
 
-    // 우선순위 메시지 처리 - 핑, 에러, 연결 관련 메시지
-    private void processPriorityMessages();
+    private void processReceiveQueue() {
+        GameMessage message;
+        while ((message = networkManager.receive()) != null) {
+            messagesReceived++;
+            incomingQueue.offer(message);
+            if (message.getType() == MessageType.PONG && lastPingTime > 0) {
+                currentLatency = System.currentTimeMillis() - lastPingTime;
+                latencyHistory.add(currentLatency);
+                lastPingTime = 0L;
+            }
+        }
+    }
 
-    // 게임 상태 동기화 - 주기적으로 호출
-    private void synchronizeGameState();
+    private void processPriorityMessages() {
+        GameMessage priority;
+        while ((priority = priorityQueue.poll()) != null) {
+            outgoingQueue.offer(priority);
+        }
+    }
 
-    // 지연시간 측정 - 핑-퐁 메커니즘
-    private void measureLatency();
+    private void synchronizeGameState() {
+        long now = System.currentTimeMillis();
+        lastSyncTime.entrySet().removeIf(entry -> now - entry.getValue() > SYNC_INTERVAL.toMillis());
+    }
 
-    // 연결 상태 모니터링
-    private void monitorConnection();
+    private void measureLatency() {
+        if (!isConnected.get() || lastPingTime != 0L) {
+            return;
+        }
+        GameMessage ping = new GameMessage(MessageType.PING, "SYSTEM", null);
+        if (networkManager.send(ping)) {
+            messagesSent++;
+            lastPingTime = System.currentTimeMillis();
+        }
+    }
 
-    // 재연결 시도
-    private void attemptReconnection();
+    private void monitorConnection() {
+        boolean connected = networkManager.isConnected();
+        if (connected && !isConnected.getAndSet(true)) {
+            onConnectionEstablished();
+        } else if (!connected && isConnected.getAndSet(false)) {
+            onConnectionLost();
+            attemptReconnection();
+        } else if (!connected) {
+            attemptReconnection();
+        }
+    }
 
-    // === 외부 인터페이스 ===
+    private void attemptReconnection() {
+        long now = System.currentTimeMillis();
+        if (now - lastReconnectTime < 1_000L) {
+            return;
+        }
+        lastReconnectTime = now;
+        reconnectAttempts++;
+        priorityQueue.offer(new GameMessage(MessageType.CONNECTION_REQUEST, "SYSTEM", reconnectAttempts));
+    }
 
-    // 메시지 전송 요청 - 게임 스레드에서 호출
-    public void sendMessage(GameMessage message);
+    public void sendMessage(GameMessage message) {
+        if (message != null) {
+            outgoingQueue.offer(message);
+        }
+    }
 
-    // 우선순위 메시지 전송 - 즉시 처리가 필요한 메시지
-    public void sendPriorityMessage(GameMessage message);
+    public void sendPriorityMessage(GameMessage message) {
+        if (message != null) {
+            priorityQueue.offer(message);
+        }
+    }
 
-    // 수신된 메시지 가져오기 - 게임 스레드에서 호출
-    public GameMessage getReceivedMessage();
+    public GameMessage getReceivedMessage() {
+        return incomingQueue.poll();
+    }
 
-    // 현재 지연시간 반환
-    public long getCurrentLatency();
+    public long getCurrentLatency() {
+        return currentLatency;
+    }
 
-    // 연결 상태 확인
-    public boolean isConnected();
+    public boolean isConnected() {
+        return isConnected.get();
+    }
 
-    // 네트워크 통계 정보 반환
-    public NetworkStats getNetworkStats();
+    public NetworkStats getNetworkStats() {
+        return new NetworkStats(messagesSent, messagesReceived, currentLatency);
+    }
 
-    // 스레드 종료
-    public void shutdown();
+    public void shutdown() {
+        isRunning.set(false);
+    }
 
-    // === 이벤트 처리 ===
+    private void onConnectionEstablished() {
+        reconnectAttempts = 0;
+    }
 
-    // 연결 성공 이벤트
-    private void onConnectionEstablished();
+    private void onConnectionLost() {
+        latencyHistory.clear();
+    }
 
-    // 연결 끊김 이벤트
-    private void onConnectionLost();
+    private void onLatencyWarning(long latency) {
+        // 향후 UI 경고 시스템과 연결될 수 있도록 hook만 남겨둔다.
+    }
 
-    // 지연 경고 이벤트 - 200ms 초과 시
-    private void onLatencyWarning(long latency);
+    private void onNetworkError(Exception error) {
+        if (error != null && currentLatency > LATENCY_WARNING_THRESHOLD) {
+            onLatencyWarning(currentLatency);
+        }
+    }
 
-    // 네트워크 에러 이벤트
-    private void onNetworkError(Exception error);
+    private void sleepLoop() {
+        try {
+            TimeUnit.MILLISECONDS.sleep(LOOP_SLEEP.toMillis());
+        } catch (InterruptedException ignored) {
+            Thread.currentThread().interrupt();
+        }
+    }
 }

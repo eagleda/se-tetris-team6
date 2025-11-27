@@ -8,6 +8,7 @@ import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.BasicStroke;
 import java.lang.reflect.Method;
+import java.util.function.IntSupplier;
 
 import javax.swing.BorderFactory;
 import javax.swing.JPanel;
@@ -37,7 +38,7 @@ public class AttackQueuePanel extends JPanel {
     // 내부 그리드(방어적 복사)
     private int[][] grid = new int[BOARD_ROWS][BOARD_COLS];
 
-    private GameModel gameModel;
+    private IntSupplier pendingLinesSupplier;
 
     public AttackQueuePanel() {
         setBackground(BACKGROUND_COLOR);
@@ -47,7 +48,15 @@ public class AttackQueuePanel extends JPanel {
     }
 
     public void bindGameModel(GameModel model) {
-        this.gameModel = model;
+        this.pendingLinesSupplier = null;
+        repaint();
+    }
+
+    /**
+     * 로컬 멀티 UI에서 공격 대기 줄 수치를 직접 공급할 때 사용한다.
+     */
+    public void bindPendingLinesSupplier(IntSupplier supplier) {
+        this.pendingLinesSupplier = supplier;
         repaint();
     }
 
@@ -128,10 +137,19 @@ public class AttackQueuePanel extends JPanel {
         g2.setColor(BACKGROUND_COLOR);
         g2.fillRect(originX, originY, boardWidthPx, boardHeightPx);
 
+        int pendingLines = pendingLinesSupplier == null ? -1 : Math.max(0, pendingLinesSupplier.getAsInt());
+
         // 블록 그리기
         for (int r = 0; r < BOARD_ROWS; r++) {
             for (int c = 0; c < BOARD_COLS; c++) {
-                int v = grid[r][c];
+                int v;
+                if (pendingLines >= 0) {
+                    // 공급자가 있으면 간단히 "아래에서부터 몇 줄 차있는지"만 시각화한다.
+                    int fromBottom = BOARD_ROWS - 1 - r;
+                    v = fromBottom < pendingLines ? 1 : 0;
+                } else {
+                    v = grid[r][c];
+                }
                 g2.setColor(colorFor(v));
                 int px = originX + c * cellSize;
                 int py = originY + r * cellSize;
@@ -146,7 +164,7 @@ public class AttackQueuePanel extends JPanel {
         // 상단 라벨
         g2.setFont(new Font("SansSerif", Font.BOLD, Math.max(10, cellSize / 2)));
         g2.setColor(Color.WHITE);
-        String label = "Incoming";
+        String label = pendingLines >= 0 ? "Incoming (" + pendingLines + ")" : "Incoming";
         int tw = g2.getFontMetrics().stringWidth(label);
         g2.drawString(label, Math.max(4, (getWidth() - tw) / 2), Math.max(12, originY - 6));
 

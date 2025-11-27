@@ -9,10 +9,11 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Random;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Supplier;
 
-import tetris.domain.setting.SettingService;
 import tetris.domain.block.BlockLike;
+import tetris.domain.setting.SettingService;
 import tetris.domain.handler.GameHandler;
 import tetris.domain.handler.GameOverHandler;
 import tetris.domain.handler.GamePlayHandler;
@@ -32,11 +33,15 @@ import tetris.domain.item.behavior.LineClearBehavior;
 import tetris.domain.item.behavior.WeightBehavior;
 import tetris.domain.item.model.ItemBlockModel;
 import tetris.domain.model.Block;
+import tetris.domain.model.GameClock;
 import tetris.domain.model.GameState;
 import tetris.domain.model.InputState;
 import tetris.domain.score.Score;
 import tetris.domain.score.ScoreRepository;
 import tetris.domain.score.ScoreRuleEngine;
+import tetris.multiplayer.model.Cell;
+import tetris.multiplayer.model.LockedPieceSnapshot;
+import tetris.multiplayer.session.LocalMultiplayerSession;
 
 /**
  * 게임 핵심 도메인 모델.
@@ -98,6 +103,8 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
     private final SettingService settingService;
     private BlockGenerator blockGenerator;
     private final Map<GameState, GameHandler> handlers = new EnumMap<>(GameState.class);
+    private GameHandler defaultPlayHandler;
+    private LocalMultiplayerSession activeLocalSession;
     private GameMode currentMode = GameMode.STANDARD;
     private GameMode lastMode = GameMode.STANDARD;
     private final ItemManager itemManager = new ItemManager();
@@ -108,6 +115,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
             () -> new BombBehavior(1),
             () -> new LineClearBehavior(),
             WeightBehavior::new);
+    private final List<MultiplayerHook> multiplayerHooks = new CopyOnWriteArrayList<>();
 
     public static final class ActiveItemInfo {
         private final BlockLike block;
@@ -131,6 +139,16 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         public ItemType type() {
             return type;
         }
+    }
+
+    /**
+     * 멀티 대전 쓰레기 줄 규칙을 GameModel의 수명주기 이벤트와 연결하기 위한 훅.
+     * onPieceLocked는 줄 삭제 결과를, beforeNextSpawn은 쓰레기 주입 시점을 알린다.
+     */
+    public interface MultiplayerHook {
+        void onPieceLocked(LockedPieceSnapshot snapshot, int[] clearedRows, int boardWidth);
+
+        void beforeNextSpawn();
     }
 
     private static final int DEFAULT_ITEM_SPAWN_INTERVAL = 2;
@@ -159,6 +177,9 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
     private long lastInputMillis = System.currentTimeMillis();
     private int inactivityPenaltyStage;
     private long pauseStartedAt = -1;
+    private long gameplayStartedAtMillis = -1;
+    private long accumulatedPauseMillis;
+    private LockedPieceSnapshot lastLockedPieceSnapshot;
 
     private UiBridge uiBridge = NO_OP_UI_BRIDGE;
     private GameState currentState;
@@ -194,6 +215,10 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
 
     private void registerHandler(GameHandler handler) {
         handlers.put(handler.getState(), handler);
+        if (handler.getState() == GameState.PLAYING && defaultPlayHandler == null) {
+            // 싱글 플레이 루프 복귀 시 다시 사용할 기본 핸들러를 저장해 둔다.
+            defaultPlayHandler = handler;
+        }
     }
 
     public void changeState(GameState next) {
@@ -221,6 +246,24 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
 
     public Board getBoard() {
         return board;
+    }
+
+    /**
+     * 멀티 대전 규칙 엔진이 라인 삭제/스폰 이벤트를 구독하도록 등록한다.
+     * Local/P2P 컨트롤러가 훅을 넣어 쓰레기 줄 버퍼를 계산할 때 사용한다.
+     */
+    public void addMultiplayerHook(MultiplayerHook hook) {
+        if (hook == null) {
+            return;
+        }
+        multiplayerHooks.add(hook);
+    }
+
+    public void removeMultiplayerHook(MultiplayerHook hook) {
+        if (hook == null) {
+            return;
+        }
+        multiplayerHooks.remove(hook);
     }
 
     /**
@@ -372,6 +415,19 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         return currentTick;
     }
 
+    public long getElapsedMillis() {
+        if (gameplayStartedAtMillis <= 0) {
+            return 0L;
+        }
+        long now = System.currentTimeMillis();
+        long paused = accumulatedPauseMillis;
+        if (pauseStartedAt > 0) {
+            paused += Math.max(0L, now - pauseStartedAt);
+        }
+        long elapsed = now - gameplayStartedAtMillis - paused;
+        return Math.max(0L, elapsed);
+    }
+
     public GameMode getCurrentMode() {
         return currentMode;
     }
@@ -460,11 +516,21 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         GameMode selected = mode == null ? GameMode.STANDARD : mode;
         this.currentMode = selected;
         this.lastMode = selected;
+        if (activeLocalSession != null) {
+            // 로컬 멀티가 활성화되어 있다면 각 플레이어 모델을 동일한 모드로 재가동한다.
+            activeLocalSession.restartPlayers(selected);
+            handlers.put(GameState.PLAYING, activeLocalSession.handler());
+        } else if (defaultPlayHandler != null) {
+            handlers.put(GameState.PLAYING, defaultPlayHandler);
+        }
         resetGameplayState();
         changeState(GameState.PLAYING);
     }
 
     public void spawnIfNeeded() {
+        if (gameplayEngine.getActiveBlock() == null) {
+            notifyBeforeNextSpawnHooks();
+        }
         gameplayEngine.spawnIfNeeded();
         if (gameplayEngine.getActiveBlock() == null) {
             changeState(GameState.GAME_OVER);
@@ -517,10 +583,8 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
 
     @Override
     public void onBlockLocked(Block block) {
-        if (currentMode != GameMode.ITEM) {
-            return;
-        }
-        if (activeItemBlock != null && activeItemBlock.getDelegate() == block) {
+        cacheLastLockedPiece(block);
+        if (currentMode == GameMode.ITEM && activeItemBlock != null && activeItemBlock.getDelegate() == block) {
             itemManager.onLock(itemContext, activeItemBlock);
             activeItemBlock = null;
         }
@@ -532,6 +596,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
             return;
         }
         totalClearedLines += clearedLines;
+        notifyMultiplayerLineClear();
         updateGravityProgress();
         gameplayEngine.pauseForLineClear(LINE_CLEAR_HIGHLIGHT_DELAY_MS);
         if (currentMode != GameMode.ITEM) {
@@ -670,6 +735,8 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         gameplayEngine.setGravityLevel(0);
         gameplayEngine.setActiveBlock(null);
         stopClockCompletely();
+        gameplayStartedAtMillis = -1;
+        accumulatedPauseMillis = 0;
     }
 
     private void resetGameplayState() {
@@ -686,6 +753,8 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         currentGravityLevel = 0;
         inactivityPenaltyStage = 0;
         lastInputMillis = System.currentTimeMillis();
+        gameplayStartedAtMillis = lastInputMillis;
+        accumulatedPauseMillis = 0;
         currentTick = 0;
         scoreMultiplier = 1.0;
         doubleScoreUntilTick = 0;
@@ -694,10 +763,44 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         gameplayEngine.setActiveBlock(null);
         gameplayEngine.setGravityLevel(0);
         gameplayEngine.stopClockCompletely();
+        pauseStartedAt = -1;
     }
 
     private void stopClockCompletely() {
         gameplayEngine.stopClockCompletely();
+    }
+
+    /**
+     * 로컬 멀티 세션을 상태 머신에 연결한다. (재호출 시 마지막 세션을 덮어쓴다)
+     */
+    public void enableLocalMultiplayer(LocalMultiplayerSession session) {
+        if (session == null) {
+            return;
+        }
+        this.activeLocalSession = session;
+        handlers.put(GameState.PLAYING, session.handler());
+    }
+
+    /**
+     * 메뉴 복귀 / 싱글 모드 전환 등으로 더 이상 세션이 필요 없을 때 정리한다.
+     */
+    public void clearLocalMultiplayerSession() {
+        if (activeLocalSession == null) {
+            return;
+        }
+        activeLocalSession.shutdown();
+        if (defaultPlayHandler != null) {
+            handlers.put(GameState.PLAYING, defaultPlayHandler);
+        }
+        activeLocalSession = null;
+    }
+
+    public boolean isLocalMultiplayerActive() {
+        return activeLocalSession != null;
+    }
+
+    public Optional<LocalMultiplayerSession> getActiveLocalMultiplayerSession() {
+        return Optional.ofNullable(activeLocalSession);
     }
 
     public void stepGameplay() {
@@ -778,6 +881,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
             if (pauseStartedAt > 0) {
                 long pausedDuration = System.currentTimeMillis() - pauseStartedAt;
                 lastInputMillis += pausedDuration;
+                accumulatedPauseMillis += Math.max(0L, pausedDuration);
                 pauseStartedAt = -1;
             }
             changeState(GameState.PLAYING);
@@ -788,6 +892,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         if (currentState != GameState.MENU) {
             resetRuntimeForMenu();
             changeState(GameState.MENU);
+            clearLocalMultiplayerSession();
         }
     }
 
@@ -945,5 +1050,57 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
             // TODO: 이름 글자 추가
         }
         uiBridge.refreshBoard();
+    }
+    // - 마지막으로 잠긴 블록의 모양/위치를 스냅샷(LockedPieceSnapshot)으로 저장해 둔다.
+    // - GameplayEngine이 줄을 지웠을 때, 어떤 블록이 몇 줄을 지웠는지 멀티플레이어 훅에 알려준다.
+    // - 다음 블록이 스폰되기 직전에 멀티플레이어 훅을 호출하여, 대기 중인 공격 라인 등을
+    //   실제 보드에 적용할 수 있게 한다.
+    // => 싱글 플레이 핵심 로직은 그대로 두고, 멀티 전용 규칙(공격/쓰레기 줄 처리)은
+    //    MultiplayerHook 구현체에서 처리하도록 하기 위한 연결 지점
+
+    private void notifyBeforeNextSpawnHooks() {
+        if (multiplayerHooks.isEmpty()) {
+            return;
+        }
+        for (MultiplayerHook hook : multiplayerHooks) {
+            hook.beforeNextSpawn();
+        }
+    }
+
+    private void cacheLastLockedPiece(Block block) {
+        if (block == null) {
+            lastLockedPieceSnapshot = null;
+            return;
+        }
+        BlockShape shape = block.getShape();
+        List<Cell> cells = new ArrayList<>();
+        for (int y = 0; y < shape.height(); y++) {
+            for (int x = 0; x < shape.width(); x++) {
+                if (!shape.filled(x, y)) {
+                    continue;
+                }
+                cells.add(new Cell(block.getX() + x, block.getY() + y));
+            }
+        }
+        lastLockedPieceSnapshot = LockedPieceSnapshot.of(cells);
+    }
+
+    private void notifyMultiplayerLineClear() {
+        if (multiplayerHooks.isEmpty() || lastLockedPieceSnapshot == null) {
+            return;
+        }
+        List<Integer> rows = gameplayEngine == null ? Collections.emptyList() : gameplayEngine.getLastClearedRows();
+        if (rows == null || rows.isEmpty()) {
+            return;
+        }
+        int[] cleared = new int[rows.size()];
+        for (int i = 0; i < rows.size(); i++) {
+            cleared[i] = rows.get(i);
+        }
+        LockedPieceSnapshot snapshot = lastLockedPieceSnapshot;
+        for (MultiplayerHook hook : multiplayerHooks) {
+            hook.onPieceLocked(snapshot, cleared, Board.W);
+        }
+        lastLockedPieceSnapshot = null;
     }
 }
