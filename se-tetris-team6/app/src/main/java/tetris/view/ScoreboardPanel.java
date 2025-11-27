@@ -34,6 +34,7 @@ public class ScoreboardPanel extends JPanel implements ScoreView {
     private final JList<String> standardList = new JList<>(standardModel);
     private final JList<String> itemList = new JList<>(itemModel);
     private final JButton backButton = new JButton("Back to Menu");
+    private final JButton resetButton = new JButton("Reset Scores");
     private int standardHighlight = -1;
     private int itemHighlight = -1;
 
@@ -132,6 +133,11 @@ public class ScoreboardPanel extends JPanel implements ScoreView {
         styleBackButton(backButton);
         left.add(backButton);
         wrapper.add(left, BorderLayout.WEST);
+        JPanel right = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT));
+        right.setOpaque(false);
+        styleResetButton(resetButton);
+        right.add(resetButton);
+        wrapper.add(right, BorderLayout.EAST);
         return wrapper;
     }
 
@@ -153,11 +159,27 @@ public class ScoreboardPanel extends JPanel implements ScoreView {
         button.setBorder(BorderFactory.createEmptyBorder(8, 16, 8, 16));
     }
 
+    private void styleResetButton(JButton button) {
+        button.setText("Reset Scores");
+        button.setFont(new Font("SansSerif", Font.BOLD, 16));
+        button.setFocusPainted(false);
+        button.setBackground(new Color(120, 0, 0));
+        button.setForeground(Color.WHITE);
+        button.setBorder(BorderFactory.createEmptyBorder(8, 16, 8, 16));
+    }
+
     public void setBackAction(ActionListener listener) {
         for (ActionListener l : backButton.getActionListeners()) {
             backButton.removeActionListener(l);
         }
         backButton.addActionListener(listener);
+    }
+
+    public void setResetAction(ActionListener listener) {
+        for (ActionListener l : resetButton.getActionListeners()) {
+            resetButton.removeActionListener(l);
+        }
+        resetButton.addActionListener(listener);
     }
 
     @Override
