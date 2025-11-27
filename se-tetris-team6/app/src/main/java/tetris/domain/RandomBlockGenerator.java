@@ -10,7 +10,12 @@ import java.util.Random;
  */
 public final class RandomBlockGenerator implements BlockGenerator {
 
-    private final BlockKind[] kinds = BlockKind.values();
+    // private final BlockKind[] kinds = BlockKind.values();
+    private final BlockKind[] kinds =  {
+        BlockKind.I, BlockKind.J, BlockKind.L,
+        BlockKind.O, BlockKind.S, BlockKind.T,
+        BlockKind.Z
+    };
     private final Random random;
 
     // lookahead buffer so peekNext() can report the upcoming kind without
