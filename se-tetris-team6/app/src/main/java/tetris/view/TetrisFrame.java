@@ -321,6 +321,8 @@ public class TetrisFrame extends JFrame {
                         : gameModel.loadTopScores(GameMode.ITEM, 10);
                 int stdHighlight = std != null ? std.highlightIndex() : -1;
                 int itemHighlight = itm != null ? itm.highlightIndex() : -1;
+                System.out.printf("[UI] scoreboard render standard size=%d highlight=%d, item size=%d highlight=%d%n",
+                        standard.size(), stdHighlight, item.size(), itemHighlight);
                 scoreboardPanel.renderLeaderboard(GameMode.STANDARD, standard, stdHighlight);
                 scoreboardPanel.renderLeaderboard(GameMode.ITEM, item, itemHighlight);
                 pendingStandardHighlight = null;
