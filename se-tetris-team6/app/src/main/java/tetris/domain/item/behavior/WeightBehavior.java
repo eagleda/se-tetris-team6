@@ -39,7 +39,7 @@ public final class WeightBehavior implements ItemBehavior {
             return;
         }
         int xLeft = block.getX();
-        int yBelow = block.getY() + 1;
+        int yBelow = block.getY();
         ctx.requestClearCells(xLeft, yBelow, width, extraHeight);
         ctx.spawnParticles(block.getX(), block.getY(), "weight");
         ctx.playSfx("weight_drop");
