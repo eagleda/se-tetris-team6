@@ -91,7 +91,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
 
     private final Board board = new Board();
     private final InputState inputState = new InputState();
-    private final tetris.domain.engine.GameplayEngine gameplayEngine;
+    final tetris.domain.engine.GameplayEngine gameplayEngine;
     private final ScoreRepository scoreRepository;
     private final ScoreRuleEngine scoreEngine;
     private final tetris.domain.leaderboard.LeaderboardRepository leaderboardRepository;
