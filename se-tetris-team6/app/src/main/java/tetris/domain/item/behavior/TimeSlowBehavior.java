@@ -13,13 +13,17 @@ import tetris.domain.item.model.ItemBlockModel;
  */
 public final class TimeSlowBehavior implements ItemBehavior {
 
-    private final long durationTicks;
-    private final double factor;
+    private static final long DEFAULT_DURATION_MS = 15_000L;
+
+    private final long durationMs;
     private boolean triggered;
 
-    public TimeSlowBehavior(long durationTicks, double factor) {
-        this.durationTicks = durationTicks;
-        this.factor = factor;
+    public TimeSlowBehavior() {
+        this(DEFAULT_DURATION_MS);
+    }
+
+    public TimeSlowBehavior(long durationMs) {
+        this.durationMs = Math.max(0L, durationMs);
     }
 
     @Override
@@ -45,8 +49,9 @@ public final class TimeSlowBehavior implements ItemBehavior {
             itemY += block.getItemCellY();
         }
         Map<String, Object> meta = new HashMap<>();
-        meta.put("factor", factor);
-        ctx.addGlobalBuff(id(), durationTicks, meta);
+        meta.put("durationMs", durationMs);
+        meta.put("levelDelta", Integer.valueOf(-1));
+        ctx.addGlobalBuff(id(), 0, meta);
         ctx.spawnParticles(itemX, itemY, "text:Slow");
         ctx.playSfx("slow_on");
         triggered = true;

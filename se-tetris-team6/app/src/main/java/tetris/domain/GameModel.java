@@ -104,7 +104,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
     private final Random itemRandom = new Random();
     private final List<Supplier<ItemBehavior>> behaviorFactories = List.of(
             () -> new DoubleScoreBehavior(600, 2.0),
-            () -> new TimeSlowBehavior(600, 0.5),
+            TimeSlowBehavior::new,
             () -> new BombBehavior(),
             () -> new LineClearBehavior(),
             () -> new WeightBehavior());
@@ -154,6 +154,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
     private static final int LINES_PER_SPEED_STEP = 4;
     private static final int MAX_SPEED_LEVEL = 20;
     private static final int LINE_CLEAR_HIGHLIGHT_DELAY_MS = 250;
+    private static final long SLOW_ITEM_DURATION_MS = 15_000L;
     private static final long INACTIVITY_STAGE1_MS = 2000;
     private static final long INACTIVITY_STAGE2_MS = 5000;
     private static final int INACTIVITY_PENALTY_POINTS = 10;
@@ -165,8 +166,8 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
     private long currentTick;
     private double scoreMultiplier = 1.0;
     private long doubleScoreUntilTick;
-    private double slowFactor = 1.0;
-    private long slowUntilTick;
+    private int slowLevelOffset;
+    private long slowBuffExpiresAtMs;
     private ItemContextImpl itemContext;
     private Supplier<ItemBehavior> behaviorOverride = null;
     private int itemSpawnIntervalLines = DEFAULT_ITEM_SPAWN_INTERVAL;
@@ -297,7 +298,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
     }
 
     public int getSpeedLevel() {
-        return currentGravityLevel;
+        return effectiveGravityLevel();
     }
 
     public boolean isColorBlindMode() {
@@ -382,20 +383,25 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         if (currentMode != GameMode.ITEM) {
             return;
         }
-        long duration = Math.max(0, durationTicks);
-        long expiry = currentTick + duration;
         Map<String, Object> data = meta == null ? Collections.emptyMap() : meta;
         if ("double_score".equals(buffId)) {
+            long duration = Math.max(0, durationTicks);
+            long expiry = currentTick + duration;
             Object factorObj = data.getOrDefault("factor", Double.valueOf(2.0));
             double factor = factorObj instanceof Number ? ((Number) factorObj).doubleValue() : 2.0;
             scoreMultiplier = Math.max(0.0, factor);
             doubleScoreUntilTick = expiry;
             scoreEngine.setMultiplier(scoreMultiplier);
         } else if ("slow".equals(buffId)) {
-            Object factorObj = data.getOrDefault("factor", Double.valueOf(0.5));
-            slowFactor = Math.max(0.1, factorObj instanceof Number ? ((Number) factorObj).doubleValue() : 0.5);
-            slowUntilTick = expiry;
-            gameplayEngine.setSpeedModifier(slowFactor);
+            Object durationObj = data.get("durationMs");
+            long durationMs = durationObj instanceof Number
+                    ? Math.max(0L, ((Number) durationObj).longValue())
+                    : SLOW_ITEM_DURATION_MS;
+            Object levelDeltaObj = data.getOrDefault("levelDelta", Integer.valueOf(-1));
+            int levelDelta = levelDeltaObj instanceof Number ? ((Number) levelDeltaObj).intValue() : -1;
+            slowLevelOffset = Math.min(0, levelDelta);
+            slowBuffExpiresAtMs = System.currentTimeMillis() + durationMs;
+            applyGravityLevel();
         }
     }
 
@@ -475,7 +481,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
     }
 
     public void resetItemTestingConfig() {
-        this.behaviorOverride = () -> new TimeSlowBehavior(600, 0.5);
+        this.behaviorOverride = TimeSlowBehavior::new;
         this.itemSpawnIntervalLines = DEFAULT_ITEM_SPAWN_INTERVAL;
     }
 
@@ -634,7 +640,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         return switch (key) {
             case "line_clear", "lineclear", "line-clear" -> LineClearBehavior::new;
             case "double_score", "doublescore", "double-score", "double" -> () -> new DoubleScoreBehavior(600, 2.0);
-            case "time_slow", "timeslow", "slow" -> () -> new TimeSlowBehavior(600, 0.5);
+            case "time_slow", "timeslow", "slow" -> TimeSlowBehavior::new;
             case "bomb" -> () -> new BombBehavior();
             case "weight", "weight_drop", "weight-drop" -> WeightBehavior::new;
             default -> throw new IllegalArgumentException("Unknown item behavior: " + behaviorId);
@@ -658,10 +664,10 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
             scoreMultiplier = 1.0;
             scoreEngine.setMultiplier(scoreMultiplier);
         }
-        if (slowUntilTick > 0 && tick >= slowUntilTick) {
-            slowUntilTick = 0;
-            slowFactor = 1.0;
-            gameplayEngine.setSpeedModifier(slowFactor);
+        if (slowBuffExpiresAtMs > 0 && System.currentTimeMillis() >= slowBuffExpiresAtMs) {
+            slowBuffExpiresAtMs = 0;
+            slowLevelOffset = 0;
+            applyGravityLevel();
         }
     }
 
@@ -686,7 +692,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
             int bonusLevels = desiredLevel - currentGravityLevel;
             currentGravityLevel = desiredLevel;
             if (gameplayEngine != null) {
-                gameplayEngine.setGravityLevel(currentGravityLevel);
+                applyGravityLevel();
             }
             awardSpeedBonus(bonusLevels);
             uiBridge.refreshBoard();
@@ -739,11 +745,11 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         pauseStartedAt = -1;
         currentTick = 0;
         scoreMultiplier = 1.0;
-        slowFactor = 1.0;
-        slowUntilTick = 0;
+        slowLevelOffset = 0;
+        slowBuffExpiresAtMs = 0;
         doubleScoreUntilTick = 0;
         gameplayEngine.setSpeedModifier(1.0);
-        gameplayEngine.setGravityLevel(0);
+        applyGravityLevel();
         gameplayEngine.setActiveBlock(null);
         stopClockCompletely();
     }
@@ -765,11 +771,25 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         currentTick = 0;
         scoreMultiplier = 1.0;
         doubleScoreUntilTick = 0;
-        slowFactor = 1.0;
-        slowUntilTick = 0;
+        slowLevelOffset = 0;
+        slowBuffExpiresAtMs = 0;
         gameplayEngine.setActiveBlock(null);
-        gameplayEngine.setGravityLevel(0);
+        applyGravityLevel();
         gameplayEngine.stopClockCompletely();
+    }
+
+    private void applyGravityLevel() {
+        if (gameplayEngine == null) {
+            return;
+        }
+        int effectiveLevel = effectiveGravityLevel();
+        gameplayEngine.setSpeedModifier(1.0); // neutralize any lingering modifiers
+        gameplayEngine.setGravityLevel(effectiveLevel);
+    }
+
+    private int effectiveGravityLevel() {
+        int level = currentGravityLevel + slowLevelOffset;
+        return Math.max(0, level);
     }
 
     private void stopClockCompletely() {
