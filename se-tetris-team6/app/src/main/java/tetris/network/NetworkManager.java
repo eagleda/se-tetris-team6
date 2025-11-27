@@ -2,60 +2,17 @@ package tetris.network;
 
 import tetris.concurrent.GameThread;
 import tetris.concurrent.NetworkThread;
-import tetris.concurrent.GameMessage;
-import tetris.concurrent.GameMessage.MessageType;
-import tetris.concurrent.GameEventListener; // GameThread에서 사용하는 public 인터페이스 가정
-
-// =================================================================
-// 임시 더미 클래스/인터페이스 (컴파일 가능하도록 public으로 선언)
-// =================================================================
-
-// NetworkThread가 NetworkManager에게 콜백을 보낼 때 사용하는 인터페이스
-// 기존의 NetThreadManager 역할을 대체
-public interface INetworkThreadCallback {
-    void handleReceivedMessage(GameMessage message);
-    void handleConnectionEstablished();
-    void handleConnectionLost();
-    void handleLatencyWarning(long latency);
-    void handleNetworkError(Exception error);
-}
-
-public class GameServer { /* ... */ }
-public class GameClient { /* ... */ }
-public class NetworkSettings { /* ... */ }
-public class ConnectionInfo { /* ... */ }
-public class NetworkStatus { /* ... */ }
-public class PlayerInput {
-    public enum Type { MOVE_LEFT, MOVE_RIGHT, ROTATE, SOFT_DROP, HARD_DROP, PAUSE }
-    private final Type type;
-    public PlayerInput(Type type) { this.type = type; }
-    public Type getType() { return type; }
-}
-public class AttackLine { /* ... */ }
-public class GameState { /* ... */ }
-
-public enum NetworkMode {
-    OFFLINE, SERVER, CLIENT
-}
-
-public interface NetworkEventListener {
-    void onConnected();
-    void onDisconnected();
-    void onConnectionError(String error);
-    void onLatencyWarning(long latency);
-}
-
-public interface GameDataListener {
-    void onOpponentInput(PlayerInput input);
-    void onIncomingAttack(AttackLine[] lines);
-    void onGameStateUpdate(GameState state);
-    void onGameStart();
-    void onGameEnd(String winner);
-}
-
-// =================================================================
-// NetworkManager 구현 시작
-// =================================================================
+import tetris.domain.model.GameState;
+import tetris.network.protocol.GameMessage;
+import tetris.network.protocol.MessageType;
+import tetris.network.protocol.AttackLine;
+import tetris.network.protocol.PlayerInput;
+import tetris.network.NetworkMode;
+import tetris.network.NetworkEventListener;
+import tetris.network.GameDataListener;
+import tetris.network.INetworkThreadCallback;
+import tetris.network.server.GameServer;
+import tetris.network.client.GameClient;
 
 /**
  * 네트워크 기능의 통합 관리자 및 외부 인터페이스
@@ -79,18 +36,26 @@ public class NetworkManager implements INetworkThreadCallback {
     private GameDataListener gameDataListener;
 
     // === 설정 관리 ===
-    private NetworkSettings settings;
     private final String localPlayerId = "LocalPlayer";
 
     // === 생성자 ===
     public NetworkManager(GameThread localGameThread) {
-        this.localGameThread = localGameThread;
-        // GameThread가 NetworkManager를 통해 이벤트를 보낼 수 있도록 설정
-        // GameEventListener는 tetris.concurrent 패키지에 public으로 존재한다고 가정
-        this.localGameThread.setNetworkListener(
-            (AttackLine[] lines) -> sendAttackLines(lines)
-        );
-    }
+    this.localGameThread = localGameThread;
+    
+    // GameThread가 NetworkManager를 통해 이벤트를 보낼 수 있도록 GameEventListener를 구현하여 설정
+    // GameEventListener는 두 개의 메서드를 가지므로 익명 클래스를 사용해야 함
+    this.localGameThread.setNetworkListener(new GameEventListener() {
+        @Override
+        public void sendAttackLines(AttackLine[] lines) {
+            sendAttackLines(lines);
+        }
+
+        @Override
+        public void sendPlayerInput(PlayerInput input) {
+            sendPlayerInput(input);
+        }
+    });
+}
 
     // === 주요 메서드들 ===
 
@@ -254,13 +219,4 @@ public class NetworkManager implements INetworkThreadCallback {
         return isConnected() ? 2 : 1;
     }
 
-    public NetworkStatus getNetworkStatus() {
-        return null;
-    }
-
-    // === 설정 관리 ===
-
-    public void saveRecentConnection(String ip, int port) { /* ... */ }
-    public ConnectionInfo getRecentConnection() { return null; }
-    public void updateSettings(NetworkSettings settings) { this.settings = settings; }
 }

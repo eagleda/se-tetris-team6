@@ -6,5 +6,6 @@ public enum InputType {
     MOVE_RIGHT,
     ROTATE,
     DROP,
-    HARD_DROP
+    HARD_DROP,
+    PAUSE
 }

@@ -5,18 +5,21 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import tetris.network.GameEventListener;
+import tetris.network.protocol.AttackLine;
+import tetris.network.protocol.PlayerInput;
+// ============================
 
 // =================================================================
 // 임시 더미 클래스/인터페이스 (실제 프로젝트 구조에 맞게 교체 필요)
-// ThreadSafeGameModel.java의 import를 따름
+// GameThread에서 사용하는 더미 클래스 중 프로토콜이 아닌 것들만 남김
 // =================================================================
-class Direction {
+public class Direction {
     public static final Direction LEFT = new Direction();
     public static final Direction RIGHT = new Direction();
     public static final Direction DOWN = new Direction();
 }
 class RotationType {}
-class AttackLine {}
 class GameState {
     public static final GameState PLAYING = new GameState();
     public static final GameState GAME_OVER = new GameState();
@@ -31,25 +34,15 @@ class LineClearResult {
     public int getLinesCleared() { return linesCleared; }
     public AttackLine[] getAttackLines() { return attackLines; }
 }
-class PlayerInput {
-    public enum Type { MOVE_LEFT, MOVE_RIGHT, ROTATE, SOFT_DROP, HARD_DROP, PAUSE }
-    private final Type type;
-    public PlayerInput(Type type) { this.type = type; }
-    public Type getType() { return type; }
-}
+// PlayerInput 더미 클래스 제거됨 (import로 대체)
 class GameEvent {
     public enum Type { LINE_CLEARED, GAME_OVER, SCORE_UPDATE }
     private final Type type;
     public GameEvent(Type type) { this.type = type; }
     
-    // 누락된 Getter 메소드 추가
     public Type getType() {
         return type;
     }
-}
-interface GameEventListener {
-    // 네트워크 스레드(NetworkManager)로 공격 라인을 전송하는 인터페이스
-    void sendAttackLines(AttackLine[] attackLines);
 }
 // ThreadSafeGameModel의 가상 인터페이스 (실제 구현 시 교체 필요)
 class ThreadSafeGameModel {
@@ -60,9 +53,9 @@ class ThreadSafeGameModel {
     public boolean rotateBlock(RotationType type) { /* ... */ return true; }
     public LineClearResult tryPlaceBlock() {
         // 블록을 보드에 확정하고 줄 삭제를 시도
-        // 3줄 삭제 발생 시 더미 공격 라인 반환 시뮬레이션
         if (Math.random() < 0.1) {
-            AttackLine[] attacks = new AttackLine[1];
+            // AttackLine은 이제 tetris.network.protocol.AttackLine을 사용
+            AttackLine[] attacks = {new AttackLine(1)}; // 더미 공격 라인 생성
             return new LineClearResult(3, attacks);
         }
         return new LineClearResult(0, null);
@@ -84,11 +77,7 @@ class ThreadSafeGameModel {
 
 /**
  * 게임 로직을 담당하는 전용 스레드
- * - 게임 상태 업데이트 (블록 이동, 회전, 줄 삭제 등)
- * - 게임 타이머 관리 (블록 자동 낙하)
- * - 플레이어 입력 처리 (키보드 이벤트)
- * - 네트워크 스레드와 동기화
- * - 멀티플레이어 게임에서 각 플레이어별로 하나씩 생성
+ * ...
  */
 public class GameThread implements Runnable {
     // === 게임 상태 관리 ===
@@ -98,6 +87,7 @@ public class GameThread implements Runnable {
 
     // === 입력 처리 ===
     // UI 입력 및 네트워크에서 받은 입력(상대방 입력)을 처리
+    // PlayerInput은 이제 tetris.network.protocol.PlayerInput을 사용
     private final BlockingQueue<PlayerInput> inputQueue = new LinkedBlockingQueue<>();
     // 게임 내부에서 발생한 이벤트(줄 삭제, 게임 오버 등)를 처리
     private final BlockingQueue<GameEvent> gameEventQueue = new LinkedBlockingQueue<>();
@@ -118,8 +108,8 @@ public class GameThread implements Runnable {
     // === 주요 메서드들 ===
 
     // 생성자 - 게임 모델과 플레이어 정보 받음
-    public GameThread(ThreadSafeGameModel gameModel, String playerId, boolean isLocal) {
-        this.gameModel = gameModel;
+    public GameThread(ThreadSafeGameModel client1Model, String playerId, boolean isLocal) {
+        this.gameModel = client1Model;
         this.playerId = playerId;
         this.isLocalPlayer = isLocal;
         this.lastUpdateTime = System.currentTimeMillis();
@@ -208,7 +198,9 @@ public class GameThread implements Runnable {
         // 큐에 있는 모든 입력을 처리 (최대 처리 시간 제한을 두는 것이 좋음)
         PlayerInput input;
         while ((input = inputQueue.poll()) != null) {
-            switch (input.getType()) {
+            // 1. 로컬 게임 로직 처리
+            // PlayerInput.InputType은 PlayerInput 레코드의 필드이므로 input.inputType()을 사용
+            switch (input.inputType()) { 
                 case MOVE_LEFT:
                     gameModel.moveBlock(Direction.LEFT);
                     break;
@@ -217,10 +209,6 @@ public class GameThread implements Runnable {
                     break;
                 case ROTATE:
                     gameModel.rotateBlock(new RotationType());
-                    break;
-                case SOFT_DROP:
-                    gameModel.moveBlock(Direction.DOWN); // 소프트 드롭
-                    lastBlockFallTime = System.currentTimeMillis(); // 낙하 시간 초기화
                     break;
                 case HARD_DROP:
                     // TODO: 하드 드롭 로직 구현 (블록을 즉시 바닥으로 이동)
@@ -242,8 +230,18 @@ public class GameThread implements Runnable {
                     // 알 수 없는 입력
                     break;
             }
-            // 로컬 플레이어의 입력이라면 네트워크로 전송해야 할 수도 있음 (P2P 동기화 방식에 따라 다름)
-            // 여기서는 입력 처리 후 상태 동기화 대신 공격 라인 전송에 집중
+            
+            // 2. (추가) 로컬 플레이어의 입력이라면 네트워크로 전송
+            // 상대방의 입력은 NetworkManager에서 처리되어 이미 inputQueue에 들어왔으므로,
+            // 여기서 다시 전송하면 무한 루프가 발생할 수 있음.
+            // 따라서, 이 로직은 UI에서 직접 addPlayerInput을 호출할 때만 실행되어야 하거나,
+            // PlayerInput 객체에 isLocal 필드를 추가하여 구분해야 함.
+            // 현재는 P2P 동기화 방식(입력을 상대방에게 전송하여 상대방 보드에 적용)을 따른다고 가정하고,
+            // 로컬 플레이어의 입력만 전송합니다.
+            if (isLocalPlayer && networkListener != null) {
+                // GameEventListener에 sendPlayerInput이 추가되었으므로 호출 가능
+                networkListener.sendPlayerInput(input);
+            }
         }
     }
 
