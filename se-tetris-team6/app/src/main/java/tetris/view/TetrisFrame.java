@@ -247,17 +247,22 @@ public class TetrisFrame extends JFrame {
         pausePanel = new PausePanel() {
             @Override
             protected void onContinueClicked() {
+                System.out.println("[UI] PausePanel: Continue clicked");
                 gameModel.resumeGame();
             }
 
             @Override
             protected void onGoMainClicked() {
-                displayPanel(mainPanel);
+                System.out.println("[UI] PausePanel: Main clicked");
+                pausePanel.setVisible(false);
+                prevPanel = null;
                 gameModel.quitToMenu();
+                displayPanel(mainPanel);
             }
 
             @Override
             protected void onExitClicked() {
+                System.out.println("[UI] PausePanel: Exit clicked");
                 TetrisFrame.this.dispatchEvent(new WindowEvent(TetrisFrame.this, WindowEvent.WINDOW_CLOSING));
             }
         };
@@ -288,7 +293,11 @@ public class TetrisFrame extends JFrame {
     }
 
     public void displayPanel(JPanel panel) {
+        System.out.printf("[UI] displayPanel: from=%s to=%s%n",
+                currPanel == null ? "null" : currPanel.getClass().getSimpleName(),
+                panel == null ? "null" : panel.getClass().getSimpleName());
         if (currPanel != null && currPanel != prevPanel) {
+            System.out.printf("[UI] hiding current panel: %s%n", currPanel.getClass().getSimpleName());
             currPanel.setVisible(false);
         }
         prevPanel = currPanel;
@@ -297,6 +306,7 @@ public class TetrisFrame extends JFrame {
         // leaderboard repo
         if (panel == scoreboardPanel) {
             try {
+                System.out.println("[UI] loading scoreboard data (with pending highlight if any)");
                 LeaderboardResult std = pendingStandardHighlight;
                 LeaderboardResult itm = pendingItemHighlight;
                 List<LeaderboardEntry> standard = std != null
@@ -313,11 +323,13 @@ public class TetrisFrame extends JFrame {
                 pendingItemHighlight = null;
             } catch (Exception ex) {
                 // ignore; show existing data if loading fails
+                System.out.printf("[UI][WARN] scoreboard load failed: %s%n", ex.getMessage());
             }
         }
         // if (prevPanel != null)
         // prevPanel.setVisible(false);
         panel.setVisible(true);
+        System.out.printf("[UI] now showing panel: %s%n", panel.getClass().getSimpleName());
         panel.requestFocusInWindow();
         layeredPane.moveToFront(panel);
         layeredPane.revalidate();
