@@ -189,7 +189,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
     private int slowLevelOffset;
     private long slowBuffExpiresAtMs;
     private ItemContextImpl itemContext;
-    private Supplier<ItemBehavior> behaviorOverride = () -> new TimeSlowBehavior();
+    private Supplier<ItemBehavior> behaviorOverride = () -> new WeightBehavior();
     private int itemSpawnIntervalLines = DEFAULT_ITEM_SPAWN_INTERVAL;
     private int currentGravityLevel;
     private boolean colorBlindMode;
@@ -939,6 +939,13 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         if (!isPlayingState() || !ensureActiveBlockPresent()) {
             return;
         }
+        // weight 아이템일 때 회전 무시
+        if (isItemMode() && activeItemBlock != null && !activeItemBlock.getBehaviors().isEmpty()) {
+            ItemBehavior behavior = activeItemBlock.getBehaviors().get(0);
+            if ("weight".equals(behavior.id())) {
+                return;
+            }
+        }
         recordPlayerInput();
         gameplayEngine.rotateBlockClockwise();
     }
@@ -946,6 +953,13 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
     public void rotateBlockCounterClockwise() {
         if (!isPlayingState() || !ensureActiveBlockPresent()) {
             return;
+        }
+        // weight 아이템일 때 회전 무시
+        if (isItemMode() && activeItemBlock != null && !activeItemBlock.getBehaviors().isEmpty()) {
+            ItemBehavior behavior = activeItemBlock.getBehaviors().get(0);
+            if ("weight".equals(behavior.id())) {
+                return;
+            }
         }
         recordPlayerInput();
         gameplayEngine.rotateBlockCounterClockwise();
