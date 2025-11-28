@@ -266,11 +266,12 @@ public class GameThread implements Runnable, GameplayEngine.GameplayEvents {
             // 블록 생성 필요 시 처리
             if (gameModel.getActiveBlock() == null) {
                 gameModel.spawnIfNeeded();
-                
-                // 게임 오버 확인
-                if (gameModel.getActiveBlock() == null) {
-                    gameEventQueue.offer(new GameEvent(GameEvent.Type.GAME_OVER));
-                }
+            }
+            // 스폰 실패 또는 배치 불가 상태라면 즉시 게임 오버 처리
+            if (gameModel.getActiveBlock() == null && gameModel.getCurrentState() != GameState.GAME_OVER) {
+                System.out.println("[LOG][GameThread] Active block null after spawnIfNeeded → forcing onGameOver()");
+                gameModel.onGameOver();
+                gameEventQueue.offer(new GameEvent(GameEvent.Type.GAME_OVER));
             }
         } finally {
             gameStateLock.writeLock().unlock();

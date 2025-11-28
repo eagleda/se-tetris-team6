@@ -696,7 +696,10 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         if (currentMode == GameMode.STANDARD || currentMode == GameMode.ITEM /* 또는 대전 모드 플래그 */) {
             commitPendingGarbageLines();
         }
-    }
+
+        // 다음 스폰 전에 대기 중인 공격(incoming)을 보드에 주입한다.
+        notifyBeforeNextSpawnHooks();
+      }
 
     @Override
     public void onBlockRotated(Block block, int times) {
@@ -740,6 +743,14 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
             refreshBuffs(tick);
         }
         checkInactivityPenalty();
+    }
+
+    @Override
+    public void onGameOver() {
+        if (currentState != GameState.GAME_OVER) {
+            changeState(GameState.GAME_OVER);
+            showGameOverScreen();
+        }
     }
 
     private Supplier<ItemBehavior> resolveBehaviorOverride(String behaviorId) {

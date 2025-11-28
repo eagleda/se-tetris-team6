@@ -2,6 +2,7 @@ package tetris.multiplayer.model;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 /**
  * 멀티 대전 규칙을 계산하는 순수 도메인 컴포넌트.
@@ -13,6 +14,7 @@ public final class VersusRules {
     private final PendingAttackBuffer p1Buffer = new PendingAttackBuffer();
     private final PendingAttackBuffer p2Buffer = new PendingAttackBuffer();
     private final int minLinesForAttack;
+    private final Random random = new Random();
 
     public VersusRules() {
         this(2);
@@ -39,7 +41,7 @@ public final class VersusRules {
         if (clearedYs == null || clearedYs.length < minLinesForAttack) {
             return;
         }
-        List<AttackLine> attack = buildAttackLines(boardWidth, clearedYs, snapshot);
+        List<AttackLine> attack = buildAttackLines(boardWidth, clearedYs, snapshot, random);
         opponentBuffer(playerId).enqueue(attack);
     }
 
@@ -64,15 +66,26 @@ public final class VersusRules {
 
     private static List<AttackLine> buildAttackLines(int boardWidth,
                                                      int[] clearedYs,
-                                                     LockedPieceSnapshot snapshot) {
+                                                     LockedPieceSnapshot snapshot,
+                                                     Random rng) {
         List<AttackLine> rows = new ArrayList<>(clearedYs.length);
         for (int y : clearedYs) {
             boolean[] holes = new boolean[boardWidth];
+            // 삭제를 완성한 블록 셀 중 하나를 구멍으로 선택 (없으면 폭 전체 중 랜덤)
+            List<Cell> contributors = new ArrayList<>();
             for (Cell cell : snapshot.cells()) {
                 if (cell.y() == y && cell.x() >= 0 && cell.x() < boardWidth) {
-                    holes[cell.x()] = true;
+                    contributors.add(cell);
                 }
             }
+            int holeX;
+            if (!contributors.isEmpty()) {
+                Cell chosen = contributors.get(rng.nextInt(contributors.size()));
+                holeX = chosen.x();
+            } else {
+                holeX = boardWidth <= 0 ? 0 : rng.nextInt(boardWidth);
+            }
+            holes[holeX] = true; // 단 하나의 구멍만 남긴다.
             rows.add(new AttackLine(holes));
         }
         return rows;

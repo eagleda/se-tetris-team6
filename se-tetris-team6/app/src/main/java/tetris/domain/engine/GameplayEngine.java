@@ -29,6 +29,7 @@ public class GameplayEngine implements GameClock.Listener {
         void onLinesCleared(int clearedLines);
         void onTick(long tick);
         void onBlockRotated(Block block, int times); // times: 시계방향 회전 횟수
+        default void onGameOver() {} // 스폰 불가 등 즉시 게임오버 알림
     }
 
     private final Board board;
@@ -115,7 +116,11 @@ public class GameplayEngine implements GameClock.Listener {
             board.clearRows(pendingClearRows);
             pendingClearRows = Collections.emptyList();
             awaitingLineClearCommit = false;
-            spawnNewBlock();
+            boolean spawned = spawnNewBlock();
+            if (!spawned && events != null) {
+                System.out.println("[LOG][Game] commitPendingLineClear(): spawn failed after clear → game over");
+                events.onGameOver();
+            }
             uiBridge.refreshBoard();
         }
         clock.resume();
@@ -126,7 +131,10 @@ public class GameplayEngine implements GameClock.Listener {
 
     public void spawnIfNeeded() {
         if (activeBlock == null && !spawnNewBlock()) {
-            // caller should handle state change to GAME_OVER
+            System.out.println("[LOG][Game] spawnIfNeeded(): spawn failed → game over");
+            if (events != null) {
+                events.onGameOver();
+            }
         }
         uiBridge.refreshBoard();
     }
@@ -161,6 +169,11 @@ public class GameplayEngine implements GameClock.Listener {
         BlockKind nextKind = Objects.requireNonNull(generator.nextBlock(), "nextBlock");
         Block next = Block.spawn(nextKind, Board.W / 2 - 1, 0);
         if (!board.canSpawn(next.getShape(), next.getX(), next.getY())) {
+            System.out.printf("[LOG][Game] Spawn failed for %s at (%d,%d) — cannot place at spawn%n",
+                    nextKind, next.getX(), next.getY());
+            if (events != null) {
+                events.onGameOver();
+            }
             return false;
         }
         activeBlock = next;
@@ -183,7 +196,10 @@ public class GameplayEngine implements GameClock.Listener {
             if (events != null) {
                 events.onBlockLocked(current);
             }
-            spawnNewBlock();
+            boolean spawned = spawnNewBlock();
+            if (!spawned && events != null) {
+                events.onGameOver();
+            }
             return;
         }
         lastClearedRows = rowsToClear;
@@ -199,7 +215,11 @@ public class GameplayEngine implements GameClock.Listener {
     public void stepGameplay() {
         if (activeBlock == null) return;
         if (!board.canPlace(activeBlock.getShape(), activeBlock.getX(), activeBlock.getY())) {
-            // caller will handle transition to GAME_OVER
+            System.out.printf("[LOG][Game] Active block overlap detected at (%d,%d), triggering game over%n",
+                    activeBlock.getX(), activeBlock.getY());
+            if (events != null) {
+                events.onGameOver(); // 스폰 영역 침범 등 배치 불가 상태 → 즉시 게임오버
+            }
             return;
         }
 

@@ -49,14 +49,17 @@ public final class LocalMultiplayerHandler implements GameHandler {
         // 개별 플레이어가 먼저 GAME_OVER가 되면 즉시 패배자로 표시한다.
         if (!game.isGameOver()) {
             if (game.modelOf(1).getCurrentState() == GameState.GAME_OVER) {
+                System.out.println("[LOG][LocalMulti] Player1 reached GAME_OVER → mark loser");
                 game.markLoser(1);
             } else if (game.modelOf(2).getCurrentState() == GameState.GAME_OVER) {
+                System.out.println("[LOG][LocalMulti] Player2 reached GAME_OVER → mark loser");
                 game.markLoser(2);
             }
         }
 
         if (game.isGameOver() && model.getCurrentState() != GameState.GAME_OVER) {
             int winnerId = game.getWinnerId() == null ? -1 : game.getWinnerId();
+            System.out.printf("[LOG][LocalMulti] Game over detected, winner: %d%n", winnerId);
             // 두 플레이어 모델 모두 GAME_OVER 상태로 정지시킨다.
             controller.withPlayer(1, m -> m.changeState(GameState.GAME_OVER));
             controller.withPlayer(2, m -> m.changeState(GameState.GAME_OVER));
