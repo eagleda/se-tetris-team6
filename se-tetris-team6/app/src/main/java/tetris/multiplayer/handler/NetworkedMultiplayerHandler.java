@@ -70,6 +70,18 @@ public final class NetworkedMultiplayerHandler implements MultiplayerHandler {
     @Override
     public int getPendingLines(int playerId) { return controller.getPendingLines(playerId); }
 
+    @Override
+    public java.util.List<tetris.multiplayer.model.AttackLine> getPendingAttackLines(int playerId) {
+        return controller.getPendingAttackLines(playerId);
+    }
+
+    /**
+     * Returns the local player ID (1 or 2) for this networked session.
+     */
+    public int getLocalPlayerId() {
+        return localPlayerId;
+    }
+
     private void registerHookForLocal() {
         int pid = localPlayerId;
         game.player(pid).getModel().addMultiplayerHook(createHook(pid));

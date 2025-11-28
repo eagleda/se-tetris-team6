@@ -503,6 +503,7 @@ public class TetrisFrame extends JFrame {
                                     // this client controls Player-1 based on assigned playerId.
                                     GameMode gameMode = TetrisFrame.this.resolveMenuMode(mode);
                                     boolean localIsPlayerOne = "Player-1".equals(client.getPlayerId());
+                                    gameController.setNetworkClient(client); // 네트워크 클라이언트 연결
                                     gameController.startNetworkedMultiplayerGame(gameMode, localIsPlayerOne);
                                     bindMultiPanelToCurrentSession();
                                     displayPanel(multiGameLayout);
