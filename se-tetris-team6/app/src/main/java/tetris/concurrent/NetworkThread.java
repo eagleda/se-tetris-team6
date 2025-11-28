@@ -324,6 +324,16 @@ public class NetworkThread implements Runnable {
 
     public void shutdown() {
         isRunning.set(false);
+        // 먼저 reader 스레드를 종료하도록 시도
+        if (readerThread != null && readerThread.isAlive()) {
+            readerThread.interrupt();
+            try {
+                readerThread.join(500);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+
         cleanup();
     }
 
@@ -362,9 +372,14 @@ public class NetworkThread implements Runnable {
             if (readerThread != null) {
                 readerThread.interrupt();
             }
-            if (outputStream != null) outputStream.close();
-            if (inputStream != null) inputStream.close();
-            if (socket != null && !socket.isClosed()) socket.close();
+            // 먼저 소켓의 입력/출력 스트림을 shutdown 시도하여 readObject 블로킹을 해제
+            if (socket != null && !socket.isClosed()) {
+                try { socket.shutdownInput(); } catch (IOException ignore) {}
+                try { socket.shutdownOutput(); } catch (IOException ignore) {}
+            }
+            if (outputStream != null) try { outputStream.close(); } catch (IOException ignore) {}
+            if (inputStream != null) try { inputStream.close(); } catch (IOException ignore) {}
+            if (socket != null && !socket.isClosed()) try { socket.close(); } catch (IOException ignore) {}
         } catch (IOException e) {
             System.err.println("스트림/소켓 닫기 오류: " + e.getMessage());
         } finally {
