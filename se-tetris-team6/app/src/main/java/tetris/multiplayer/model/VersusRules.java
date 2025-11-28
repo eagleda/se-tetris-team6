@@ -56,6 +56,13 @@ public final class VersusRules {
         return buffer(playerId).size();
     }
 
+    /**
+     * UI에서 대기 중인 공격 줄의 실제 패턴(구멍 위치)을 표시할 때 사용한다.
+     */
+    public List<AttackLine> getPendingAttackLines(int playerId) {
+        return buffer(playerId).peekAll();
+    }
+
     private PendingAttackBuffer buffer(int playerId) {
         return playerId == 1 ? p1Buffer : p2Buffer;
     }

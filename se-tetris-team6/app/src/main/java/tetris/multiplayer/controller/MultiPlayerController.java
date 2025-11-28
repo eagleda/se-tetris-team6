@@ -75,6 +75,13 @@ public final class MultiPlayerController {
         return game.getPendingLines(playerId);
     }
 
+    /**
+     * 특정 플레이어가 받을 공격 줄의 실제 패턴을 반환한다.
+     */
+    public java.util.List<tetris.multiplayer.model.AttackLine> getPendingAttackLines(int playerId) {
+        return game.getPendingAttackLines(playerId);
+    }
+
     private static int determineBoardWidth(GameModel model) {
         int[][] snapshot = model.getBoard().gridView();
         return snapshot.length == 0 ? Board.W : snapshot[0].length;

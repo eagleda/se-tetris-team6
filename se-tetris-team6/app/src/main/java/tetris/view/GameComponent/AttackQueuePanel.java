@@ -39,6 +39,7 @@ public class AttackQueuePanel extends JPanel {
     private int[][] grid = new int[BOARD_ROWS][BOARD_COLS];
 
     private IntSupplier pendingLinesSupplier;
+    private java.util.function.Supplier<java.util.List<tetris.multiplayer.model.AttackLine>> attackLinesSupplier;
 
     public AttackQueuePanel() {
         setBackground(BACKGROUND_COLOR);
@@ -57,6 +58,16 @@ public class AttackQueuePanel extends JPanel {
      */
     public void bindPendingLinesSupplier(IntSupplier supplier) {
         this.pendingLinesSupplier = supplier;
+        this.attackLinesSupplier = null;
+        repaint();
+    }
+
+    /**
+     * 로컬 멀티 UI에서 공격 대기 줄의 실제 패턴을 공급할 때 사용한다.
+     */
+    public void bindAttackLinesSupplier(java.util.function.Supplier<java.util.List<tetris.multiplayer.model.AttackLine>> supplier) {
+        this.attackLinesSupplier = supplier;
+        this.pendingLinesSupplier = null;
         repaint();
     }
 
@@ -138,12 +149,23 @@ public class AttackQueuePanel extends JPanel {
         g2.fillRect(originX, originY, boardWidthPx, boardHeightPx);
 
         int pendingLines = pendingLinesSupplier == null ? -1 : Math.max(0, pendingLinesSupplier.getAsInt());
+        java.util.List<tetris.multiplayer.model.AttackLine> attackLines = attackLinesSupplier == null ? null : attackLinesSupplier.get();
 
         // 블록 그리기
         for (int r = 0; r < BOARD_ROWS; r++) {
             for (int c = 0; c < BOARD_COLS; c++) {
                 int v;
-                if (pendingLines >= 0) {
+                if (attackLines != null && !attackLines.isEmpty()) {
+                    // AttackLine 패턴을 사용하여 정확히 표시 (아래에서부터)
+                    int fromBottom = BOARD_ROWS - 1 - r;
+                    if (fromBottom < attackLines.size()) {
+                        tetris.multiplayer.model.AttackLine line = attackLines.get(fromBottom);
+                        // 구멍이면 빈칸, 아니면 채워진 블록
+                        v = (c < line.width() && line.isHole(c)) ? 0 : 1;
+                    } else {
+                        v = 0; // 대기 중인 줄보다 위쪽은 비워둔다
+                    }
+                } else if (pendingLines >= 0) {
                     // 공급자가 있으면 간단히 "아래에서부터 몇 줄 차있는지"만 시각화한다.
                     int fromBottom = BOARD_ROWS - 1 - r;
                     v = fromBottom < pendingLines ? 1 : 0;
@@ -164,7 +186,8 @@ public class AttackQueuePanel extends JPanel {
         // 상단 라벨
         g2.setFont(new Font("SansSerif", Font.BOLD, Math.max(10, cellSize / 2)));
         g2.setColor(Color.WHITE);
-        String label = pendingLines >= 0 ? "Incoming (" + pendingLines + ")" : "Incoming";
+        int count = attackLines != null ? attackLines.size() : (pendingLines >= 0 ? pendingLines : 0);
+        String label = count > 0 ? "Incoming (" + count + ")" : "Incoming";
         int tw = g2.getFontMetrics().stringWidth(label);
         g2.drawString(label, Math.max(4, (getWidth() - tw) / 2), Math.max(12, originY - 6));
 
