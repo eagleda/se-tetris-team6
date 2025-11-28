@@ -342,6 +342,9 @@ public class TetrisFrame extends JFrame {
                     dlg.setResizable(false);
                     dlg.setLocationRelativeTo(win);
                     dlg.setVisible(true);
+                } else {
+                    // 로컬 멀티플레이 시작
+                    onLocalMultiPlayConfirmed(mode);
                 }
             }
 

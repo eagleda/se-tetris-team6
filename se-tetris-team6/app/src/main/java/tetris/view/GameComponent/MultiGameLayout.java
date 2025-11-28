@@ -102,14 +102,14 @@ public class MultiGameLayout extends JPanel {
 
         /**
          * 로컬 멀티 세션에서 각 패널이 P1/P2 모델을 따로 그리도록 연결한다.
-         * - 공격 대기 줄은 LocalMultiplayerHandler#getPendingLines 공급자를 통해 실시간으로 갱신한다.
+         * - 공격 대기 줄은 LocalMultiplayerHandler#getPendingAttackLines 공급자를 통해 실시간으로 갱신한다.
          */
         public void bindLocalMultiplayerSession(LocalMultiplayerSession session) {
                 if (session == null) {
                         return;
                 }
                 bindPlayerModels(session.playerOneModel(), session.playerTwoModel());
-                // 각 패널이 해당 플레이어의 쓰레기 줄 대기량을 바로 읽어오도록 공급자를 연결한다.
+                // 각 패널이 해당 플레이어의 공격 패턴(구멍 위치 포함)을 바로 읽어오도록 공급자를 연결한다.
                 attackQueuePanel_1.bindAttackLinesSupplier(() -> session.handler().getPendingAttackLines(1));
                 attackQueuePanel_2.bindAttackLinesSupplier(() -> session.handler().getPendingAttackLines(2));
                 repaint();
