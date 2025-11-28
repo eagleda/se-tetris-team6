@@ -25,7 +25,7 @@ public class GameController {
 
     // 키 반복 입력 제어를 위한 상태 추적
     private Map<Integer, Long> lastKeyPressTime;
-    private static final long KEY_REPEAT_DELAY = 15; // 20ms
+    private static final long KEY_REPEAT_DELAY = 15; // 15ms
     private static final long MOVEMENT_REPEAT_DELAY = 30; // 이동키는 조금 더 느리게
 
     // 게임 일시정지 토글을 위한 상태
