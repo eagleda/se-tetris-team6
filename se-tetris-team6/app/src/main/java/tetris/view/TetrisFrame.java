@@ -458,8 +458,10 @@ public class TetrisFrame extends JFrame {
                                 break;
                             case ATTACK_LINES:
                                 Object pl = message.getPayload();
-                                if (pl instanceof tetris.network.protocol.AttackLine[] lines) {
-                                    opponent.applyAttackLines(lines);
+                                if (pl instanceof tetris.network.protocol.AttackLine[] networkLines) {
+                                    // Apply network attack lines directly to opponent
+                                    opponent.applyAttackLines(networkLines);
+                                    
                                     // Repaint to show attack lines
                                     if (multiGameLayout != null) {
                                         multiGameLayout.repaint();
@@ -684,8 +686,10 @@ public class TetrisFrame extends JFrame {
                         break;
                     case ATTACK_LINES:
                         Object pl = message.getPayload();
-                        if (pl instanceof tetris.network.protocol.AttackLine[] lines) {
-                            opponent.applyAttackLines(lines);
+                        if (pl instanceof tetris.network.protocol.AttackLine[] networkLines) {
+                            // Apply network attack lines directly to opponent
+                            opponent.applyAttackLines(networkLines);
+                            
                             // Repaint to show attack lines
                             if (multiGameLayout != null) {
                                 multiGameLayout.repaint();

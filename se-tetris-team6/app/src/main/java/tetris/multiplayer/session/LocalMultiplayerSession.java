@@ -5,6 +5,7 @@ import java.util.Objects;
 import tetris.domain.GameMode;
 import tetris.domain.GameModel;
 import tetris.multiplayer.controller.LocalMultiPlayerController;
+import tetris.multiplayer.controller.NetworkMultiPlayerController;
 import tetris.multiplayer.handler.MultiplayerHandler;
 import tetris.multiplayer.model.MultiPlayerGame;
 import tetris.multiplayer.model.PlayerState;
@@ -18,13 +19,25 @@ public final class LocalMultiplayerSession {
     private final PlayerState player1;
     private final PlayerState player2;
     private final MultiPlayerGame game;
-    private final LocalMultiPlayerController controller;
+    private final Object controller; // LocalMultiPlayerController or NetworkMultiPlayerController
     private final tetris.multiplayer.handler.MultiplayerHandler handler;
 
     public LocalMultiplayerSession(PlayerState player1,
                                    PlayerState player2,
                                    MultiPlayerGame game,
                                    LocalMultiPlayerController controller,
+                                   tetris.multiplayer.handler.MultiplayerHandler handler) {
+        this.player1 = Objects.requireNonNull(player1, "player1");
+        this.player2 = Objects.requireNonNull(player2, "player2");
+        this.game = Objects.requireNonNull(game, "game");
+        this.controller = Objects.requireNonNull(controller, "controller");
+        this.handler = Objects.requireNonNull(handler, "handler");
+    }
+
+    public LocalMultiplayerSession(PlayerState player1,
+                                   PlayerState player2,
+                                   MultiPlayerGame game,
+                                   NetworkMultiPlayerController controller,
                                    tetris.multiplayer.handler.MultiplayerHandler handler) {
         this.player1 = Objects.requireNonNull(player1, "player1");
         this.player2 = Objects.requireNonNull(player2, "player2");
@@ -56,7 +69,18 @@ public final class LocalMultiplayerSession {
 
     /** UI/디버깅용으로 컨트롤러를 꺼내고 싶을 때 사용 */
     public LocalMultiPlayerController controller() {
-        return controller;
+        if (controller instanceof LocalMultiPlayerController) {
+            return (LocalMultiPlayerController) controller;
+        }
+        return null;
+    }
+
+    /** Get network controller if this is a networked session */
+    public NetworkMultiPlayerController networkController() {
+        if (controller instanceof NetworkMultiPlayerController) {
+            return (NetworkMultiPlayerController) controller;
+        }
+        return null;
     }
 
     public MultiPlayerGame game() {

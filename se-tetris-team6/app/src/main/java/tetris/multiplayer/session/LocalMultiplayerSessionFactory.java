@@ -5,6 +5,7 @@ import tetris.domain.GameModel;
 import tetris.domain.model.GameState;
 import tetris.infrastructure.GameModelFactory;
 import tetris.multiplayer.controller.LocalMultiPlayerController;
+import tetris.multiplayer.controller.NetworkMultiPlayerController;
 // LocalMultiplayerHandler referenced fully-qualified below; no import needed here
 import tetris.multiplayer.model.MultiPlayerGame;
 import tetris.multiplayer.model.PlayerState;
@@ -46,7 +47,7 @@ public final class LocalMultiplayerSessionFactory {
         PlayerState playerTwo = new PlayerState(2, p2, !localIsPlayerOne);
         VersusRules rules = new VersusRules();
         MultiPlayerGame game = new MultiPlayerGame(playerOne, playerTwo, rules);
-        LocalMultiPlayerController controller = new LocalMultiPlayerController(game);
+        NetworkMultiPlayerController controller = new NetworkMultiPlayerController(game, localIsPlayerOne ? 1 : 2);
         tetris.multiplayer.handler.NetworkedMultiplayerHandler handler = new tetris.multiplayer.handler.NetworkedMultiplayerHandler(game, controller, GameState.PLAYING, localIsPlayerOne ? 1 : 2, sendGameEndCallback);
         LocalMultiplayerSession session = new LocalMultiplayerSession(playerOne, playerTwo, game, controller, handler);
         session.restartPlayers(mode);

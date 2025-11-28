@@ -4,7 +4,7 @@ import java.util.Objects;
 import java.util.function.Consumer;
 import tetris.domain.GameModel;
 import tetris.domain.model.GameState;
-import tetris.multiplayer.controller.LocalMultiPlayerController;
+import tetris.multiplayer.controller.NetworkMultiPlayerController;
 import tetris.multiplayer.model.MultiPlayerGame;
 
 /**
@@ -14,7 +14,7 @@ import tetris.multiplayer.model.MultiPlayerGame;
 public final class NetworkedMultiplayerHandler implements MultiplayerHandler {
 
     private final MultiPlayerGame game;
-    private final LocalMultiPlayerController controller;
+    private final NetworkMultiPlayerController controller;
     private final GameState state;
     private final int localPlayerId;
     private final Runnable sendGameEndCallback;
@@ -22,7 +22,7 @@ public final class NetworkedMultiplayerHandler implements MultiplayerHandler {
     private boolean gameEndHandled = false;
 
     public NetworkedMultiplayerHandler(MultiPlayerGame game,
-                                       LocalMultiPlayerController controller,
+                                       NetworkMultiPlayerController controller,
                                        GameState state,
                                        int localPlayerId,
                                        Runnable sendGameEndCallback) {
@@ -88,7 +88,7 @@ public final class NetworkedMultiplayerHandler implements MultiplayerHandler {
             // ignore attempts to dispatch to remote player
             return;
         }
-        controller.withPlayer(playerId, action);
+        controller.withLocalPlayer(action);
     }
 
     @Override
@@ -120,7 +120,7 @@ public final class NetworkedMultiplayerHandler implements MultiplayerHandler {
         return new tetris.domain.GameModel.MultiplayerHook() {
             @Override
             public void onPieceLocked(tetris.multiplayer.model.LockedPieceSnapshot snapshot, int[] clearedRows, int boardWidth) {
-                controller.onPieceLocked(playerId, snapshot, clearedRows);
+                controller.onLocalPieceLocked(snapshot, clearedRows);
             }
 
             @Override

@@ -427,12 +427,70 @@ public class GameController {
         
         LocalMultiplayerSession session = LocalMultiplayerSessionFactory.createNetworkedSession(mode, localIsPlayerOne, sendGameEndCallback);
         localSession = session;
+        
+        // Set up network event handler
+        tetris.multiplayer.controller.NetworkMultiPlayerController networkController = session.networkController();
+        if (networkController != null) {
+            networkController.setNetworkHandler(new tetris.multiplayer.controller.NetworkMultiPlayerController.NetworkEventHandler() {
+                @Override
+                public void sendPieceLockedEvent(tetris.multiplayer.model.LockedPieceSnapshot snapshot, int[] clearedYs) {
+                    sendNetworkPieceLocked(snapshot, clearedYs);
+                }
+                
+                @Override
+                public void sendGameState(tetris.domain.GameModel gameState) {
+                    // Game state sync can be added here if needed
+                }
+                
+                @Override
+                public void sendGameOverEvent() {
+                    sendGameEndCallback.run();
+                }
+            });
+        }
+        
         gameModel.enableLocalMultiplayer(session);
         startLocalMultiplayerTick();
         pauseKeyPressed = false;
         lastKeyPressTime.clear();
         gameModel.startGame(mode);
         return session;
+    }
+    
+    /**
+     * Send piece locked event over network
+     */
+    private void sendNetworkPieceLocked(tetris.multiplayer.model.LockedPieceSnapshot snapshot, int[] clearedYs) {
+        try {
+            tetris.network.protocol.AttackLine[] attackLines = null;
+            if (clearedYs != null && clearedYs.length > 0) {
+                // Convert cleared lines to attack lines
+                attackLines = new tetris.network.protocol.AttackLine[clearedYs.length];
+                for (int i = 0; i < clearedYs.length; i++) {
+                    attackLines[i] = new tetris.network.protocol.AttackLine(1);
+                }
+            }
+            
+            if (attackLines != null && attackLines.length > 0) {
+                if (networkClient != null) {
+                    tetris.network.protocol.GameMessage message = new tetris.network.protocol.GameMessage(
+                        tetris.network.protocol.MessageType.ATTACK_LINES,
+                        "CLIENT",
+                        attackLines
+                    );
+                    networkClient.sendMessage(message);
+                } else if (networkServer != null) {
+                    tetris.network.protocol.GameMessage message = new tetris.network.protocol.GameMessage(
+                        tetris.network.protocol.MessageType.ATTACK_LINES,
+                        "SERVER",
+                        attackLines
+                    );
+                    networkServer.sendHostMessage(message);
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Failed to send piece locked event: " + e.getMessage());
+        }
     }
 
     /**
