@@ -10,7 +10,13 @@ import java.awt.Insets;
 import javax.swing.JPanel;
 
 import tetris.domain.GameModel;
+import tetris.multiplayer.session.LocalMultiplayerSession;
 
+/**
+ * 멀티 게임 UI 전용 레이아웃.
+ * - 좌측(P1)/우측(P2) 보드와 다음 블록, 스코어, 공격 대기 줄을 각각 배치한다.
+ * - TetrisFrame이 전달한 GameModel/LocalMultiplayerSession을 통해 실시간 상태를 그린다.
+ */
 public class MultiGameLayout extends JPanel {
         // 플레이어 1
         private GamePanel gamePanel_1;
@@ -83,17 +89,42 @@ public class MultiGameLayout extends JPanel {
                 repaint();
         }
 
+        /**
+         * 싱글 플레이어 모델 한 개로 좌/우 모두를 채운다.
+         * - 로컬 멀티가 비활성화된 상태에서 미리보기 용도로 사용된다.
+         */
         public void bindGameModel(GameModel model) {
-                gamePanel_1.bindGameModel(model);
-                gamePanel_2.bindGameModel(model);
-                nextBlockPanel_1.bindGameModel(model);
-                nextBlockPanel_2.bindGameModel(model);
-                scoreboard_1.bindGameModel(model);
-                scoreboard_2.bindGameModel(model);
+                bindPlayerModels(model, model);
                 attackQueuePanel_1.bindGameModel(model);
                 attackQueuePanel_2.bindGameModel(model);
-                timerPanel.bindGameModel(model);
                 repaint();
+        }
+
+        /**
+         * 로컬 멀티 세션에서 각 패널이 P1/P2 모델을 따로 그리도록 연결한다.
+         * - 공격 대기 줄은 LocalMultiplayerHandler#getPendingLines 공급자를 통해 실시간으로 갱신한다.
+         */
+        public void bindLocalMultiplayerSession(LocalMultiplayerSession session) {
+                if (session == null) {
+                        return;
+                }
+                bindPlayerModels(session.playerOneModel(), session.playerTwoModel());
+                // 각 패널이 해당 플레이어의 쓰레기 줄 대기량을 바로 읽어오도록 공급자를 연결한다.
+                attackQueuePanel_1.bindPendingLinesSupplier(() -> session.handler().getPendingLines(1));
+                attackQueuePanel_2.bindPendingLinesSupplier(() -> session.handler().getPendingLines(2));
+                repaint();
+        }
+
+        private void bindPlayerModels(GameModel playerOne, GameModel playerTwo) {
+                // 좌측 UI는 P1 모델, 우측 UI는 P2 모델을 그대로 바라보도록 분리한다.
+                gamePanel_1.bindGameModel(playerOne);
+                gamePanel_2.bindGameModel(playerTwo);
+                nextBlockPanel_1.bindGameModel(playerOne);
+                nextBlockPanel_2.bindGameModel(playerTwo);
+                scoreboard_1.bindGameModel(playerOne);
+                scoreboard_2.bindGameModel(playerTwo);
+                // 중앙 타이머 패널은 P1 기준으로 공유(추후 필요 시 P2 전용 UI를 추가할 수 있다).
+                timerPanel.bindGameModel(playerOne);
         }
 
         public void addToRegion(Component comp, int x, int y, int w, int h, int fill, int anchor) {

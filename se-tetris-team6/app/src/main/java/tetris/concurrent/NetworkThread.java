@@ -83,7 +83,6 @@ public class NetworkThread implements Runnable {
         this.lastSyncTime = System.currentTimeMillis();
     }
 
-    // 스레드 메인 실행 루프
     @Override
     public void run() {
         System.out.println("NetworkThread 시작됨.");
