@@ -466,16 +466,19 @@ public class TetrisFrame extends JFrame {
                                     tetris.domain.GameModel localModel = sess.isPlayerOneLocal() ? sess.playerOneModel() : sess.playerTwoModel();
                                     tetris.domain.GameModel opponentModel = sess.isPlayerOneLocal() ? sess.playerTwoModel() : sess.playerOneModel();
                                     
-                                    // Mark opponent as loser (since they sent GAME_END)
-                                    int opponentId = sess.isPlayerOneLocal() ? 2 : 1;
-                                    sess.game().markLoser(opponentId);
-                                    
-                                    // Change states to GAME_OVER
-                                    localModel.changeState(tetris.domain.model.GameState.GAME_OVER);
-                                    opponentModel.changeState(tetris.domain.model.GameState.GAME_OVER);
-                                    
-                                    // Show result
-                                    gameModel.showMultiplayerResult(sess.game().getWinnerId() == null ? -1 : sess.game().getWinnerId());
+                                    // Only process if not already in GAME_OVER state (prevent infinite loop)
+                                    if (localModel.getCurrentState() != tetris.domain.model.GameState.GAME_OVER) {
+                                        // Mark opponent as loser (since they sent GAME_END)
+                                        int opponentId = sess.isPlayerOneLocal() ? 2 : 1;
+                                        sess.game().markLoser(opponentId);
+                                        
+                                        // Change states to GAME_OVER
+                                        localModel.changeState(tetris.domain.model.GameState.GAME_OVER);
+                                        opponentModel.changeState(tetris.domain.model.GameState.GAME_OVER);
+                                        
+                                        // Show result
+                                        gameModel.showMultiplayerResult(sess.game().getWinnerId() == null ? -1 : sess.game().getWinnerId());
+                                    }
                                 }
                                 break;
                             default:
@@ -659,15 +662,18 @@ public class TetrisFrame extends JFrame {
                             tetris.domain.GameModel localModel = sess.playerOneModel();  // Host is always player 1
                             tetris.domain.GameModel opponentModel = sess.playerTwoModel();
                             
-                            // Mark opponent (player 2) as loser
-                            sess.game().markLoser(2);
-                            
-                            // Change states to GAME_OVER
-                            localModel.changeState(tetris.domain.model.GameState.GAME_OVER);
-                            opponentModel.changeState(tetris.domain.model.GameState.GAME_OVER);
-                            
-                            // Show result
-                            gameModel.showMultiplayerResult(sess.game().getWinnerId() == null ? -1 : sess.game().getWinnerId());
+                            // Only process if not already in GAME_OVER state (prevent infinite loop)
+                            if (localModel.getCurrentState() != tetris.domain.model.GameState.GAME_OVER) {
+                                // Mark opponent (player 2) as loser
+                                sess.game().markLoser(2);
+                                
+                                // Change states to GAME_OVER
+                                localModel.changeState(tetris.domain.model.GameState.GAME_OVER);
+                                opponentModel.changeState(tetris.domain.model.GameState.GAME_OVER);
+                                
+                                // Show result
+                                gameModel.showMultiplayerResult(sess.game().getWinnerId() == null ? -1 : sess.game().getWinnerId());
+                            }
                         }
                         break;
                     default:
