@@ -5,7 +5,7 @@ import tetris.domain.GameModel;
 import tetris.domain.model.GameState;
 import tetris.infrastructure.GameModelFactory;
 import tetris.multiplayer.controller.MultiPlayerController;
-import tetris.multiplayer.handler.LocalMultiplayerHandler;
+// LocalMultiplayerHandler referenced fully-qualified below; no import needed here
 import tetris.multiplayer.model.MultiPlayerGame;
 import tetris.multiplayer.model.PlayerState;
 import tetris.multiplayer.model.VersusRules;
@@ -28,7 +28,26 @@ public final class LocalMultiplayerSessionFactory {
         VersusRules rules = new VersusRules();
         MultiPlayerGame game = new MultiPlayerGame(playerOne, playerTwo, rules);
         MultiPlayerController controller = new MultiPlayerController(game);
-        LocalMultiplayerHandler handler = new LocalMultiplayerHandler(game, controller, GameState.PLAYING);
+        tetris.multiplayer.handler.LocalMultiplayerHandler handler = new tetris.multiplayer.handler.LocalMultiplayerHandler(game, controller, GameState.PLAYING);
+        LocalMultiplayerSession session = new LocalMultiplayerSession(playerOne, playerTwo, game, controller, handler);
+        session.restartPlayers(mode);
+        return session;
+    }
+
+    /**
+     * Create a networked session where only one side is local and the opponent
+     * is driven by the network. The local player side is determined by
+     * {@code localIsPlayerOne}.
+     */
+    public static LocalMultiplayerSession createNetworkedSession(GameMode mode, boolean localIsPlayerOne) {
+        GameModel p1 = GameModelFactory.createDefault();
+        GameModel p2 = GameModelFactory.createDefault();
+        PlayerState playerOne = new PlayerState(1, p1, localIsPlayerOne);
+        PlayerState playerTwo = new PlayerState(2, p2, !localIsPlayerOne);
+        VersusRules rules = new VersusRules();
+        MultiPlayerGame game = new MultiPlayerGame(playerOne, playerTwo, rules);
+        MultiPlayerController controller = new MultiPlayerController(game);
+        tetris.multiplayer.handler.NetworkedMultiplayerHandler handler = new tetris.multiplayer.handler.NetworkedMultiplayerHandler(game, controller, GameState.PLAYING, localIsPlayerOne ? 1 : 2);
         LocalMultiplayerSession session = new LocalMultiplayerSession(playerOne, playerTwo, game, controller, handler);
         session.restartPlayers(mode);
         return session;

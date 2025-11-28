@@ -15,7 +15,7 @@ import tetris.multiplayer.model.MultiPlayerGame;
  * - GameModel에 멀티 훅을 등록해 락/스폰 이벤트를 자동 수신한다.
  * - update()에서 두 모델을 동시에 틱 처리하고 승패를 감지한다.
  */
-public final class LocalMultiplayerHandler implements GameHandler {
+public final class LocalMultiplayerHandler implements MultiplayerHandler {
 
     private final MultiPlayerGame game;
     private final MultiPlayerController controller;

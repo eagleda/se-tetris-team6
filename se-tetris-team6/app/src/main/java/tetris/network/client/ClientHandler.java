@@ -70,6 +70,27 @@ public class ClientHandler implements Runnable {
             case GAME_START:
                 handleGameStart(message);
                 break;
+            case PLAYER_INPUT:
+                handleOpponentInput(message);
+                break;
+            case ATTACK_LINES:
+                handleIncomingAttack(message);
+                break;
+            case BOARD_STATE:
+                // forward board state updates to client listener on EDT
+                if (client.getGameStateListener() != null) {
+                    javax.swing.SwingUtilities.invokeLater(() -> client.getGameStateListener().onOpponentBoardUpdate(message));
+                }
+                break;
+            case PONG:
+                handlePong(message);
+                break;
+            case GAME_END:
+                // game end - forward as a state change
+                if (client.getGameStateListener() != null) {
+                    javax.swing.SwingUtilities.invokeLater(() -> client.getGameStateListener().onGameStateChange(message));
+                }
+                break;
             // Step 3에서 다른 메시지 타입 처리 로직 추가 예정
             default:
                 System.out.println("Received unhandled message type: " + message.getType());
@@ -131,15 +152,39 @@ public class ClientHandler implements Runnable {
 
     // 상대방 입력 처리 - 상대방의 키 입력을 받을 때
     private void handleOpponentInput(GameMessage message){
-        /* Step 3 구현 예정 */ }
+        // PlayerInput payload is expected
+                if (client.getGameStateListener() != null) {
+            javax.swing.SwingUtilities.invokeLater(() -> client.getGameStateListener().onGameStateChange(message));
+        } else {
+            System.out.println("Opponent input received but no GameStateListener registered: " + message);
+        }
+    }
 
     // 공격 받기 처리 - 상대방의 공격 라인을 받을 때
     private void handleIncomingAttack(GameMessage message){
-        /* Step 3 구현 예정 */ }
+        if (client.getGameStateListener() != null) {
+            javax.swing.SwingUtilities.invokeLater(() -> client.getGameStateListener().onGameStateChange(message));
+        } else {
+            System.out.println("Incoming attack received but no GameStateListener registered: " + message);
+        }
+    }
 
     // 퐁 처리 - 지연시간 계산
     private void handlePong(GameMessage message){
-        /* Step 3 구현 예정 */ }
+        // payload may contain timestamp or latency info
+        try {
+            Object payload = message.getPayload();
+            if (payload instanceof Long) {
+                long sent = (Long) payload;
+                long now = System.currentTimeMillis();
+                long rtt = now - sent;
+                // update optional latency metric on client if exposed
+                System.out.println("PONG received, rtt=" + rtt + "ms");
+            }
+        } catch (Exception e) {
+            // ignore parse issues
+        }
+    }
 
     // 주기적 핑 전송 - 지연시간 측정 및 연결 확인
     private void sendPing(){

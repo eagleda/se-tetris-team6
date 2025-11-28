@@ -18,8 +18,8 @@ import java.util.concurrent.atomic.AtomicInteger; // 추가: 스레드 안전한
  */
     public class ServerHandler implements Runnable {
 
-        // 정적 ID 카운터 추가 (테스트 요구사항 충족을 위해)
-        private static final AtomicInteger clientCounter = new AtomicInteger(1); // ADDED
+        // 정적 ID 카운터 추가: 클라이언트는 Player-2부터 할당되도록 시작
+        private static final AtomicInteger clientCounter = new AtomicInteger(2);
 
         // 생성자 - 클라이언트 소켓과 서버 참조 받음
         public ServerHandler(Socket clientSocket, GameServer server) {

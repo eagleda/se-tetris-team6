@@ -129,22 +129,27 @@ public class GameClient {
 
     // 플레이어 입력 전송 (키보드 입력)
     public void sendPlayerInput(PlayerInput input){
-        /*todo */
+        if (!isConnected || clientHandler == null || input == null) return;
+        GameMessage msg = new GameMessage(tetris.network.protocol.MessageType.PLAYER_INPUT, this.playerId == null ? "CLIENT" : this.playerId, input);
+        clientHandler.sendMessage(msg);
     }
 
     // 공격 라인 전송 (줄 삭제 시)
     public void sendAttackLines(AttackLine[] lines){
-        /*todo */
+        if (!isConnected || clientHandler == null || lines == null) return;
+        GameMessage msg = new GameMessage(tetris.network.protocol.MessageType.ATTACK_LINES, this.playerId == null ? "CLIENT" : this.playerId, lines);
+        clientHandler.sendMessage(msg);
     }
 
     // 게임 시작 준비 완료 신호
     public void sendReadySignal(){
-        /*todo */
+        sendReady();
     }
 
     // 수신된 메시지 처리 - 메인 게임 루프에서 호출
     public void processIncomingMessages(){
-        /*todo */
+        // Currently messages are handled on-the-fly by ClientHandler and forwarded
+        // to the registered GameStateListener. No queued processing required here.
     }
 
     // 연결 상태 확인
@@ -159,15 +164,28 @@ public class GameClient {
 
     // 게임 상태 리스너 등록
     public void setGameStateListener(GameStateListener listener){
-        /*todo */
+        this.gameStateListener = listener;
+    }
+
+    public GameStateListener getGameStateListener() {
+        return this.gameStateListener;
     }
 
     // 최근 접속 IP 저장/불러오기
     public void saveRecentIP(String ip){
-        /*todo */
+        // Best-effort: store in a simple system property for this session
+        if (ip == null) return;
+        try {
+            System.setProperty("tetris.recent.ip", ip);
+        } catch (Exception ignore) {}
     }
     public String getRecentIP(){
-        return "127.0.0.1"; /* Step 4 구현 예정 */
+        try {
+            String v = System.getProperty("tetris.recent.ip");
+            return v == null ? "127.0.0.1" : v;
+        } catch (Exception e) {
+            return "127.0.0.1";
+        }
     }
 
     // 재연결 시도

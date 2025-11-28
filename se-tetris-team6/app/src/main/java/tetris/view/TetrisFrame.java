@@ -267,7 +267,8 @@ public class TetrisFrame extends JFrame {
                                         javax.swing.SwingUtilities.invokeLater(() -> {
                                             dlg.dispose();
                                             GameMode gameMode = TetrisFrame.this.resolveMenuMode(selectedMode);
-                                            gameController.startLocalMultiplayerGame(gameMode);
+                                            // Start a networked session as host (host is Player-1)
+                                            gameController.startNetworkedMultiplayerGame(gameMode, true);
                                             bindMultiPanelToCurrentSession();
                                             displayPanel(multiGameLayout);
                                         });
@@ -413,6 +414,54 @@ public class TetrisFrame extends JFrame {
                     return;
                 }
 
+                // Wire GameStateListener to apply incoming network messages to the opponent model
+                client.setGameStateListener(new tetris.network.client.GameStateListener() {
+                    @Override
+                    public void onOpponentBoardUpdate(tetris.network.protocol.GameMessage message) {
+                        LocalMultiplayerSession session = gameModel.getActiveLocalMultiplayerSession().orElse(null);
+                        if (session == null) return;
+                        // For board updates we simply trigger a repaint (detailed state sync handled elsewhere)
+                        ensureLocalSessionUiBridges();
+                        if (multiGameLayout != null) multiGameLayout.repaint();
+                    }
+
+                    @Override
+                    public void onGameStateChange(tetris.network.protocol.GameMessage message) {
+                        LocalMultiplayerSession session = gameModel.getActiveLocalMultiplayerSession().orElse(null);
+                        if (session == null) return;
+                        tetris.domain.GameModel opponent = session.isPlayerOneLocal() ? session.playerTwoModel() : session.playerOneModel();
+                        switch (message.getType()) {
+                            case PLAYER_INPUT:
+                                Object payload = message.getPayload();
+                                if (payload instanceof tetris.network.protocol.PlayerInput pi) {
+                                    switch (pi.inputType()) {
+                                        case MOVE_LEFT -> opponent.moveBlockLeft();
+                                        case MOVE_RIGHT -> opponent.moveBlockRight();
+                                        case SOFT_DROP -> opponent.moveBlockDown();
+                                        case ROTATE -> opponent.rotateBlockClockwise();
+                                        case ROTATE_CCW -> opponent.rotateBlockCounterClockwise();
+                                        case HARD_DROP -> opponent.hardDropBlock();
+                                        case HOLD -> opponent.holdCurrentBlock();
+                                        default -> {}
+                                    }
+                                }
+                                break;
+                            case ATTACK_LINES:
+                                Object pl = message.getPayload();
+                                if (pl instanceof tetris.network.protocol.AttackLine[] lines) {
+                                    opponent.applyAttackLines(lines);
+                                }
+                                break;
+                            case GAME_END:
+                                // forward to main GameModel to show overlay if needed
+                                gameModel.showMultiplayerResult(0);
+                                break;
+                            default:
+                                break;
+                        }
+                    }
+                });
+
                 // Show waiting-for-host dialog with Ready button
                 java.awt.Window win = SwingUtilities.getWindowAncestor(this);
                 final javax.swing.JDialog dlg = new javax.swing.JDialog(win, java.awt.Dialog.ModalityType.APPLICATION_MODAL);
@@ -447,9 +496,11 @@ public class TetrisFrame extends JFrame {
                                 String mode = client.getStartMode();
                                 javax.swing.SwingUtilities.invokeLater(() -> {
                                     dlg.dispose();
-                                    // Start local multiplayer session with provided mode
+                                    // Start a networked session with provided mode. Determine whether
+                                    // this client controls Player-1 based on assigned playerId.
                                     GameMode gameMode = TetrisFrame.this.resolveMenuMode(mode);
-                                    gameController.startLocalMultiplayerGame(gameMode);
+                                    boolean localIsPlayerOne = "Player-1".equals(client.getPlayerId());
+                                    gameController.startNetworkedMultiplayerGame(gameMode, localIsPlayerOne);
                                     bindMultiPanelToCurrentSession();
                                     displayPanel(multiGameLayout);
                                 });

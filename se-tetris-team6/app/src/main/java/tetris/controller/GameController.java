@@ -10,7 +10,7 @@ import tetris.domain.GameMode;
 import tetris.domain.GameModel;
 import tetris.domain.model.GameState;
 import tetris.domain.setting.Setting;
-import tetris.multiplayer.handler.LocalMultiplayerHandler;
+import tetris.multiplayer.handler.MultiplayerHandler;
 import tetris.multiplayer.session.LocalMultiplayerSession;
 import tetris.multiplayer.session.LocalMultiplayerSessionFactory;
 // 이제부터 모델의 좌우 움직임이 안 되는 이유를 해결합니다.
@@ -390,6 +390,23 @@ public class GameController {
     }
 
     /**
+     * Start a networked multiplayer session where only one side is local.
+     * @param mode game mode
+     * @param localIsPlayerOne true if this process controls player 1
+     */
+    public LocalMultiplayerSession startNetworkedMultiplayerGame(GameMode mode, boolean localIsPlayerOne) {
+        deactivateLocalMultiplayer();
+        LocalMultiplayerSession session = LocalMultiplayerSessionFactory.createNetworkedSession(mode, localIsPlayerOne);
+        localSession = session;
+        gameModel.enableLocalMultiplayer(session);
+        startLocalMultiplayerTick();
+        pauseKeyPressed = false;
+        lastKeyPressTime.clear();
+        gameModel.startGame(mode);
+        return session;
+    }
+
+    /**
      * 키 릴리즈 처리 (일시정지 키 상태 초기화)
      */
     public void handleKeyRelease(int keyCode) {
@@ -402,7 +419,7 @@ public class GameController {
         if (localSession == null || !gameModel.isLocalMultiplayerActive()) {
             return false;
         }
-        LocalMultiplayerHandler handler = localSession.handler();
+        MultiplayerHandler handler = localSession.handler();
         if (handler == null) {
             return false;
         }
@@ -473,7 +490,7 @@ public class GameController {
                 stopLocalMultiplayerTick();
                 return;
             }
-            LocalMultiplayerHandler handler = localSession.handler();
+            MultiplayerHandler handler = localSession.handler();
             if (handler != null) {
                 handler.update(gameModel);
             }

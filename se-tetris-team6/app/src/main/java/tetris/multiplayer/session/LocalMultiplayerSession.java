@@ -5,7 +5,7 @@ import java.util.Objects;
 import tetris.domain.GameMode;
 import tetris.domain.GameModel;
 import tetris.multiplayer.controller.MultiPlayerController;
-import tetris.multiplayer.handler.LocalMultiplayerHandler;
+import tetris.multiplayer.handler.MultiplayerHandler;
 import tetris.multiplayer.model.MultiPlayerGame;
 import tetris.multiplayer.model.PlayerState;
 
@@ -19,13 +19,13 @@ public final class LocalMultiplayerSession {
     private final PlayerState player2;
     private final MultiPlayerGame game;
     private final MultiPlayerController controller;
-    private final LocalMultiplayerHandler handler;
+    private final tetris.multiplayer.handler.MultiplayerHandler handler;
 
     public LocalMultiplayerSession(PlayerState player1,
                                    PlayerState player2,
                                    MultiPlayerGame game,
                                    MultiPlayerController controller,
-                                   LocalMultiplayerHandler handler) {
+                                   tetris.multiplayer.handler.MultiplayerHandler handler) {
         this.player1 = Objects.requireNonNull(player1, "player1");
         this.player2 = Objects.requireNonNull(player2, "player2");
         this.game = Objects.requireNonNull(game, "game");
@@ -44,9 +44,15 @@ public final class LocalMultiplayerSession {
     }
 
     /** 멀티플레이 상태 머신에 장착할 핸들러 */
-    public LocalMultiplayerHandler handler() {
+    public MultiplayerHandler handler() {
         return handler;
     }
+
+    /** Whether player one is local to this process */
+    public boolean isPlayerOneLocal() { return player1.isLocal(); }
+
+    /** Whether player two is local to this process */
+    public boolean isPlayerTwoLocal() { return player2.isLocal(); }
 
     /** UI/디버깅용으로 컨트롤러를 꺼내고 싶을 때 사용 */
     public MultiPlayerController controller() {
