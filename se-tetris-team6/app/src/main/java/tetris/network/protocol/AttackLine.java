@@ -9,13 +9,14 @@ import java.io.Serializable;
 public class AttackLine implements Serializable {
     private static final long serialVersionUID = 1L;
     
-    private final int linesCount; // 공격 라인 수
+    // 필드 이름을 공격력(strength)으로 명확히 변경
+    private final int strength; 
     
-    public AttackLine(int linesCount) {
-        this.linesCount = linesCount;
+    public AttackLine(int strength) {
+        this.strength = strength;
     }
     
-    public int getLinesCount() {
-        return linesCount;
+    public int getStrength() {
+        return strength;
     }
 }

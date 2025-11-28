@@ -9,7 +9,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import tetris.network.GameEventListener;
 import tetris.network.protocol.AttackLine;
 import tetris.network.protocol.PlayerInput;
-// 도메인 레이어 임포트
 import tetris.domain.GameModel;
 import tetris.domain.Board;
 import tetris.domain.engine.GameplayEngine;
@@ -58,7 +57,7 @@ public class GameThread implements Runnable, GameplayEngine.GameplayEvents {
     public static class GameEvent {
         public enum Type { 
             LINE_CLEARED, GAME_OVER, SCORE_UPDATE, 
-            BLOCK_SPAWNED, BLOCK_LOCKED, ATTACK_RECEIVED 
+            BLOCK_SPAWNED, BLOCK_LOCKED, ATTACK_RECEIVED, BLOCK_ROTATED
         }
         
         private final Type type;
@@ -100,10 +99,8 @@ public class GameThread implements Runnable, GameplayEngine.GameplayEvents {
         // 도메인 객체들 참조 (읽기 전용)
         this.board = gameModel.getBoard();
         this.inputState = gameModel.getInputState();
-        
-        // GameplayEngine 이벤트 리스너로 등록
-        // 주의: GameModel 내부의 GameplayEngine에 접근하는 방법이 필요
-        // 현재는 GameModel의 메서드들을 통해 간접 처리
+
+        gameModel.setSecondaryListener(this);
         
         this.lastUpdateTime = System.currentTimeMillis();
         
@@ -132,6 +129,9 @@ public class GameThread implements Runnable, GameplayEngine.GameplayEvents {
                 
                 // 2. 게임 로직 업데이트 (GameModel이 담당)
                 updateGameLogic();
+
+                // 지속 입력 초기화
+                resetContinuousInputs();
                 
                 // 3. 게임 이벤트 처리
                 processGameEvents();
@@ -177,12 +177,22 @@ public class GameThread implements Runnable, GameplayEngine.GameplayEvents {
             
             gameEventQueue.offer(new GameEvent(GameEvent.Type.LINE_CLEARED, result));
             System.out.println(playerId + ": " + clearedLines + "줄 삭제!");
+
+            if (isLocalPlayer && networkListener != null) {
+                networkListener.sendAttackLines(attackLines);
+            }
         }
     }
     
     @Override
     public void onTick(long tick) {
         // 틱 이벤트 처리 (필요시)
+    }
+    @Override
+    public void onBlockRotated(Block block, int times) {
+        // GameEvent 큐에 회전 이벤트를 추가하여 메인 루프에서 처리하도록 합니다.
+        gameEventQueue.offer(new GameEvent(GameEvent.Type.BLOCK_ROTATED, block));
+        System.out.println(playerId + ": 블록 회전됨 - " + block.getKind() + ", 시계방향 회전 횟수: " + times);
     }
     
     // === 입력 처리 부분 ===
@@ -196,7 +206,7 @@ public class GameThread implements Runnable, GameplayEngine.GameplayEvents {
             
             gameStateLock.writeLock().lock();
             try {
-                // ✅ 수정: InputState에만 반영 (GameModel 메서드 직접 호출 안 함)
+                
                 convertPlayerInputToInputState(input);
                 
                 // 로컬 플레이어의 입력이면 네트워크로 전송
@@ -261,7 +271,7 @@ public class GameThread implements Runnable, GameplayEngine.GameplayEvents {
         }
     }
 
-    // ✅ 추가: 틱 종료 시 지속 입력 초기화 (중요!)
+    // 추가: 틱 종료 시 지속 입력 초기화 (중요!)
     private void resetContinuousInputs() {
         // 지속 입력들은 매 틱마다 초기화해야 함
         inputState.setLeft(false);
@@ -290,6 +300,9 @@ public class GameThread implements Runnable, GameplayEngine.GameplayEvents {
                 case ATTACK_RECEIVED:
                     handleAttackReceivedEvent((AttackLine[]) event.getData());
                     break;
+                case BLOCK_ROTATED: // 👈 이 부분을 추가
+                    handleBlockRotatedEvent((Block) event.getData());
+                    break;
             }
         }
     }
@@ -305,6 +318,21 @@ public class GameThread implements Runnable, GameplayEngine.GameplayEvents {
             System.out.println(playerId + ": 공격 라인 " + 
                                 result.getAttackLines().length + "개 전송");
         }
+    }
+
+    private void handleBlockRotatedEvent(Block block) {
+        // 1. 네트워크 동기화 로직
+        // 로컬 플레이어인 경우에만 회전 정보를 네트워크 리스너를 통해 전송합니다.
+        if (isLocalPlayer && networkListener != null) {
+            // GameEventListener에 추가된 sendBlockRotation 메서드를 호출합니다.
+            // 이 호출은 Block 객체의 현재 상태(위치, 모양)를 네트워크로 전송합니다.
+            networkListener.sendBlockRotation(block); 
+            
+            System.out.println(playerId + ": 네트워크에 블록 회전 정보 전송 완료. 블록 종류: " + block.getKind());
+        }
+        
+        // 2. 로그 기록
+        System.out.println(playerId + ": 이벤트 처리 - 블록 회전 완료. 현재 위치: (" + block.getX() + ", " + block.getY() + ")");
     }
     
     private void handleGameOverEvent() {
@@ -351,21 +379,17 @@ public class GameThread implements Runnable, GameplayEngine.GameplayEvents {
     
     // === 공격 받기 처리 ===
     public void receiveAttack(AttackLine[] attackLines) {
-        if (attackLines != null && attackLines.length > 0) {
-            gameStateLock.writeLock().lock();
-            try {
-                // Board에 직접 접근하여 공격 라인 추가
-                for (AttackLine attackLine : attackLines) {
-                    // Board.addGarbageLine() 메서드가 있다고 가정
-                    // 없다면 GameModel에 메서드 추가 필요
-                    // board.addGarbageLine(attackLine.getStrength());
-                    
-                    // 임시로 이벤트 큐에 추가
-                    gameEventQueue.offer(new GameEvent(GameEvent.Type.ATTACK_RECEIVED, attackLines));
-                }
-            } finally {
-                gameStateLock.writeLock().unlock();
-            }
+        gameStateLock.writeLock().lock();
+        try {
+            // GameModel에 공격을 적용하는 메서드가 필요합니다. (GameModel에 구현되어 있어야 함)
+            gameModel.applyAttackLines(attackLines); 
+            
+            // 공격 수신 이벤트를 큐에 넣어 UI 등에 알립니다.
+            gameEventQueue.offer(new GameEvent(GameEvent.Type.ATTACK_RECEIVED, attackLines));
+            
+            System.out.println(playerId + ": 네트워크로부터 " + attackLines.length + "개의 공격 라인 수신 및 적용");
+        } finally {
+            gameStateLock.writeLock().unlock();
         }
     }
     

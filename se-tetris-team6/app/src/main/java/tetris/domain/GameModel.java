@@ -10,7 +10,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Random;
 import java.util.function.Supplier;
-
 import tetris.domain.setting.SettingService;
 import tetris.domain.block.BlockLike;
 import tetris.domain.handler.GameHandler;
@@ -32,6 +31,7 @@ import tetris.domain.item.behavior.LineClearBehavior;
 import tetris.domain.item.behavior.WeightBehavior;
 import tetris.domain.item.model.ItemBlockModel;
 import tetris.domain.model.Block;
+import tetris.domain.model.GameClock;
 import tetris.domain.model.GameState;
 import tetris.domain.model.InputState;
 import tetris.domain.score.Score;
@@ -583,16 +583,25 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         } else {
             activeItemBlock = null;
         }
+
+        if (secondaryListener != null) {
+            secondaryListener.onBlockSpawned(block);
+        }
     }
 
     @Override
     public void onBlockLocked(Block block) {
-        if (currentMode != GameMode.ITEM) {
-            return;
+        // 1. 아이템 모드 로직 (기존 로직 유지)
+        if (currentMode == GameMode.ITEM) {
+            if (activeItemBlock != null && activeItemBlock.getDelegate() == block) {
+                itemManager.onLock(itemContext, activeItemBlock);
+                activeItemBlock = null;
+            }
         }
-        if (activeItemBlock != null && activeItemBlock.getDelegate() == block) {
-            itemManager.onLock(itemContext, activeItemBlock);
-            activeItemBlock = null;
+        
+        // 2. ✅ 대전 모드 로직 추가: 블록 고정 시 공격 대기열 적용
+        if (currentMode == GameMode.STANDARD || currentMode == GameMode.ITEM /* 또는 대전 모드 플래그 */) {
+            commitPendingGarbageLines();
         }
     }
 
@@ -623,6 +632,10 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
             nextBlockIsItem = true;
         }
         itemManager.onLineClear(itemContext, null);
+
+        if (secondaryListener != null) {
+            secondaryListener.onLinesCleared(clearedLines);
+        }
     }
 
     @Override
@@ -1041,5 +1054,70 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
             // TODO: 이름 글자 추가
         }
         uiBridge.refreshBoard();
+    }
+
+    public void commitPendingGarbageLines() {
+        if (this.pendingGarbageLines > 0) {
+            // 1. 보드에 쓰레기 줄 추가
+            // board.addGarbageLines() 메서드가 Board 클래스에 구현되어야 함
+            //board.addGarbageLines(this.pendingGarbageLines); 
+
+            System.out.printf("[LOG] GameModel: 대기열 %d줄 보드에 적용됨.%n", this.pendingGarbageLines);
+            
+            // 2. 대기열 비우기
+            this.pendingGarbageLines = 0; 
+            
+            // 3. UI 갱신 및 게임 오버 체크
+            uiBridge.refreshBoard();
+            
+            // TODO: 공격 적용 후 블록이 겹쳐서 게임 오버 조건이 충족되는지 확인하는 로직 추가
+        }
+    }
+
+    private tetris.domain.engine.GameplayEngine.GameplayEvents secondaryListener;
+
+    public void setSecondaryListener(tetris.domain.engine.GameplayEngine.GameplayEvents listener) {
+        this.secondaryListener = listener;
+    }
+
+     // 공격 대기열 필드 추가 (최대 10줄)
+    private int pendingGarbageLines = 0; 
+    /**
+     * 네트워크를 통해 수신된 공격 라인을 처리합니다.
+     * @param attackLines 수신된 공격 라인 배열
+     */
+    public void applyAttackLines(tetris.network.protocol.AttackLine[] attackLines) {
+        if (attackLines == null || attackLines.length == 0) {
+            return;
+        }
+
+        int incomingStrength = 0;
+        for (tetris.network.protocol.AttackLine line : attackLines) {
+            // AttackLine이 getStrength()를 구현했다고 가정
+            incomingStrength += line.getStrength(); 
+        }
+
+        if (incomingStrength > 0) {
+            // 1. 현재 대기열이 10줄이 이미 차 있다면, 새로운 공격은 무시 (요구사항 5-2)
+            if (this.pendingGarbageLines >= 10) {
+                System.out.println("[LOG] GameModel: 대기열이 가득 차 새로운 공격 (" + incomingStrength + "줄) 무시됨.");
+                return;
+            }
+
+            // 2. 새로운 공격을 대기열에 누적
+            this.pendingGarbageLines += incomingStrength;
+
+            // 3. 10줄 초과 시, 10줄로 제한 (제일 아래쪽 부분을 잘라냄) (요구사항 5-3)
+            if (this.pendingGarbageLines > 10) {
+                this.pendingGarbageLines = 10;
+                System.out.println("[LOG] GameModel: 공격 대기열이 10줄로 제한됨.");
+            }
+            
+            System.out.printf("[LOG] GameModel: 공격 대기열에 %d줄 추가됨. 현재 대기열: %d줄%n", 
+                incomingStrength, this.pendingGarbageLines);
+            
+            // UI 갱신 (대기열 표시 영역 업데이트)
+            uiBridge.refreshBoard(); 
+        }
     }
 }
