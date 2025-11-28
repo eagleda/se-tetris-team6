@@ -122,6 +122,17 @@ public class TetrisFrame extends JFrame {
                     }
                 });
             }
+
+            @Override
+            public void showMultiplayerResult(int winnerId) {
+                SwingUtilities.invokeLater(() -> {
+                    String message = winnerId <= 0 ? "Match Finished" : "Player " + winnerId + " Wins!";
+                    if (gameOverPanel != null) {
+                        gameOverPanel.showMultiplayerResult(message);
+                        layeredPane.moveToFront(gameOverPanel);
+                    }
+                });
+            }
         });
 
         scoreController = new ScoreController(
@@ -632,6 +643,11 @@ public class TetrisFrame extends JFrame {
             @Override
             public void showNameEntryOverlay(tetris.domain.score.Score score) {
                 // 동일하게 로컬 멀티에서는 이름 입력을 통합 UI에서 처리한다.
+            }
+
+            @Override
+            public void showMultiplayerResult(int winnerId) {
+                // 로컬 뷰는 메인 UI 오버레이를 사용하므로 무시
             }
         };
     }

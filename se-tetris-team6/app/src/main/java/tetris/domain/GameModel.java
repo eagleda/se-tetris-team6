@@ -74,6 +74,11 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
 
         /** Show a dedicated name-entry overlay (optional). */
         void showNameEntryOverlay(tetris.domain.score.Score score);
+
+        /** 멀티플레이 승자 표시용 오버레이를 보여준다. */
+        default void showMultiplayerResult(int winnerId) {
+            /* no-op */
+        }
     }
     /**
      * 현재 슬로우 버프의 남은 시간을 ms 단위로 반환합니다. 버프가 없으면 0을 반환합니다.
@@ -998,6 +1003,13 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         if (scoreEngine != null && linesCleared > 0) {
             scoreEngine.onLinesCleared(linesCleared);
         }
+    }
+
+    /**
+     * 로컬 멀티 전용 승리 결과 오버레이를 UI에 요청한다.
+     */
+    public void showMultiplayerResult(int winnerId) {
+        uiBridge.showMultiplayerResult(winnerId);
     }
 
     // === 외부 제어 진입점 ===
