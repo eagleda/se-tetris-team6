@@ -9,9 +9,15 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Random;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Supplier;
-import tetris.domain.setting.SettingService;
+
+import tetris.domain.BlockGenerator;
+import tetris.domain.BlockKind;
+import tetris.domain.BlockShape;
+import tetris.domain.RandomBlockGenerator;
 import tetris.domain.block.BlockLike;
+import tetris.domain.setting.SettingService;
 import tetris.domain.handler.GameHandler;
 import tetris.domain.handler.GameOverHandler;
 import tetris.domain.handler.GamePlayHandler;
@@ -37,6 +43,9 @@ import tetris.domain.model.InputState;
 import tetris.domain.score.Score;
 import tetris.domain.score.ScoreRepository;
 import tetris.domain.score.ScoreRuleEngine;
+import tetris.multiplayer.model.Cell;
+import tetris.multiplayer.model.LockedPieceSnapshot;
+import tetris.multiplayer.session.LocalMultiplayerSession;
 
 /**
  * 게임 핵심 도메인 모델.
@@ -65,6 +74,31 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
 
         /** Show a dedicated name-entry overlay (optional). */
         void showNameEntryOverlay(tetris.domain.score.Score score);
+
+        /** 멀티플레이 승자 표시용 오버레이를 보여준다. */
+        default void showMultiplayerResult(int winnerId) {
+            /* no-op */
+        }
+    }
+    /**
+     * 현재 슬로우 버프의 남은 시간을 ms 단위로 반환합니다. 버프가 없으면 0을 반환합니다.
+     */
+    public long getSlowBuffRemainingTimeMs() {
+        if (slowBuffExpiresAtMs <= 0) return 0L;
+        long remaining = slowBuffExpiresAtMs - System.currentTimeMillis();
+        return Math.max(0L, remaining);
+    }
+
+    /**
+     * 현재 더블 스코어 버프의 남은 시간을 ms 단위로 반환합니다. 버프가 없으면 0을 반환합니다.
+     */
+    public long getDoubleScoreBuffRemainingTimeMs() {
+        if (doubleScoreUntilTick <= 0) return 0L;
+        // Tick을 ms로 환산 (tick은 내부적으로 1프레임 단위, 1프레임=약 16ms로 가정)
+        long nowTick = currentTick;
+        long remainingTick = doubleScoreUntilTick - nowTick;
+        long remainingMs = remainingTick * 16L;
+        return Math.max(0L, remainingMs);
     }
 
     private static final UiBridge NO_OP_UI_BRIDGE = new UiBridge() {
@@ -98,16 +132,19 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
     private final SettingService settingService;
     private BlockGenerator blockGenerator;
     private final Map<GameState, GameHandler> handlers = new EnumMap<>(GameState.class);
+    private GameHandler defaultPlayHandler;
+    private LocalMultiplayerSession activeLocalSession;
     private GameMode currentMode = GameMode.STANDARD;
     private GameMode lastMode = GameMode.STANDARD;
     private final ItemManager itemManager = new ItemManager();
     private final Random itemRandom = new Random();
     private final List<Supplier<ItemBehavior>> behaviorFactories = List.of(
             () -> new DoubleScoreBehavior(600, 2.0),
-            () -> new TimeSlowBehavior(600, 0.5),
+            TimeSlowBehavior::new,
             () -> new BombBehavior(),
             () -> new LineClearBehavior(),
-            () -> new WeightBehavior());
+            WeightBehavior::new);
+    private final List<MultiplayerHook> multiplayerHooks = new CopyOnWriteArrayList<>();
 
     public static final class ActiveItemInfo {
         private final BlockLike block;
@@ -149,11 +186,22 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         }
     }
 
+    /**
+     * 멀티 대전 쓰레기 줄 규칙을 GameModel의 수명주기 이벤트와 연결하기 위한 훅.
+     * onPieceLocked는 줄 삭제 결과를, beforeNextSpawn은 쓰레기 주입 시점을 알린다.
+     */
+    public interface MultiplayerHook {
+        void onPieceLocked(LockedPieceSnapshot snapshot, int[] clearedRows, int boardWidth);
+
+        void beforeNextSpawn();
+    }
+
     private static final int DEFAULT_ITEM_SPAWN_INTERVAL = 2;
     private static final int BLOCKS_PER_SPEED_STEP = 12;
     private static final int LINES_PER_SPEED_STEP = 4;
     private static final int MAX_SPEED_LEVEL = 20;
     private static final int LINE_CLEAR_HIGHLIGHT_DELAY_MS = 250;
+    private static final long SLOW_ITEM_DURATION_MS = 15_000L;
     private static final long INACTIVITY_STAGE1_MS = 2000;
     private static final long INACTIVITY_STAGE2_MS = 5000;
     private static final int INACTIVITY_PENALTY_POINTS = 10;
@@ -165,16 +213,19 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
     private long currentTick;
     private double scoreMultiplier = 1.0;
     private long doubleScoreUntilTick;
-    private double slowFactor = 1.0;
-    private long slowUntilTick;
+    private int slowLevelOffset;
+    private long slowBuffExpiresAtMs;
     private ItemContextImpl itemContext;
-    private Supplier<ItemBehavior> behaviorOverride = null;
+    private Supplier<ItemBehavior> behaviorOverride = () -> new WeightBehavior();
     private int itemSpawnIntervalLines = DEFAULT_ITEM_SPAWN_INTERVAL;
     private int currentGravityLevel;
     private boolean colorBlindMode;
     private long lastInputMillis = System.currentTimeMillis();
     private int inactivityPenaltyStage;
     private long pauseStartedAt = -1;
+    private long gameplayStartedAtMillis = -1;
+    private long accumulatedPauseMillis;
+    private LockedPieceSnapshot lastLockedPieceSnapshot;
 
     private UiBridge uiBridge = NO_OP_UI_BRIDGE;
     private GameState currentState;
@@ -210,6 +261,10 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
 
     private void registerHandler(GameHandler handler) {
         handlers.put(handler.getState(), handler);
+        if (handler.getState() == GameState.PLAYING && defaultPlayHandler == null) {
+            // 싱글 플레이 루프 복귀 시 다시 사용할 기본 핸들러를 저장해 둔다.
+            defaultPlayHandler = handler;
+        }
     }
 
     public void changeState(GameState next) {
@@ -237,6 +292,24 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
 
     public Board getBoard() {
         return board;
+    }
+
+    /**
+     * 멀티 대전 규칙 엔진이 라인 삭제/스폰 이벤트를 구독하도록 등록한다.
+     * Local/P2P 컨트롤러가 훅을 넣어 쓰레기 줄 버퍼를 계산할 때 사용한다.
+     */
+    public void addMultiplayerHook(MultiplayerHook hook) {
+        if (hook == null) {
+            return;
+        }
+        multiplayerHooks.add(hook);
+    }
+
+    public void removeMultiplayerHook(MultiplayerHook hook) {
+        if (hook == null) {
+            return;
+        }
+        multiplayerHooks.remove(hook);
     }
 
     /**
@@ -297,7 +370,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
     }
 
     public int getSpeedLevel() {
-        return currentGravityLevel;
+        return effectiveGravityLevel();
     }
 
     public boolean isColorBlindMode() {
@@ -339,7 +412,22 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
     }
 
     public void clearBoardRegion(int x, int y, int width, int height) {
-        board.clearArea(x, y, width, height);
+        if (width <= 0 || height <= 0) {
+            return;
+        }
+        // Line-clear 아이템: 보드 전체 폭을 덮는 영역이면 실제 줄 삭제처럼 처리해 위 블록을 한 칸씩 내린다.
+        boolean clearsFullRows = x <= 0 && x + width >= Board.W;
+        if (clearsFullRows) {
+            java.util.List<Integer> rows = new ArrayList<>();
+            int start = Math.max(0, y);
+            int end = Math.min(Board.H, y + height);
+            for (int row = start; row < end; row++) {
+                rows.add(row);
+            }
+            board.clearRows(rows);
+        } else {
+            board.clearArea(x, y, width, height);
+        }
         uiBridge.refreshBoard();
     }
 
@@ -367,25 +455,43 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         if (currentMode != GameMode.ITEM) {
             return;
         }
-        long duration = Math.max(0, durationTicks);
-        long expiry = currentTick + duration;
         Map<String, Object> data = meta == null ? Collections.emptyMap() : meta;
         if ("double_score".equals(buffId)) {
+            long duration = Math.max(0, durationTicks);
+            long expiry = currentTick + duration;
             Object factorObj = data.getOrDefault("factor", Double.valueOf(2.0));
             double factor = factorObj instanceof Number ? ((Number) factorObj).doubleValue() : 2.0;
             scoreMultiplier = Math.max(0.0, factor);
             doubleScoreUntilTick = expiry;
             scoreEngine.setMultiplier(scoreMultiplier);
         } else if ("slow".equals(buffId)) {
-            Object factorObj = data.getOrDefault("factor", Double.valueOf(0.5));
-            slowFactor = Math.max(0.1, factorObj instanceof Number ? ((Number) factorObj).doubleValue() : 0.5);
-            slowUntilTick = expiry;
-            gameplayEngine.setSpeedModifier(slowFactor);
+            Object durationObj = data.get("durationMs");
+            long durationMs = durationObj instanceof Number
+                    ? Math.max(0L, ((Number) durationObj).longValue())
+                    : SLOW_ITEM_DURATION_MS;
+            Object levelDeltaObj = data.getOrDefault("levelDelta", Integer.valueOf(-1));
+            int levelDelta = levelDeltaObj instanceof Number ? ((Number) levelDeltaObj).intValue() : -1;
+            slowLevelOffset = Math.min(0, levelDelta);
+            slowBuffExpiresAtMs = System.currentTimeMillis() + durationMs;
+            applyGravityLevel();
         }
     }
 
     public long getCurrentTick() {
         return currentTick;
+    }
+
+    public long getElapsedMillis() {
+        if (gameplayStartedAtMillis <= 0) {
+            return 0L;
+        }
+        long now = System.currentTimeMillis();
+        long paused = accumulatedPauseMillis;
+        if (pauseStartedAt > 0) {
+            paused += Math.max(0L, now - pauseStartedAt);
+        }
+        long elapsed = now - gameplayStartedAtMillis - paused;
+        return Math.max(0L, elapsed);
     }
 
     public GameMode getCurrentMode() {
@@ -460,7 +566,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
     }
 
     public void resetItemTestingConfig() {
-        this.behaviorOverride = () -> new TimeSlowBehavior(600, 0.5);
+        this.behaviorOverride = TimeSlowBehavior::new;
         this.itemSpawnIntervalLines = DEFAULT_ITEM_SPAWN_INTERVAL;
     }
 
@@ -478,11 +584,21 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         GameMode selected = mode == null ? GameMode.STANDARD : mode;
         this.currentMode = selected;
         this.lastMode = selected;
+        if (activeLocalSession != null) {
+            // 로컬 멀티가 활성화되어 있다면 각 플레이어 모델을 동일한 모드로 재가동한다.
+            activeLocalSession.restartPlayers(selected);
+            handlers.put(GameState.PLAYING, activeLocalSession.handler());
+        } else if (defaultPlayHandler != null) {
+            handlers.put(GameState.PLAYING, defaultPlayHandler);
+        }
         resetGameplayState();
         changeState(GameState.PLAYING);
     }
 
     public void spawnIfNeeded() {
+        if (gameplayEngine.getActiveBlock() == null) {
+            notifyBeforeNextSpawnHooks();
+        }
         gameplayEngine.spawnIfNeeded();
         if (gameplayEngine.getActiveBlock() == null) {
             changeState(GameState.GAME_OVER);
@@ -570,15 +686,13 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
 
     @Override
     public void onBlockLocked(Block block) {
-        // 1. 아이템 모드 로직 (기존 로직 유지)
-        if (currentMode == GameMode.ITEM) {
-            if (activeItemBlock != null && activeItemBlock.getDelegate() == block) {
-                itemManager.onLock(itemContext, activeItemBlock);
-                activeItemBlock = null;
-            }
+        cacheLastLockedPiece(block);
+        if (currentMode == GameMode.ITEM && activeItemBlock != null && activeItemBlock.getDelegate() == block) {
+            itemManager.onLock(itemContext, activeItemBlock);
+            activeItemBlock = null;
         }
-        
-        // 2. ✅ 대전 모드 로직 추가: 블록 고정 시 공격 대기열 적용
+
+        // 대전/아이템 모드에서 블록 고정 시 공격 대기열 적용
         if (currentMode == GameMode.STANDARD || currentMode == GameMode.ITEM /* 또는 대전 모드 플래그 */) {
             commitPendingGarbageLines();
         }
@@ -602,6 +716,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
             return;
         }
         totalClearedLines += clearedLines;
+        notifyMultiplayerLineClear();
         updateGravityProgress();
         gameplayEngine.pauseForLineClear(LINE_CLEAR_HIGHLIGHT_DELAY_MS);
         if (currentMode != GameMode.ITEM) {
@@ -632,7 +747,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         return switch (key) {
             case "line_clear", "lineclear", "line-clear" -> LineClearBehavior::new;
             case "double_score", "doublescore", "double-score", "double" -> () -> new DoubleScoreBehavior(600, 2.0);
-            case "time_slow", "timeslow", "slow" -> () -> new TimeSlowBehavior(600, 0.5);
+            case "time_slow", "timeslow", "slow" -> TimeSlowBehavior::new;
             case "bomb" -> () -> new BombBehavior();
             case "weight", "weight_drop", "weight-drop" -> WeightBehavior::new;
             default -> throw new IllegalArgumentException("Unknown item behavior: " + behaviorId);
@@ -656,10 +771,10 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
             scoreMultiplier = 1.0;
             scoreEngine.setMultiplier(scoreMultiplier);
         }
-        if (slowUntilTick > 0 && tick >= slowUntilTick) {
-            slowUntilTick = 0;
-            slowFactor = 1.0;
-            gameplayEngine.setSpeedModifier(slowFactor);
+        if (slowBuffExpiresAtMs > 0 && System.currentTimeMillis() >= slowBuffExpiresAtMs) {
+            slowBuffExpiresAtMs = 0;
+            slowLevelOffset = 0;
+            applyGravityLevel();
         }
     }
 
@@ -684,7 +799,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
             int bonusLevels = desiredLevel - currentGravityLevel;
             currentGravityLevel = desiredLevel;
             if (gameplayEngine != null) {
-                gameplayEngine.setGravityLevel(currentGravityLevel);
+                applyGravityLevel();
             }
             awardSpeedBonus(bonusLevels);
             uiBridge.refreshBoard();
@@ -737,13 +852,15 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         pauseStartedAt = -1;
         currentTick = 0;
         scoreMultiplier = 1.0;
-        slowFactor = 1.0;
-        slowUntilTick = 0;
+        slowLevelOffset = 0;
+        slowBuffExpiresAtMs = 0;
         doubleScoreUntilTick = 0;
         gameplayEngine.setSpeedModifier(1.0);
-        gameplayEngine.setGravityLevel(0);
+        applyGravityLevel();
         gameplayEngine.setActiveBlock(null);
         stopClockCompletely();
+        gameplayStartedAtMillis = -1;
+        accumulatedPauseMillis = 0;
     }
 
     private void resetGameplayState() {
@@ -760,18 +877,68 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         currentGravityLevel = 0;
         inactivityPenaltyStage = 0;
         lastInputMillis = System.currentTimeMillis();
+        gameplayStartedAtMillis = lastInputMillis;
+        accumulatedPauseMillis = 0;
         currentTick = 0;
         scoreMultiplier = 1.0;
         doubleScoreUntilTick = 0;
-        slowFactor = 1.0;
-        slowUntilTick = 0;
+        slowLevelOffset = 0;
+        slowBuffExpiresAtMs = 0;
         gameplayEngine.setActiveBlock(null);
-        gameplayEngine.setGravityLevel(0);
+        applyGravityLevel();
         gameplayEngine.stopClockCompletely();
+        pauseStartedAt = -1;
+    }
+
+    private void applyGravityLevel() {
+        if (gameplayEngine == null) {
+            return;
+        }
+        int effectiveLevel = effectiveGravityLevel();
+        gameplayEngine.setSpeedModifier(1.0); // neutralize any lingering modifiers
+        gameplayEngine.setGravityLevel(effectiveLevel);
+    }
+
+    private int effectiveGravityLevel() {
+        int level = currentGravityLevel + slowLevelOffset;
+        return Math.max(0, level);
     }
 
     private void stopClockCompletely() {
         gameplayEngine.stopClockCompletely();
+    }
+
+    /**
+     * 로컬 멀티 세션을 상태 머신에 연결한다. (재호출 시 마지막 세션을 덮어쓴다)
+     */
+    public void enableLocalMultiplayer(LocalMultiplayerSession session) {
+        if (session == null) {
+            return;
+        }
+        this.activeLocalSession = session;
+        handlers.put(GameState.PLAYING, session.handler());
+    }
+
+    /**
+     * 메뉴 복귀 / 싱글 모드 전환 등으로 더 이상 세션이 필요 없을 때 정리한다.
+     */
+    public void clearLocalMultiplayerSession() {
+        if (activeLocalSession == null) {
+            return;
+        }
+        activeLocalSession.shutdown();
+        if (defaultPlayHandler != null) {
+            handlers.put(GameState.PLAYING, defaultPlayHandler);
+        }
+        activeLocalSession = null;
+    }
+
+    public boolean isLocalMultiplayerActive() {
+        return activeLocalSession != null;
+    }
+
+    public Optional<LocalMultiplayerSession> getActiveLocalMultiplayerSession() {
+        return Optional.ofNullable(activeLocalSession);
     }
 
     public void stepGameplay() {
@@ -838,6 +1005,13 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         }
     }
 
+    /**
+     * 로컬 멀티 전용 승리 결과 오버레이를 UI에 요청한다.
+     */
+    public void showMultiplayerResult(int winnerId) {
+        uiBridge.showMultiplayerResult(winnerId);
+    }
+
     // === 외부 제어 진입점 ===
 
     public void pauseGame() {
@@ -852,6 +1026,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
             if (pauseStartedAt > 0) {
                 long pausedDuration = System.currentTimeMillis() - pauseStartedAt;
                 lastInputMillis += pausedDuration;
+                accumulatedPauseMillis += Math.max(0L, pausedDuration);
                 pauseStartedAt = -1;
             }
             changeState(GameState.PLAYING);
@@ -862,6 +1037,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         if (currentState != GameState.MENU) {
             resetRuntimeForMenu();
             changeState(GameState.MENU);
+            clearLocalMultiplayerSession();
         }
     }
 
@@ -897,6 +1073,13 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         if (!isPlayingState() || !ensureActiveBlockPresent()) {
             return;
         }
+        // weight 아이템일 때 회전 무시
+        if (isItemMode() && activeItemBlock != null && !activeItemBlock.getBehaviors().isEmpty()) {
+            ItemBehavior behavior = activeItemBlock.getBehaviors().get(0);
+            if ("weight".equals(behavior.id())) {
+                return;
+            }
+        }
         recordPlayerInput();
         gameplayEngine.rotateBlockClockwise();
     }
@@ -904,6 +1087,13 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
     public void rotateBlockCounterClockwise() {
         if (!isPlayingState() || !ensureActiveBlockPresent()) {
             return;
+        }
+        // weight 아이템일 때 회전 무시
+        if (isItemMode() && activeItemBlock != null && !activeItemBlock.getBehaviors().isEmpty()) {
+            ItemBehavior behavior = activeItemBlock.getBehaviors().get(0);
+            if ("weight".equals(behavior.id())) {
+                return;
+            }
         }
         recordPlayerInput();
         gameplayEngine.rotateBlockCounterClockwise();
@@ -1019,6 +1209,59 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
             // TODO: 이름 글자 추가
         }
         uiBridge.refreshBoard();
+    }
+    // - 마지막으로 잠긴 블록의 모양/위치를 스냅샷(LockedPieceSnapshot)으로 저장해 둔다.
+    // - GameplayEngine이 줄을 지웠을 때, 어떤 블록이 몇 줄을 지웠는지 멀티플레이어 훅에 알려준다.
+    // - 다음 블록이 스폰되기 직전에 멀티플레이어 훅을 호출하여, 대기 중인 공격 라인 등을
+    //   실제 보드에 적용할 수 있게 한다.
+    // => 싱글 플레이 핵심 로직은 그대로 두고, 멀티 전용 규칙(공격/쓰레기 줄 처리)은
+    //    MultiplayerHook 구현체에서 처리하도록 하기 위한 연결 지점
+
+    private void notifyBeforeNextSpawnHooks() {
+        if (multiplayerHooks.isEmpty()) {
+            return;
+        }
+        for (MultiplayerHook hook : multiplayerHooks) {
+            hook.beforeNextSpawn();
+        }
+    }
+
+    private void cacheLastLockedPiece(Block block) {
+        if (block == null) {
+            lastLockedPieceSnapshot = null;
+            return;
+        }
+        BlockShape shape = block.getShape();
+        List<Cell> cells = new ArrayList<>();
+        for (int y = 0; y < shape.height(); y++) {
+            for (int x = 0; x < shape.width(); x++) {
+                if (!shape.filled(x, y)) {
+                    continue;
+                }
+                cells.add(new Cell(block.getX() + x, block.getY() + y));
+            }
+        }
+        lastLockedPieceSnapshot = LockedPieceSnapshot.of(cells);
+    }
+
+    private void notifyMultiplayerLineClear() {
+        if (multiplayerHooks.isEmpty() || lastLockedPieceSnapshot == null) {
+            return;
+        }
+        List<Integer> rows = gameplayEngine == null ? Collections.emptyList() : gameplayEngine.getLastClearedRows();
+        if (rows == null || rows.isEmpty()) {
+            return;
+        }
+        int[] cleared = new int[rows.size()];
+        for (int i = 0; i < rows.size(); i++) {
+            cleared[i] = rows.get(i);
+        }
+        LockedPieceSnapshot snapshot = lastLockedPieceSnapshot;
+        for (MultiplayerHook hook : multiplayerHooks) {
+            hook.onPieceLocked(snapshot, cleared, Board.W);
+        }
+        lastLockedPieceSnapshot = null;
+
     }
 
     public void commitPendingGarbageLines() {

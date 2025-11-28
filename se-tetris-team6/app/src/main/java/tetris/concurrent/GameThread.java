@@ -1,5 +1,7 @@
 package tetris.concurrent;
 
+import java.time.Duration;
+import java.util.Objects;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -16,6 +18,10 @@ import tetris.domain.model.GameState;
 import tetris.domain.model.InputState;
 import tetris.domain.model.Block;
 import tetris.domain.score.Score;
+
+import tetris.domain.model.GameState;
+import tetris.network.protocol.AttackLine;
+import tetris.network.protocol.PlayerInput;
 
 /**
  * 도메인 레이어와 완전 연동된 게임 로직 전용 스레드

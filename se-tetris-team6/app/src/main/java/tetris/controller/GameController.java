@@ -3,11 +3,16 @@ package tetris.controller;
 import java.awt.event.KeyEvent;
 import java.util.HashMap;
 import java.util.Map;
+import javax.swing.Timer;
 import tetris.domain.BlockGenerator;
 import tetris.domain.GameDifficulty;
 import tetris.domain.GameMode;
 import tetris.domain.GameModel;
 import tetris.domain.model.GameState;
+import tetris.domain.setting.Setting;
+import tetris.multiplayer.handler.LocalMultiplayerHandler;
+import tetris.multiplayer.session.LocalMultiplayerSession;
+import tetris.multiplayer.session.LocalMultiplayerSessionFactory;
 // 이제부터 모델의 좌우 움직임이 안 되는 이유를 해결합니다.
 
 /**
@@ -20,14 +25,16 @@ public class GameController {
 
     // 키 반복 입력 제어를 위한 상태 추적
     private Map<Integer, Long> lastKeyPressTime;
-    private static final long KEY_REPEAT_DELAY = 100; // 100ms
-    private static final long MOVEMENT_REPEAT_DELAY = 150; // 이동키는 조금 더 느리게
+    private static final long KEY_REPEAT_DELAY = 15; // 15ms
+    private static final long MOVEMENT_REPEAT_DELAY = 30; // 이동키는 조금 더 느리게
 
     // 게임 일시정지 토글을 위한 상태
     private boolean pauseKeyPressed = false;
 
     // 키 바인딩 맵
     private Map<String, Integer> keyBindings;
+    private LocalMultiplayerSession localSession;
+    private Timer localMultiplayerTimer;
 
     // 생성자에서 View와 Model을 주입받습니다.
     public GameController(GameModel gameModel) {
@@ -66,29 +73,48 @@ public class GameController {
      */
     private void initializeDefaultKeyBindings() {
         keyBindings = new HashMap<>();
+        Setting defaults = Setting.defaults();
 
-        // 게임 플레이 키
-        keyBindings.put("MOVE_LEFT", KeyEvent.VK_LEFT);
-        keyBindings.put("MOVE_RIGHT", KeyEvent.VK_RIGHT);
-    keyBindings.put("SOFT_DROP", KeyEvent.VK_DOWN);
-        keyBindings.put("ROTATE_CW", KeyEvent.VK_UP);           // 시계방향 회전
-        keyBindings.put("ROTATE_CCW", KeyEvent.VK_Z);           // 반시계방향 회전 (추가)
-        keyBindings.put("HARD_DROP", KeyEvent.VK_SPACE);        // 하드 드롭
-        keyBindings.put("HOLD", KeyEvent.VK_C);                 // 홀드 기능 (추가)
+        // 게임 플레이 키 (싱글)
+        putDefaultBinding("MOVE_LEFT", defaults.getKeyBinding("MOVE_LEFT"), KeyEvent.VK_LEFT);
+        putDefaultBinding("MOVE_RIGHT", defaults.getKeyBinding("MOVE_RIGHT"), KeyEvent.VK_RIGHT);
+        putDefaultBinding("SOFT_DROP", defaults.getKeyBinding("SOFT_DROP"), KeyEvent.VK_DOWN);
+        putDefaultBinding("ROTATE_CW", defaults.getKeyBinding("ROTATE_CW"), KeyEvent.VK_UP);
+        putDefaultBinding("ROTATE_CCW", defaults.getKeyBinding("ROTATE_CCW"), KeyEvent.VK_Z);
+        putDefaultBinding("HARD_DROP", defaults.getKeyBinding("HARD_DROP"), KeyEvent.VK_SPACE);
+        putDefaultBinding("HOLD", defaults.getKeyBinding("HOLD"), KeyEvent.VK_C);
 
         // 게임 제어 키
-        keyBindings.put("PAUSE", KeyEvent.VK_P);                // 일시정지/재개
-        keyBindings.put("QUIT_GAME", KeyEvent.VK_Q);            // 게임 종료
-        keyBindings.put("RESTART", KeyEvent.VK_R);              // 게임 재시작
+        putDefaultBinding("PAUSE", defaults.getKeyBinding("PAUSE"), KeyEvent.VK_P);
+        putDefaultBinding("QUIT_GAME", defaults.getKeyBinding("QUIT_GAME"), KeyEvent.VK_Q);
+        putDefaultBinding("RESTART", defaults.getKeyBinding("RESTART"), KeyEvent.VK_R);
 
         // 메뉴 네비게이션 키
-        keyBindings.put("MENU_UP", KeyEvent.VK_UP);
-        keyBindings.put("MENU_DOWN", KeyEvent.VK_DOWN);
-        keyBindings.put("MENU_SELECT", KeyEvent.VK_ENTER);
-        keyBindings.put("MENU_BACK", KeyEvent.VK_ESCAPE);
+        putDefaultBinding("MENU_UP", defaults.getKeyBinding("MENU_UP"), KeyEvent.VK_UP);
+        putDefaultBinding("MENU_DOWN", defaults.getKeyBinding("MENU_DOWN"), KeyEvent.VK_DOWN);
+        putDefaultBinding("MENU_SELECT", defaults.getKeyBinding("MENU_SELECT"), KeyEvent.VK_ENTER);
+        putDefaultBinding("MENU_BACK", defaults.getKeyBinding("MENU_BACK"), KeyEvent.VK_ESCAPE);
 
         // 설정 화면 키
-        keyBindings.put("SETTINGS_RESET", KeyEvent.VK_DELETE);  // 설정 초기화
+        putDefaultBinding("SETTINGS_RESET", defaults.getKeyBinding("SETTINGS_RESET"), KeyEvent.VK_DELETE);
+
+        // 로컬 멀티 (P1)
+        putDefaultBinding("P1_MOVE_LEFT", defaults.getKeyBinding("P1_MOVE_LEFT"), KeyEvent.VK_A);
+        putDefaultBinding("P1_MOVE_RIGHT", defaults.getKeyBinding("P1_MOVE_RIGHT"), KeyEvent.VK_D);
+        putDefaultBinding("P1_SOFT_DROP", defaults.getKeyBinding("P1_SOFT_DROP"), KeyEvent.VK_S);
+        putDefaultBinding("P1_ROTATE_CW", defaults.getKeyBinding("P1_ROTATE_CW"), KeyEvent.VK_W);
+        putDefaultBinding("P1_HARD_DROP", defaults.getKeyBinding("P1_HARD_DROP"), KeyEvent.VK_SPACE);
+
+        // 로컬 멀티 (P2)
+        putDefaultBinding("P2_MOVE_LEFT", defaults.getKeyBinding("P2_MOVE_LEFT"), KeyEvent.VK_LEFT);
+        putDefaultBinding("P2_MOVE_RIGHT", defaults.getKeyBinding("P2_MOVE_RIGHT"), KeyEvent.VK_RIGHT);
+        putDefaultBinding("P2_SOFT_DROP", defaults.getKeyBinding("P2_SOFT_DROP"), KeyEvent.VK_DOWN);
+        putDefaultBinding("P2_ROTATE_CW", defaults.getKeyBinding("P2_ROTATE_CW"), KeyEvent.VK_UP);
+        putDefaultBinding("P2_HARD_DROP", defaults.getKeyBinding("P2_HARD_DROP"), KeyEvent.VK_ENTER);
+    }
+
+    private void putDefaultBinding(String action, Integer configured, int fallback) {
+        keyBindings.put(action, configured != null ? configured : fallback);
     }
 
     /**
@@ -149,8 +175,13 @@ public class GameController {
 
         // 게임 종료 키
         if (keyCode == keyBindings.get("QUIT_GAME")) {
+            deactivateLocalMultiplayer();
             gameModel.quitToMenu();
             System.out.println("Controller: 메뉴로 돌아가기");
+            return;
+        }
+
+        if (localSession != null && routeLocalMultiplayerInput(keyCode)) {
             return;
         }
 
@@ -195,6 +226,7 @@ public class GameController {
                 System.out.println("Controller: 게임 재개");
             }
         } else if (keyCode == keyBindings.get("QUIT_GAME")) {
+            deactivateLocalMultiplayer();
             gameModel.quitToMenu();
             System.out.println("Controller: 메뉴로 돌아가기");
         } else if (keyCode == keyBindings.get("RESTART")) {
@@ -216,6 +248,7 @@ public class GameController {
             gameModel.restartGame();
             System.out.println("Controller: 게임 재시작");
         } else if (keyCode == keyBindings.get("QUIT_GAME")) {
+            deactivateLocalMultiplayer();
             gameModel.quitToMenu();
             System.out.println("Controller: 메뉴로 돌아가기");
         }
@@ -329,6 +362,8 @@ public class GameController {
     }
 
     public void startGame(GameMode mode) {
+        // 로컬 멀티 세션이 켜져 있었다면 먼저 정리하고 싱글 루프로 복귀한다.
+        deactivateLocalMultiplayer();
         pauseKeyPressed = false;
         lastKeyPressTime.clear();
         gameModel.startGame(mode);
@@ -339,11 +374,118 @@ public class GameController {
     }
 
     /**
+     * 로컬 멀티플레이를 시작하고 생성된 세션을 반환한다.
+     * - UI는 반환된 세션으로 각 패널을 바인딩한다.
+     */
+    public LocalMultiplayerSession startLocalMultiplayerGame(GameMode mode) {
+        deactivateLocalMultiplayer();
+        LocalMultiplayerSession session = LocalMultiplayerSessionFactory.create(mode);
+        localSession = session;
+        gameModel.enableLocalMultiplayer(session);
+        startLocalMultiplayerTick();
+        pauseKeyPressed = false;
+        lastKeyPressTime.clear();
+        gameModel.startGame(mode);
+        return session;
+    }
+
+    /**
      * 키 릴리즈 처리 (일시정지 키 상태 초기화)
      */
     public void handleKeyRelease(int keyCode) {
         if (keyCode == keyBindings.get("PAUSE")) {
             pauseKeyPressed = false;
+        }
+    }
+
+    private boolean routeLocalMultiplayerInput(int keyCode) {
+        if (localSession == null || !gameModel.isLocalMultiplayerActive()) {
+            return false;
+        }
+        LocalMultiplayerHandler handler = localSession.handler();
+        if (handler == null) {
+            return false;
+        }
+        if (keyCode == keyFor("P1_MOVE_LEFT")) {
+            handler.dispatchToPlayer(1, GameModel::moveBlockLeft);
+            return true;
+        }
+        if (keyCode == keyFor("P1_MOVE_RIGHT")) {
+            handler.dispatchToPlayer(1, GameModel::moveBlockRight);
+            return true;
+        }
+        if (keyCode == keyFor("P1_SOFT_DROP")) {
+            handler.dispatchToPlayer(1, GameModel::moveBlockDown);
+            return true;
+        }
+        if (keyCode == keyFor("P1_ROTATE_CW")) {
+            handler.dispatchToPlayer(1, GameModel::rotateBlockClockwise);
+            return true;
+        }
+        if (keyCode == keyFor("P1_HARD_DROP")) {
+            handler.dispatchToPlayer(1, GameModel::hardDropBlock);
+            return true;
+        }
+        if (keyCode == keyFor("P2_MOVE_LEFT")) {
+            handler.dispatchToPlayer(2, GameModel::moveBlockLeft);
+            return true;
+        }
+        if (keyCode == keyFor("P2_MOVE_RIGHT")) {
+            handler.dispatchToPlayer(2, GameModel::moveBlockRight);
+            return true;
+        }
+        if (keyCode == keyFor("P2_SOFT_DROP")) {
+            handler.dispatchToPlayer(2, GameModel::moveBlockDown);
+            return true;
+        }
+        if (keyCode == keyFor("P2_ROTATE_CW")) {
+            handler.dispatchToPlayer(2, GameModel::rotateBlockClockwise);
+            return true;
+        }
+        if (keyCode == keyFor("P2_HARD_DROP")) {
+            handler.dispatchToPlayer(2, GameModel::hardDropBlock);
+            return true;
+        }
+        return false;
+    }
+
+    private int keyFor(String action) {
+        return keyBindings.getOrDefault(action, -1);
+    }
+
+    private void deactivateLocalMultiplayer() {
+        if (localSession == null) {
+            return;
+        }
+        stopLocalMultiplayerTick();
+        gameModel.clearLocalMultiplayerSession();
+        localSession = null;
+    }
+
+    /**
+     * 로컬 멀티 모드에서 두 플레이어 GameModel을 동시에 진행시키기 위한 전용 틱 타이머.
+     * - GAME CLOCK와 분리되어 LocalMultiplayerHandler.update()를 주기적으로 호출한다.
+     */
+    private void startLocalMultiplayerTick() {
+        stopLocalMultiplayerTick();
+        localMultiplayerTimer = new Timer(16, e -> {
+            if (localSession == null || !gameModel.isLocalMultiplayerActive()) {
+                stopLocalMultiplayerTick();
+                return;
+            }
+            LocalMultiplayerHandler handler = localSession.handler();
+            if (handler != null) {
+                handler.update(gameModel);
+            }
+        });
+        localMultiplayerTimer.setRepeats(true);
+        localMultiplayerTimer.start();
+    }
+
+    private void stopLocalMultiplayerTick() {
+        if (localMultiplayerTimer != null) {
+            localMultiplayerTimer.stop();
+            localMultiplayerTimer = null;
         }
     }
 }

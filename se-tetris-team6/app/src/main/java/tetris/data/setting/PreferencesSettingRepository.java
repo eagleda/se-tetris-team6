@@ -31,7 +31,11 @@ public class PreferencesSettingRepository implements SettingRepository {
     private static final String KEY_DIFFICULTY = "difficulty";
     private static final String KEY_PREFIX_KB = "kb."; // e.g. kb.MOVE_LEFT
 
-    private static final String[] ACTIONS = { "MOVE_LEFT", "MOVE_RIGHT", "ROTATE_CW", "SOFT_DROP", "HARD_DROP", "HOLD" };
+    private static final String[] ACTIONS = { 
+        "MOVE_LEFT", "MOVE_RIGHT", "ROTATE_CW", "SOFT_DROP", "HARD_DROP", "HOLD",
+        "P1_MOVE_LEFT", "P1_MOVE_RIGHT", "P1_ROTATE_CW", "P1_SOFT_DROP", "P1_HARD_DROP",
+        "P2_MOVE_LEFT", "P2_MOVE_RIGHT", "P2_ROTATE_CW", "P2_SOFT_DROP", "P2_HARD_DROP"
+     };
 
     @Override
     public Setting load() {

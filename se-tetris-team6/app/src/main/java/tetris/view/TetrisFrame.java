@@ -28,6 +28,7 @@ import tetris.domain.leaderboard.LeaderboardEntry;
 import tetris.domain.leaderboard.LeaderboardResult;
 import tetris.domain.model.GameState;
 import tetris.domain.setting.Setting;
+import tetris.multiplayer.session.LocalMultiplayerSession;
 import tetris.view.GameComponent.SingleGameLayout;
 import tetris.view.GameComponent.GameOverPanel;
 import tetris.view.GameComponent.MultiGameLayout;
@@ -57,6 +58,11 @@ public class TetrisFrame extends JFrame {
     private GameOverController gameOverController;
     private LeaderboardResult pendingStandardHighlight;
     private LeaderboardResult pendingItemHighlight;
+    // 로컬 멀티 세션에 GameModel UiBridge를 붙일 때 재사용하기 위한 상태값.
+    // (한 번 연결된 세션을 기억해 중복 바인딩을 피하고, 세션 종료 시 해제한다.)
+    private LocalMultiplayerSession boundLocalSession;
+    private GameModel.UiBridge localP1UiBridge;
+    private GameModel.UiBridge localP2UiBridge;
 
     public TetrisFrame(GameModel gameModel) {
         super(FRAME_TITLE);
@@ -89,8 +95,11 @@ public class TetrisFrame extends JFrame {
             @Override
             public void refreshBoard() {
                 SwingUtilities.invokeLater(() -> {
+                    ensureLocalSessionUiBridges();
                     if (singleGameLayout != null)
                         singleGameLayout.repaint();
+                    if (multiGameLayout != null)
+                        multiGameLayout.repaint();
                 });
             }
 
@@ -109,6 +118,17 @@ public class TetrisFrame extends JFrame {
                 SwingUtilities.invokeLater(() -> {
                     if (gameOverController != null) {
                         gameOverController.show(score, true);
+                        layeredPane.moveToFront(gameOverPanel);
+                    }
+                });
+            }
+
+            @Override
+            public void showMultiplayerResult(int winnerId) {
+                SwingUtilities.invokeLater(() -> {
+                    String message = winnerId <= 0 ? "Match Finished" : "Player " + winnerId + " Wins!";
+                    if (gameOverPanel != null) {
+                        gameOverPanel.showMultiplayerResult(message);
                         layeredPane.moveToFront(gameOverPanel);
                     }
                 });
@@ -159,18 +179,16 @@ public class TetrisFrame extends JFrame {
             @Override
             protected void onSinglePlayConfirmed(String mode) {
                 displayPanel(singleGameLayout);
-                switch (mode) {
-                    case "NORMAL":
-                        gameController.startStandardGame();
-                        break;
-                    case "ITEM":
-                        gameController.startItemGame();
-                        break;
-                }
+                GameMode selectedMode = TetrisFrame.this.resolveMenuMode(mode);
+                gameController.startGame(selectedMode);
+                TetrisFrame.this.bindMultiPanelToCurrentSession();
             }
 
             @Override
             protected void onLocalMultiPlayConfirmed(String mode) {
+                GameMode selectedMode = TetrisFrame.this.resolveMenuMode(mode);
+                gameController.startLocalMultiplayerGame(selectedMode);
+                TetrisFrame.this.bindMultiPanelToCurrentSession();
                 displayPanel(multiGameLayout);
             }
 
@@ -228,7 +246,7 @@ public class TetrisFrame extends JFrame {
     private void setupMultiGameLayout() {
         multiGameLayout = new MultiGameLayout();
         multiGameLayout.setVisible(false);
-        multiGameLayout.bindGameModel(gameModel);
+        bindMultiPanelToCurrentSession();
         layeredPane.add(multiGameLayout, JLayeredPane.DEFAULT_LAYER);
     }
 
@@ -331,6 +349,9 @@ public class TetrisFrame extends JFrame {
                 // ignore; show existing data if loading fails
                 System.out.printf("[UI][WARN] scoreboard load failed: %s%n", ex.getMessage());
             }
+        }
+        if (panel == multiGameLayout) {
+            bindMultiPanelToCurrentSession();
         }
         // if (prevPanel != null)
         // prevPanel.setVisible(false);
@@ -516,5 +537,118 @@ public class TetrisFrame extends JFrame {
 
     public GameModel getGameModel() {
         return gameModel;
+    }
+
+    /**
+     * 멀티 패널은 싱글/로컬 멀티 전환 시마다 데이터 소스를 재연결해야 한다.
+     * 세션이 없으면 기본 GameModel을 공유하고, 있으면 세션 내 플레이어 모델을 그린다.
+     */
+    private void bindMultiPanelToCurrentSession() {
+        if (multiGameLayout == null)
+            return;
+        ensureLocalSessionUiBridges();
+        if (boundLocalSession != null) {
+            multiGameLayout.bindLocalMultiplayerSession(boundLocalSession);
+        } else {
+            multiGameLayout.bindGameModel(gameModel);
+        }
+    }
+
+    private GameMode resolveMenuMode(String mode) {
+        if (mode == null)
+            return GameMode.STANDARD;
+        if ("ITEM".equalsIgnoreCase(mode)) {
+            return GameMode.ITEM;
+        }
+        if ("TIME_LIMIT".equalsIgnoreCase(mode)) {
+            System.out.println("[UI][WARN] Time Limit mode is not implemented; falling back to STANDARD");
+        }
+        return GameMode.STANDARD;
+    }
+
+    /**
+     * 멀티 세션이 활성화된 경우 P1/P2 모델에도 UiBridge를 붙여 MultiGameLayout repaint가 가능하게 한다.
+     * - 세션이 새로 생기면 bindLocalSessionUiBridges를 호출하고,
+     * - 세션이 종료되면 clearLocalSessionUiBridges로 즉시 정리한다.
+     */
+    private void ensureLocalSessionUiBridges() {
+        LocalMultiplayerSession session = gameModel.getActiveLocalMultiplayerSession().orElse(null);
+        if (session == null) {
+            clearLocalSessionUiBridges();
+        } else if (session != boundLocalSession) {
+            bindLocalSessionUiBridges(session);
+        }
+    }
+
+    private void bindLocalSessionUiBridges(LocalMultiplayerSession session) {
+        clearLocalSessionUiBridges();
+        boundLocalSession = session;
+        // 각 플레이어 모델도 도메인 이벤트 → UiBridge → MultiGameLayout.repaint() 경로를 갖도록 한다.
+        localP1UiBridge = createLocalUiBridge();
+        localP2UiBridge = createLocalUiBridge();
+        session.playerOneModel().bindUiBridge(localP1UiBridge);
+        session.playerTwoModel().bindUiBridge(localP2UiBridge);
+    }
+
+    private void clearLocalSessionUiBridges() {
+        if (boundLocalSession != null) {
+            // 세션이 종료되면 즉시 브리지를 제거해 다음 세션에서 중복 repaint나 NPE가 발생하지 않도록 한다.
+            try {
+                boundLocalSession.playerOneModel().clearUiBridge();
+            } catch (Exception ignore) {
+            }
+            try {
+                boundLocalSession.playerTwoModel().clearUiBridge();
+            } catch (Exception ignore) {
+            }
+        }
+        boundLocalSession = null;
+        localP1UiBridge = null;
+        localP2UiBridge = null;
+    }
+
+    /**
+     * 로컬 멀티 전용 UiBridge 구현.
+     * - GameModel이 refreshBoard를 호출하면 Swing EDT에서 MultiGameLayout.repaint()만 수행한다.
+     * - 나머지 오버레이 관련 메서드는 싱글 주 GameModel이 이미 처리하므로 비워 둔다.
+     */
+    private GameModel.UiBridge createLocalUiBridge() {
+        return new GameModel.UiBridge() {
+            private void requestMultiRepaint() {
+                if (multiGameLayout == null)
+                    return;
+                SwingUtilities.invokeLater(() -> multiGameLayout.repaint());
+            }
+
+            @Override
+            public void showPauseOverlay() {
+                // 로컬 멀티 보드는 메인 UI의 일시정지 창을 그대로 사용하므로 별도 처리 없음.
+            }
+
+            @Override
+            public void hidePauseOverlay() {
+                // 상동
+            }
+
+            @Override
+            public void refreshBoard() {
+                requestMultiRepaint();
+            }
+
+            @Override
+            public void showGameOverOverlay(tetris.domain.score.Score score, boolean canEnterName) {
+                // 개별 플레이어 오버레이는 메인 GameModel이 총괄하므로 여기서는 단순 무시한다.
+            }
+
+            @Override
+            public void showNameEntryOverlay(tetris.domain.score.Score score) {
+                // 동일하게 로컬 멀티에서는 이름 입력을 통합 UI에서 처리한다.
+            }
+
+            @Override
+            public void showMultiplayerResult(int winnerId) {
+                // 로컬 뷰는 메인 UI 오버레이를 사용하므로 무시
+            }
+        };
     }
 }

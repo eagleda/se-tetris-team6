@@ -151,11 +151,11 @@ public class SettingController {
         Integer p1_rot = s.getKeyBinding("P1_ROTATE_CW");
         Integer p1_sd = s.getKeyBinding("P1_SOFT_DROP");
         Integer p1_hd = s.getKeyBinding("P1_HARD_DROP");
-        panel.p1KeyMoveLeftField.setText((p1_ml == null ? KeyMapper.keyCodeToName(Setting.defaults().getKeyBinding("P1_MOVE_LEFT")) : KeyMapper.keyCodeToName(p1_ml)));
-        panel.p1KeyMoveRightField.setText((p1_mr == null ? KeyMapper.keyCodeToName(Setting.defaults().getKeyBinding("P1_MOVE_RIGHT")) : KeyMapper.keyCodeToName(p1_mr)));
-        panel.p1KeyRotateField.setText((p1_rot == null ? KeyMapper.keyCodeToName(Setting.defaults().getKeyBinding("P1_ROTATE_CW")) : KeyMapper.keyCodeToName(p1_rot)));
-        panel.p1KeySoftDropField.setText((p1_sd == null ? KeyMapper.keyCodeToName(Setting.defaults().getKeyBinding("P1_SOFT_DROP")) : KeyMapper.keyCodeToName(p1_sd)));
-        panel.p1KeyHardDropField.setText((p1_hd == null ? KeyMapper.keyCodeToName(Setting.defaults().getKeyBinding("P1_HARD_DROP")) : KeyMapper.keyCodeToName(p1_hd)));
+        panel.p1KeyMoveLeftField.setText(p1_ml == null ? "" : KeyMapper.keyCodeToName(p1_ml));
+        panel.p1KeyMoveRightField.setText(p1_mr == null ? "" : KeyMapper.keyCodeToName(p1_mr));
+        panel.p1KeyRotateField.setText(p1_rot == null ? "" : KeyMapper.keyCodeToName(p1_rot));
+        panel.p1KeySoftDropField.setText(p1_sd == null ? "" : KeyMapper.keyCodeToName(p1_sd));
+        panel.p1KeyHardDropField.setText(p1_hd == null ? "" : KeyMapper.keyCodeToName(p1_hd));
 
         // Player2 bindings: read from settings; use defaults from Setting.defaults() when missing
         Integer p2_ml = s.getKeyBinding("P2_MOVE_LEFT");
@@ -163,11 +163,11 @@ public class SettingController {
         Integer p2_rot = s.getKeyBinding("P2_ROTATE_CW");
         Integer p2_sd = s.getKeyBinding("P2_SOFT_DROP");
         Integer p2_hd = s.getKeyBinding("P2_HARD_DROP");
-        panel.p2KeyMoveLeftField.setText((p2_ml == null ? KeyMapper.keyCodeToName(Setting.defaults().getKeyBinding("P2_MOVE_LEFT")) : KeyMapper.keyCodeToName(p2_ml)));
-        panel.p2KeyMoveRightField.setText((p2_mr == null ? KeyMapper.keyCodeToName(Setting.defaults().getKeyBinding("P2_MOVE_RIGHT")) : KeyMapper.keyCodeToName(p2_mr)));
-        panel.p2KeyRotateField.setText((p2_rot == null ? KeyMapper.keyCodeToName(Setting.defaults().getKeyBinding("P2_ROTATE_CW")) : KeyMapper.keyCodeToName(p2_rot)));
-        panel.p2KeySoftDropField.setText((p2_sd == null ? KeyMapper.keyCodeToName(Setting.defaults().getKeyBinding("P2_SOFT_DROP")) : KeyMapper.keyCodeToName(p2_sd)));
-        panel.p2KeyHardDropField.setText((p2_hd == null ? KeyMapper.keyCodeToName(Setting.defaults().getKeyBinding("P2_HARD_DROP")) : KeyMapper.keyCodeToName(p2_hd)));
+        panel.p2KeyMoveLeftField.setText(p2_ml == null ? "" : KeyMapper.keyCodeToName(p2_ml));
+        panel.p2KeyMoveRightField.setText(p2_mr == null ? "" : KeyMapper.keyCodeToName(p2_mr));
+        panel.p2KeyRotateField.setText(p2_rot == null ? "" : KeyMapper.keyCodeToName(p2_rot));
+        panel.p2KeySoftDropField.setText(p2_sd == null ? "" : KeyMapper.keyCodeToName(p2_sd));
+        panel.p2KeyHardDropField.setText(p2_hd == null ? "" : KeyMapper.keyCodeToName(p2_hd));
         if (gameController != null) {
             gameController.applyDifficulty(difficulty);
         }
