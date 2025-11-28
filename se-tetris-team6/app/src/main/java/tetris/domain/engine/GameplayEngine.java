@@ -9,7 +9,6 @@ import tetris.domain.model.GameClock;
 import tetris.domain.model.InputState;
 import tetris.domain.score.ScoreRuleEngine;
 import tetris.domain.GameModel.UiBridge;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;

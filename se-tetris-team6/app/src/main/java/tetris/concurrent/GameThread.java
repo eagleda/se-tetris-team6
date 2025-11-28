@@ -131,6 +131,9 @@ public class GameThread implements Runnable, GameplayEngine.GameplayEvents {
                 
                 // 2. 게임 로직 업데이트 (GameModel이 담당)
                 updateGameLogic();
+
+                // 지속 입력 초기화
+                resetContinuousInputs();
                 
                 // 3. 게임 이벤트 처리
                 processGameEvents();
@@ -266,7 +269,7 @@ public class GameThread implements Runnable, GameplayEngine.GameplayEvents {
         }
     }
 
-    // ✅ 추가: 틱 종료 시 지속 입력 초기화 (중요!)
+    // 추가: 틱 종료 시 지속 입력 초기화 (중요!)
     private void resetContinuousInputs() {
         // 지속 입력들은 매 틱마다 초기화해야 함
         inputState.setLeft(false);
