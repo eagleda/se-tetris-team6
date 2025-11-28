@@ -67,6 +67,8 @@ public class TetrisFrame extends JFrame {
     private GameModel.UiBridge localP2UiBridge;
     // Optional in-process server when user chooses to host a game
     private GameServer hostedServer;
+    private GameClient connectedClient;
+    private boolean isOnlineMultiplayer = false;
 
     public TetrisFrame(GameModel gameModel) {
         super(FRAME_TITLE);
@@ -262,14 +264,22 @@ public class TetrisFrame extends JFrame {
                                 // 2) after host pressed start, wait until server reports started
                                 while (!Thread.currentThread().isInterrupted()) {
                                     if (hostedServer.isStarted()) {
-                                        // start local multiplayer session on UI thread according to selected mode
+                                        // start online multiplayer as host
                                         String selectedMode = hostedServer.getSelectedGameMode();
                                         javax.swing.SwingUtilities.invokeLater(() -> {
                                             dlg.dispose();
                                             GameMode gameMode = TetrisFrame.this.resolveMenuMode(selectedMode);
+<<<<<<< HEAD
                                             // Start a networked session as host (host is Player-1)
                                             gameController.startNetworkedMultiplayerGame(gameMode, true);
                                             bindMultiPanelToCurrentSession();
+=======
+                                            isOnlineMultiplayer = true;
+                                            // Host plays as P1 (left side)
+                                            gameController.startGame(gameMode);
+                                            // Show self on left, opponent on right (updated via network)
+                                            multiGameLayout.bindOnlineMultiplayer(gameModel, null);
+>>>>>>> 20c8124d13dc012a329e623d640b2c00794b5a65
                                             displayPanel(multiGameLayout);
                                         });
                                         break;
@@ -342,6 +352,9 @@ public class TetrisFrame extends JFrame {
                     dlg.setResizable(false);
                     dlg.setLocationRelativeTo(win);
                     dlg.setVisible(true);
+                } else {
+                    // 로컬 멀티플레이
+                    onLocalMultiPlayConfirmed(mode);
                 }
             }
 
@@ -397,6 +410,7 @@ public class TetrisFrame extends JFrame {
                 // Create client and connect with handshake latch
                 final java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(1);
                 final GameClient client = new GameClient();
+                connectedClient = client;
                 boolean ok = client.connectToServer(host, port, latch);
                 if (!ok) {
                     javax.swing.JOptionPane.showMessageDialog(this, "서버에 연결할 수 없습니다.", "연결 실패", javax.swing.JOptionPane.ERROR_MESSAGE);
@@ -496,12 +510,22 @@ public class TetrisFrame extends JFrame {
                                 String mode = client.getStartMode();
                                 javax.swing.SwingUtilities.invokeLater(() -> {
                                     dlg.dispose();
+<<<<<<< HEAD
                                     // Start a networked session with provided mode. Determine whether
                                     // this client controls Player-1 based on assigned playerId.
                                     GameMode gameMode = TetrisFrame.this.resolveMenuMode(mode);
                                     boolean localIsPlayerOne = "Player-1".equals(client.getPlayerId());
                                     gameController.startNetworkedMultiplayerGame(gameMode, localIsPlayerOne);
                                     bindMultiPanelToCurrentSession();
+=======
+                                    // Start online multiplayer as client
+                                    GameMode gameMode = TetrisFrame.this.resolveMenuMode(mode);
+                                    isOnlineMultiplayer = true;
+                                    // Client plays as P1 (left side)
+                                    gameController.startGame(gameMode);
+                                    // Show self on left, opponent on right (updated via network)
+                                    multiGameLayout.bindOnlineMultiplayer(gameModel, null);
+>>>>>>> 20c8124d13dc012a329e623d640b2c00794b5a65
                                     displayPanel(multiGameLayout);
                                 });
                                 break;
