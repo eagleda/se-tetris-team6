@@ -35,7 +35,6 @@ public class GameController {
     private Map<String, Integer> keyBindings;
     private LocalMultiplayerSession localSession;
     private Timer localMultiplayerTimer;
-    private tetris.network.client.GameClient networkClient;  // 네트워크 클라이언트 참조
 
     // 생성자에서 View와 Model을 주입받습니다.
     public GameController(GameModel gameModel) {
@@ -43,13 +42,6 @@ public class GameController {
         this.lastKeyPressTime = new HashMap<>();
         initializeDefaultKeyBindings();
         applyDifficulty(GameDifficulty.NORMAL);
-    }
-
-    /**
-     * 네트워크 클라이언트 설정 (온라인 멀티플레이어용)
-     */
-    public void setNetworkClient(tetris.network.client.GameClient client) {
-        this.networkClient = client;
     }
 
     /**
@@ -431,29 +423,6 @@ public class GameController {
         if (handler == null) {
             return false;
         }
-        
-        // 네트워크 멀티플레이어인 경우 입력을 서버로 전송
-        if (networkClient != null && networkClient.isConnected()) {
-            tetris.network.protocol.InputType inputType = null;
-            if (keyCode == keyFor("P1_MOVE_LEFT") || keyCode == keyFor("P2_MOVE_LEFT")) {
-                inputType = tetris.network.protocol.InputType.MOVE_LEFT;
-            } else if (keyCode == keyFor("P1_MOVE_RIGHT") || keyCode == keyFor("P2_MOVE_RIGHT")) {
-                inputType = tetris.network.protocol.InputType.MOVE_RIGHT;
-            } else if (keyCode == keyFor("P1_SOFT_DROP") || keyCode == keyFor("P2_SOFT_DROP")) {
-                inputType = tetris.network.protocol.InputType.SOFT_DROP;
-            } else if (keyCode == keyFor("P1_ROTATE_CW") || keyCode == keyFor("P2_ROTATE_CW")) {
-                inputType = tetris.network.protocol.InputType.ROTATE;
-            } else if (keyCode == keyFor("P1_HARD_DROP") || keyCode == keyFor("P2_HARD_DROP")) {
-                inputType = tetris.network.protocol.InputType.HARD_DROP;
-            }
-            
-            if (inputType != null) {
-                networkClient.sendPlayerInput(new tetris.network.protocol.PlayerInput(inputType));
-                return true;
-            }
-        }
-        
-        // 로컬 멀티플레이어 처리
         if (keyCode == keyFor("P1_MOVE_LEFT")) {
             handler.dispatchToPlayer(1, GameModel::moveBlockLeft);
             return true;
