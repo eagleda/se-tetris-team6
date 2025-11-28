@@ -288,9 +288,59 @@ public class TetrisFrame extends JFrame {
                         System.err.println("[UI] Could not start hosted server: " + ex.getMessage());
                     }
                 } else if (isOnline && !isServer) {
-                    // show connect dialog (MainPanel already implements the input dialog path)
-                    // Let MainPanel's client dialog call connectToServer via overridden method below
-                } else {
+                    // 주소 입력 다이얼로그 띄우기
+                    java.awt.Window win = SwingUtilities.getWindowAncestor(TetrisFrame.this);
+                    final javax.swing.JDialog dlg = new javax.swing.JDialog(win, java.awt.Dialog.ModalityType.APPLICATION_MODAL);
+                    dlg.setTitle("서버 연결");
+                    javax.swing.JPanel root = new javax.swing.JPanel(new java.awt.BorderLayout());
+                    root.setBorder(javax.swing.BorderFactory.createEmptyBorder(12,12,12,12));
+                    javax.swing.JPanel center = new javax.swing.JPanel();
+                    center.setLayout(new javax.swing.BoxLayout(center, javax.swing.BoxLayout.Y_AXIS));
+                    final javax.swing.JLabel info = new javax.swing.JLabel("서버 주소를 입력하세요 (예: 127.0.0.1:5000)", javax.swing.SwingConstants.CENTER);
+                    center.add(info);
+                    center.add(javax.swing.Box.createVerticalStrut(8));
+                    final javax.swing.JTextField addressField = new javax.swing.JTextField(16);
+                    center.add(addressField);
+                    final javax.swing.JLabel errorLabel = new javax.swing.JLabel("");
+                    errorLabel.setForeground(java.awt.Color.RED);
+                    center.add(errorLabel);
+                    root.add(center, java.awt.BorderLayout.CENTER);
+                    javax.swing.JPanel btns = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.CENTER,8,6));
+                    javax.swing.JButton connectBtn = new javax.swing.JButton("연결");
+                    javax.swing.JButton cancelBtn = new javax.swing.JButton("취소");
+                    btns.add(connectBtn); btns.add(cancelBtn);
+                    root.add(btns, java.awt.BorderLayout.SOUTH);
+                    connectBtn.addActionListener(ae -> {
+                        String address = addressField.getText().trim();
+                        if (address.isEmpty()) {
+                            errorLabel.setText("주소를 입력하세요.");
+                            return;
+                        }
+                        try {
+                            connectToServer(address);
+                            dlg.dispose();
+                        } catch (Exception ex) {
+                            errorLabel.setText("서버 연결에 실패했습니다: " + ex.getMessage());
+                            // 연결 실패 시 확인 버튼을 띄워 메인으로 복귀
+                            javax.swing.JOptionPane.showMessageDialog(
+                                dlg,
+                                "서버 연결에 실패했습니다: " + ex.getMessage(),
+                                "연결 오류",
+                                javax.swing.JOptionPane.ERROR_MESSAGE
+                            );
+                            dlg.dispose();
+                            showMainPanel();
+                        }
+                    });
+                    cancelBtn.addActionListener(ae -> {
+                        dlg.dispose();
+                        showMainPanel();
+                    });
+                    dlg.getContentPane().add(root);
+                    dlg.pack();
+                    dlg.setResizable(false);
+                    dlg.setLocationRelativeTo(win);
+                    dlg.setVisible(true);
                     onLocalMultiPlayConfirmed(mode);
                 }
             }
