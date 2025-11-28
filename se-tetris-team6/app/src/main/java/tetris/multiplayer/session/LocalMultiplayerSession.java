@@ -4,7 +4,7 @@ import java.util.Objects;
 
 import tetris.domain.GameMode;
 import tetris.domain.GameModel;
-import tetris.multiplayer.controller.MultiPlayerController;
+import tetris.multiplayer.controller.LocalMultiPlayerController;
 import tetris.multiplayer.handler.MultiplayerHandler;
 import tetris.multiplayer.model.MultiPlayerGame;
 import tetris.multiplayer.model.PlayerState;
@@ -18,13 +18,13 @@ public final class LocalMultiplayerSession {
     private final PlayerState player1;
     private final PlayerState player2;
     private final MultiPlayerGame game;
-    private final MultiPlayerController controller;
+    private final LocalMultiPlayerController controller;
     private final tetris.multiplayer.handler.MultiplayerHandler handler;
 
     public LocalMultiplayerSession(PlayerState player1,
                                    PlayerState player2,
                                    MultiPlayerGame game,
-                                   MultiPlayerController controller,
+                                   LocalMultiPlayerController controller,
                                    tetris.multiplayer.handler.MultiplayerHandler handler) {
         this.player1 = Objects.requireNonNull(player1, "player1");
         this.player2 = Objects.requireNonNull(player2, "player2");
@@ -55,7 +55,7 @@ public final class LocalMultiplayerSession {
     public boolean isPlayerTwoLocal() { return player2.isLocal(); }
 
     /** UI/디버깅용으로 컨트롤러를 꺼내고 싶을 때 사용 */
-    public MultiPlayerController controller() {
+    public LocalMultiPlayerController controller() {
         return controller;
     }
 

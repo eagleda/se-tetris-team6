@@ -7,7 +7,7 @@ import tetris.domain.GameModel;
 import tetris.domain.GameModel.MultiplayerHook;
 import tetris.domain.handler.GameHandler;
 import tetris.domain.model.GameState;
-import tetris.multiplayer.controller.MultiPlayerController;
+import tetris.multiplayer.controller.LocalMultiPlayerController;
 import tetris.multiplayer.model.MultiPlayerGame;
 
 /**
@@ -18,13 +18,13 @@ import tetris.multiplayer.model.MultiPlayerGame;
 public final class LocalMultiplayerHandler implements MultiplayerHandler {
 
     private final MultiPlayerGame game;
-    private final MultiPlayerController controller;
+    private final LocalMultiPlayerController controller;
     private final GameState state;
     private MultiplayerHook p1Hook;
     private MultiplayerHook p2Hook;
 
     public LocalMultiplayerHandler(MultiPlayerGame game,
-                                   MultiPlayerController controller,
+                                   LocalMultiPlayerController controller,
                                    GameState state) {
         this.game = Objects.requireNonNull(game, "game");
         this.controller = Objects.requireNonNull(controller, "controller");

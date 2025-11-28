@@ -4,7 +4,7 @@ import java.util.Objects;
 import java.util.function.Consumer;
 import tetris.domain.GameModel;
 import tetris.domain.model.GameState;
-import tetris.multiplayer.controller.MultiPlayerController;
+import tetris.multiplayer.controller.LocalMultiPlayerController;
 import tetris.multiplayer.model.MultiPlayerGame;
 
 /**
@@ -14,7 +14,7 @@ import tetris.multiplayer.model.MultiPlayerGame;
 public final class NetworkedMultiplayerHandler implements MultiplayerHandler {
 
     private final MultiPlayerGame game;
-    private final MultiPlayerController controller;
+    private final LocalMultiPlayerController controller;
     private final GameState state;
     private final int localPlayerId;
     private final Runnable sendGameEndCallback;
@@ -22,7 +22,7 @@ public final class NetworkedMultiplayerHandler implements MultiplayerHandler {
     private boolean gameEndHandled = false;
 
     public NetworkedMultiplayerHandler(MultiPlayerGame game,
-                                       MultiPlayerController controller,
+                                       LocalMultiPlayerController controller,
                                        GameState state,
                                        int localPlayerId,
                                        Runnable sendGameEndCallback) {
