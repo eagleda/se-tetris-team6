@@ -3,6 +3,7 @@ package tetris.network.server;
 import java.net.Socket;
 import tetris.network.protocol.GameMessage;
 import tetris.network.protocol.MessageType;
+import tetris.network.protocol.PlayerInput;
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -145,6 +146,15 @@ import java.util.concurrent.atomic.AtomicInteger; // 추가: 스레드 안전한
                 System.out.println("ServerHandler: DISCONNECT from " + clientId);
                 disconnect();
                 break;
+            case PLAYER_INPUT:
+                handlePlayerInput(message);
+                break;
+            case ATTACK_LINES:
+                handleAttackLines(message);
+                break;
+            case PING:
+                handlePing(message);
+                break;
             default:
                 // 기본 동작: 서버가 다른 클라이언트에게 그대로 브로드캐스트
                 server.broadcastMessage(message);
@@ -154,15 +164,28 @@ import java.util.concurrent.atomic.AtomicInteger; // 추가: 스레드 안전한
 
          // 핑 처리 - 지연시간 측정 및 연결 상태 확인
     private void handlePing(GameMessage pingMessage){
-        /* Step 3 구현 예정 */ }
+        // 핑 받으면 즉시 퐁 응답
+        GameMessage pong = new GameMessage(MessageType.PONG, "SERVER", pingMessage.getTimestamp());
+        sendMessage(pong);
+    }
 
-    // 게임 입력 처리 - 클라이언트의 키 입력을 다른 클라이언트에게 전달
+    // 게임 입력 처리 - 클라이언트의 키 입력을 서버 게임 로직에 적용
     private void handlePlayerInput(GameMessage inputMessage){
-        /* Step 3 구현 예정 */ }
+        Object payload = inputMessage.getPayload();
+        if (payload instanceof PlayerInput) {
+            PlayerInput input = (PlayerInput) payload;
+            // 클라이언트는 Player-2이므로 playerId 2로 처리
+            int playerId = 2; // 클라이언트는 항상 Player 2
+            server.handlePlayerInput(playerId, input);
+            System.out.println("ServerHandler: processed input from Player-" + playerId + ": " + input.inputType());
+        }
+    }
 
     // 공격 처리 - 한 플레이어의 공격을 상대방에게 전달
     private void handleAttackLines(GameMessage attackMessage){
-        /* Step 3 구현 예정 */ }
+        // 공격은 모든 클라이언트에게 브로드캐스트
+        server.broadcastMessage(attackMessage);
+    }
 
     
 }

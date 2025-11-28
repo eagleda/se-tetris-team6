@@ -268,7 +268,25 @@ public class TetrisFrame extends JFrame {
                                             dlg.dispose();
                                             GameMode gameMode = TetrisFrame.this.resolveMenuMode(selectedMode);
                                             // Start a networked session as host (host is Player-1)
-                                            gameController.startNetworkedMultiplayerGame(gameMode, true);
+                                            LocalMultiplayerSession session = gameController.startNetworkedMultiplayerGame(gameMode, true);
+                                            // 서버에 게임 컨트롤러와 게임 인스턴스 설정
+                                            if (session != null && session.handler() instanceof tetris.multiplayer.handler.NetworkedMultiplayerHandler) {
+                                                try {
+                                                    java.lang.reflect.Field gameField = session.getClass().getDeclaredField("game");
+                                                    gameField.setAccessible(true);
+                                                    tetris.multiplayer.model.MultiPlayerGame game = (tetris.multiplayer.model.MultiPlayerGame) gameField.get(session);
+                                                    
+                                                    java.lang.reflect.Field controllerField = session.getClass().getDeclaredField("controller");
+                                                    controllerField.setAccessible(true);
+                                                    tetris.multiplayer.controller.MultiPlayerController controller = (tetris.multiplayer.controller.MultiPlayerController) controllerField.get(session);
+                                                    
+                                                    hostedServer.setMultiplayerGame(game);
+                                                    hostedServer.setGameController(controller);
+                                                    hostedServer.startGame();
+                                                } catch (Exception e) {
+                                                    System.err.println("Failed to setup server game: " + e.getMessage());
+                                                }
+                                            }
                                             bindMultiPanelToCurrentSession();
                                             displayPanel(multiGameLayout);
                                         });
@@ -416,6 +434,9 @@ public class TetrisFrame extends JFrame {
                     showMainPanel();
                     return;
                 }
+                
+                // GameController에 네트워크 클라이언트 설정
+                gameController.setNetworkClient(client);
 
                 // Wire GameStateListener to apply incoming network messages to the opponent model
                 client.setGameStateListener(new tetris.network.client.GameStateListener() {
