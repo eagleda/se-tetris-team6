@@ -450,12 +450,20 @@ public class TetrisFrame extends JFrame {
                                         case HOLD -> opponent.holdCurrentBlock();
                                         default -> {}
                                     }
+                                    // Repaint to show opponent's updated state
+                                    if (multiGameLayout != null) {
+                                        multiGameLayout.repaint();
+                                    }
                                 }
                                 break;
                             case ATTACK_LINES:
                                 Object pl = message.getPayload();
                                 if (pl instanceof tetris.network.protocol.AttackLine[] lines) {
                                     opponent.applyAttackLines(lines);
+                                    // Repaint to show attack lines
+                                    if (multiGameLayout != null) {
+                                        multiGameLayout.repaint();
+                                    }
                                 }
                                 break;
                             case GAME_END:
@@ -468,16 +476,37 @@ public class TetrisFrame extends JFrame {
                                     
                                     // Only process if not already in GAME_OVER state (prevent infinite loop)
                                     if (localModel.getCurrentState() != tetris.domain.model.GameState.GAME_OVER) {
-                                        // Mark opponent as loser (since they sent GAME_END)
-                                        int opponentId = sess.isPlayerOneLocal() ? 2 : 1;
-                                        sess.game().markLoser(opponentId);
+                                        // Get winnerId from message payload
+                                        Object payloadObj = message.getPayload();
+                                        Integer winnerId = null;
+                                        if (payloadObj instanceof java.util.Map) {
+                                            Object winnerIdObj = ((java.util.Map<?, ?>) payloadObj).get("winnerId");
+                                            if (winnerIdObj instanceof Number) {
+                                                winnerId = ((Number) winnerIdObj).intValue();
+                                            }
+                                        }
+                                        
+                                        // Mark loser based on winnerId
+                                        if (winnerId != null) {
+                                            int loserId = (winnerId == 1) ? 2 : 1;
+                                            sess.game().markLoser(loserId);
+                                        } else {
+                                            // Fallback: assume opponent sent GAME_END because they lost
+                                            int opponentId = sess.isPlayerOneLocal() ? 2 : 1;
+                                            sess.game().markLoser(opponentId);
+                                        }
                                         
                                         // Change states to GAME_OVER
                                         localModel.changeState(tetris.domain.model.GameState.GAME_OVER);
                                         opponentModel.changeState(tetris.domain.model.GameState.GAME_OVER);
                                         
-                                        // Show result
+                                        // Show result and update display
                                         gameModel.showMultiplayerResult(sess.game().getWinnerId() == null ? -1 : sess.game().getWinnerId());
+                                        
+                                        // Force repaint to show final state
+                                        if (multiGameLayout != null) {
+                                            multiGameLayout.repaint();
+                                        }
                                     }
                                 }
                                 break;
@@ -647,12 +676,20 @@ public class TetrisFrame extends JFrame {
                                 case HOLD -> opponent.holdCurrentBlock();
                                 default -> {}
                             }
+                            // Repaint to show opponent's updated state
+                            if (multiGameLayout != null) {
+                                multiGameLayout.repaint();
+                            }
                         }
                         break;
                     case ATTACK_LINES:
                         Object pl = message.getPayload();
                         if (pl instanceof tetris.network.protocol.AttackLine[] lines) {
                             opponent.applyAttackLines(lines);
+                            // Repaint to show attack lines
+                            if (multiGameLayout != null) {
+                                multiGameLayout.repaint();
+                            }
                         }
                         break;
                     case GAME_END:
@@ -664,15 +701,36 @@ public class TetrisFrame extends JFrame {
                             
                             // Only process if not already in GAME_OVER state (prevent infinite loop)
                             if (localModel.getCurrentState() != tetris.domain.model.GameState.GAME_OVER) {
-                                // Mark opponent (player 2) as loser
-                                sess.game().markLoser(2);
+                                // Get winnerId from message payload
+                                Object payloadObj = message.getPayload();
+                                Integer winnerId = null;
+                                if (payloadObj instanceof java.util.Map) {
+                                    Object winnerIdObj = ((java.util.Map<?, ?>) payloadObj).get("winnerId");
+                                    if (winnerIdObj instanceof Number) {
+                                        winnerId = ((Number) winnerIdObj).intValue();
+                                    }
+                                }
+                                
+                                // Mark loser based on winnerId
+                                if (winnerId != null) {
+                                    int loserId = (winnerId == 1) ? 2 : 1;
+                                    sess.game().markLoser(loserId);
+                                } else {
+                                    // Fallback: client (player 2) sent GAME_END, so they lost
+                                    sess.game().markLoser(2);
+                                }
                                 
                                 // Change states to GAME_OVER
                                 localModel.changeState(tetris.domain.model.GameState.GAME_OVER);
                                 opponentModel.changeState(tetris.domain.model.GameState.GAME_OVER);
                                 
-                                // Show result
+                                // Show result and update display
                                 gameModel.showMultiplayerResult(sess.game().getWinnerId() == null ? -1 : sess.game().getWinnerId());
+                                
+                                // Force repaint to show final state
+                                if (multiGameLayout != null) {
+                                    multiGameLayout.repaint();
+                                }
                             }
                         }
                         break;
