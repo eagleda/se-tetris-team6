@@ -7,6 +7,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import tetris.domain.model.GameState;
 import tetris.network.protocol.GameMessage;
+import tetris.network.protocol.MessageType;
+import tetris.network.protocol.PlayerInput;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -31,6 +33,9 @@ public class GameServer {
     private GameState currentGameState;         // 현재 게임 상태
     private String selectedGameMode;            // 선택된 게임 모드
     private boolean gameInProgress;             // 게임 진행 중 여부
+    private tetris.multiplayer.controller.MultiPlayerController gameController;  // 서버 측 게임 컨트롤러
+    private tetris.multiplayer.model.MultiPlayerGame multiplayerGame;            // 멀티플레이어 게임 인스턴스
+    private java.util.Timer gameTickTimer;      // 게임 틱 타이머
 
     // === 주요 메서드들 ===
 
@@ -155,13 +160,100 @@ public class GameServer {
 
     // 게임 시작 - 모든 클라이언트가 준비되었을 때
     public void startGame(){
-        /* Step 4 구현 예정 */ }
+        if (gameInProgress) return;
+        gameInProgress = true;
+        // 게임 틱 타이머 시작 (60 FPS)
+        if (gameTickTimer != null) gameTickTimer.cancel();
+        gameTickTimer = new java.util.Timer("GameServer-Tick", true);
+        gameTickTimer.scheduleAtFixedRate(new java.util.TimerTask() {
+            @Override
+            public void run() {
+                if (gameController != null) {
+                    gameController.tick();
+                    synchronizeGameState();
+                }
+            }
+        }, 0, 16); // ~60 FPS
+    }
 
     // 게임 상태 동기화 - 주기적으로 호출
     private void synchronizeGameState(){
-        /* Step 4 구현 예정 */ }
+        if (multiplayerGame == null) return;
+        try {
+            // Player 1 (서버 호스트) 보드 상태 브로드캐스트
+            tetris.domain.GameModel p1Model = multiplayerGame.modelOf(1);
+            BoardStateData p1State = new BoardStateData(
+                1,
+                p1Model.getBoard(),
+                null, // 현재 피스는 추후 구현
+                p1Model.getScore(),
+                p1Model.getCurrentState()
+            );
+            broadcastMessage(new GameMessage(MessageType.BOARD_STATE, "SERVER", p1State));
+            
+            // Player 2 (클라이언트) 보드 상태 브로드캐스트
+            tetris.domain.GameModel p2Model = multiplayerGame.modelOf(2);
+            BoardStateData p2State = new BoardStateData(
+                2,
+                p2Model.getBoard(),
+                null, // 현재 피스는 추후 구현
+                p2Model.getScore(),
+                p2Model.getCurrentState()
+            );
+            broadcastMessage(new GameMessage(MessageType.BOARD_STATE, "SERVER", p2State));
+        } catch (Exception e) {
+            System.err.println("Error synchronizing game state: " + e.getMessage());
+        }
+    }
+
+    // 게임 컨트롤러 설정
+    public void setGameController(tetris.multiplayer.controller.MultiPlayerController controller) {
+        this.gameController = controller;
+    }
+
+    public void setMultiplayerGame(tetris.multiplayer.model.MultiPlayerGame game) {
+        this.multiplayerGame = game;
+    }
+
+    // 플레이어 입력 처리 (클라이언트로부터)
+    public void handlePlayerInput(int playerId, PlayerInput input) {
+        if (gameController == null || multiplayerGame == null) return;
+        gameController.withPlayer(playerId, model -> {
+            if (input.inputType() == tetris.network.protocol.InputType.MOVE_LEFT) {
+                model.moveBlockLeft();
+            } else if (input.inputType() == tetris.network.protocol.InputType.MOVE_RIGHT) {
+                model.moveBlockRight();
+            } else if (input.inputType() == tetris.network.protocol.InputType.SOFT_DROP) {
+                model.moveBlockDown();
+            } else if (input.inputType() == tetris.network.protocol.InputType.ROTATE) {
+                model.rotateBlockClockwise();
+            } else if (input.inputType() == tetris.network.protocol.InputType.ROTATE_CCW) {
+                model.rotateBlockCounterClockwise();
+            } else if (input.inputType() == tetris.network.protocol.InputType.HARD_DROP) {
+                model.hardDropBlock();
+            }
+        });
+    }
 
     // 서버 상태 정보 반환 (연결된 클라이언트 수, 게임 상태 등)
     public ServerStatus getServerStatus() { 
         return null; /* Step 4 구현 예정 */ }
+
+    // 보드 상태 데이터 클래스
+    public static class BoardStateData implements java.io.Serializable {
+        private static final long serialVersionUID = 1L;
+        public final int playerId;
+        public final int[][] boardGrid;  // Board 객체 대신 int[][]
+        public final Object currentPiece;
+        public final int score;  // Score 객체 대신 int
+        public final GameState gameState;
+
+        public BoardStateData(int playerId, tetris.domain.Board board, Object currentPiece, tetris.domain.score.Score score, GameState gameState) {
+            this.playerId = playerId;
+            this.boardGrid = board != null ? board.gridView() : new int[20][10];
+            this.currentPiece = currentPiece;
+            this.score = score != null ? score.getPoints() : 0;
+            this.gameState = gameState;
+        }
+    }
 }
