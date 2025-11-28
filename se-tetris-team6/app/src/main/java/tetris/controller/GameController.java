@@ -398,7 +398,34 @@ public class GameController {
      */
     public LocalMultiplayerSession startNetworkedMultiplayerGame(GameMode mode, boolean localIsPlayerOne) {
         deactivateLocalMultiplayer();
-        LocalMultiplayerSession session = LocalMultiplayerSessionFactory.createNetworkedSession(mode, localIsPlayerOne);
+        
+        // Create callback to send GAME_END message when local player loses
+        Runnable sendGameEndCallback = () -> {
+            try {
+                java.util.Map<String, Object> data = new java.util.HashMap<>();
+                data.put("winnerId", localIsPlayerOne ? 2 : 1); // Opponent is the winner
+                
+                if (networkClient != null) {
+                    tetris.network.protocol.GameMessage message = new tetris.network.protocol.GameMessage(
+                        tetris.network.protocol.MessageType.GAME_END, 
+                        "CLIENT", 
+                        data
+                    );
+                    networkClient.sendMessage(message);
+                } else if (networkServer != null) {
+                    tetris.network.protocol.GameMessage message = new tetris.network.protocol.GameMessage(
+                        tetris.network.protocol.MessageType.GAME_END, 
+                        "SERVER", 
+                        data
+                    );
+                    networkServer.sendHostMessage(message);
+                }
+            } catch (Exception e) {
+                System.err.println("Failed to send GAME_END message: " + e.getMessage());
+            }
+        };
+        
+        LocalMultiplayerSession session = LocalMultiplayerSessionFactory.createNetworkedSession(mode, localIsPlayerOne, sendGameEndCallback);
         localSession = session;
         gameModel.enableLocalMultiplayer(session);
         startLocalMultiplayerTick();
