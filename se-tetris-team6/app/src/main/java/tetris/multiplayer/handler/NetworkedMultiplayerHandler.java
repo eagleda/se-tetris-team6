@@ -19,6 +19,7 @@ public final class NetworkedMultiplayerHandler implements MultiplayerHandler {
     private final int localPlayerId;
     private final Runnable sendGameEndCallback;
     private boolean gameEndSent = false;
+    private boolean gameEndHandled = false;
 
     public NetworkedMultiplayerHandler(MultiPlayerGame game,
                                        MultiPlayerController controller,
@@ -43,18 +44,27 @@ public final class NetworkedMultiplayerHandler implements MultiplayerHandler {
         game.player(2).setReady(false);
         // register hooks only for the local model
         registerHookForLocal();
-        // reset game end flag
+        // reset game end flags
         gameEndSent = false;
+        gameEndHandled = false;
     }
 
     @Override
     public void update(tetris.domain.GameModel model) {
+        // If game end has been handled, stop updating to prevent infinite loop
+        if (gameEndHandled) {
+            return;
+        }
+        
         // Tick both player models (local player updates normally, opponent updates from network)
         game.modelOf(1).update();
         game.modelOf(2).update();
         
         // Check if local player's game over
         if (game.modelOf(localPlayerId).getCurrentState() == GameState.GAME_OVER) {
+            // Mark that we've handled game end to prevent re-processing
+            gameEndHandled = true;
+            
             game.markLoser(localPlayerId);
             model.changeState(GameState.GAME_OVER);
             model.showMultiplayerResult(game.getWinnerId() == null ? -1 : game.getWinnerId());
