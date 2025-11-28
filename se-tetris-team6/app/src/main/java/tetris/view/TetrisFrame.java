@@ -271,9 +271,9 @@ public class TetrisFrame extends JFrame {
                                             gameController.setNetworkServer(hostedServer); // 서버 연결
                                             gameController.startNetworkedMultiplayerGame(gameMode, true);
                                             // 호스트는 서버를 통해 클라이언트 메시지를 받음
-                                            setupHostNetworkListener();
-                                            bindMultiPanelToCurrentSession();
-                                            displayPanel(multiGameLayout);
+                                            TetrisFrame.this.setupHostNetworkListener();
+                                            TetrisFrame.this.bindMultiPanelToCurrentSession();
+                                            TetrisFrame.this.displayPanel(multiGameLayout);
                                         });
                                         break;
                                     }
@@ -530,58 +530,6 @@ public class TetrisFrame extends JFrame {
                 displayPanel(settingPanel);
             }
 
-            /**
-             * Setup network listener for the host to receive client messages.
-             */
-            private void setupHostNetworkListener() {
-                if (hostedServer == null) return;
-                hostedServer.setGameStateListener(new tetris.network.client.GameStateListener() {
-                    @Override
-                    public void onOpponentBoardUpdate(tetris.network.protocol.GameMessage message) {
-                        LocalMultiplayerSession session = gameModel.getActiveLocalMultiplayerSession().orElse(null);
-                        if (session == null) return;
-                        ensureLocalSessionUiBridges();
-                        if (multiGameLayout != null) multiGameLayout.repaint();
-                    }
-
-                    @Override
-                    public void onGameStateChange(tetris.network.protocol.GameMessage message) {
-                        LocalMultiplayerSession session = gameModel.getActiveLocalMultiplayerSession().orElse(null);
-                        if (session == null) return;
-                        // Host is Player-1, so opponent is Player-2
-                        tetris.domain.GameModel opponent = session.playerTwoModel();
-                        switch (message.getType()) {
-                            case PLAYER_INPUT:
-                                Object payload = message.getPayload();
-                                if (payload instanceof tetris.network.protocol.PlayerInput pi) {
-                                    switch (pi.inputType()) {
-                                        case MOVE_LEFT -> opponent.moveBlockLeft();
-                                        case MOVE_RIGHT -> opponent.moveBlockRight();
-                                        case SOFT_DROP -> opponent.moveBlockDown();
-                                        case ROTATE -> opponent.rotateBlockClockwise();
-                                        case ROTATE_CCW -> opponent.rotateBlockCounterClockwise();
-                                        case HARD_DROP -> opponent.hardDropBlock();
-                                        case HOLD -> opponent.holdCurrentBlock();
-                                        default -> {}
-                                    }
-                                }
-                                break;
-                            case ATTACK_LINES:
-                                Object pl = message.getPayload();
-                                if (pl instanceof tetris.network.protocol.AttackLine[] lines) {
-                                    opponent.applyAttackLines(lines);
-                                }
-                                break;
-                            case GAME_END:
-                                gameModel.showMultiplayerResult(0);
-                                break;
-                            default:
-                                break;
-                        }
-                    }
-                });
-            }
-
             @Override
             protected void onScoreboardMenuClicked() {
                 displayPanel(scoreboardPanel);
@@ -644,6 +592,58 @@ public class TetrisFrame extends JFrame {
             }
         };
         layeredPane.add(pausePanel, JLayeredPane.PALETTE_LAYER);
+    }
+
+    /**
+     * Setup network listener for the host to receive client messages.
+     */
+    private void setupHostNetworkListener() {
+        if (hostedServer == null) return;
+        hostedServer.setGameStateListener(new tetris.network.client.GameStateListener() {
+            @Override
+            public void onOpponentBoardUpdate(tetris.network.protocol.GameMessage message) {
+                LocalMultiplayerSession session = gameModel.getActiveLocalMultiplayerSession().orElse(null);
+                if (session == null) return;
+                ensureLocalSessionUiBridges();
+                if (multiGameLayout != null) multiGameLayout.repaint();
+            }
+
+            @Override
+            public void onGameStateChange(tetris.network.protocol.GameMessage message) {
+                LocalMultiplayerSession session = gameModel.getActiveLocalMultiplayerSession().orElse(null);
+                if (session == null) return;
+                // Host is Player-1, so opponent is Player-2
+                tetris.domain.GameModel opponent = session.playerTwoModel();
+                switch (message.getType()) {
+                    case PLAYER_INPUT:
+                        Object payload = message.getPayload();
+                        if (payload instanceof tetris.network.protocol.PlayerInput pi) {
+                            switch (pi.inputType()) {
+                                case MOVE_LEFT -> opponent.moveBlockLeft();
+                                case MOVE_RIGHT -> opponent.moveBlockRight();
+                                case SOFT_DROP -> opponent.moveBlockDown();
+                                case ROTATE -> opponent.rotateBlockClockwise();
+                                case ROTATE_CCW -> opponent.rotateBlockCounterClockwise();
+                                case HARD_DROP -> opponent.hardDropBlock();
+                                case HOLD -> opponent.holdCurrentBlock();
+                                default -> {}
+                            }
+                        }
+                        break;
+                    case ATTACK_LINES:
+                        Object pl = message.getPayload();
+                        if (pl instanceof tetris.network.protocol.AttackLine[] lines) {
+                            opponent.applyAttackLines(lines);
+                        }
+                        break;
+                    case GAME_END:
+                        gameModel.showMultiplayerResult(0);
+                        break;
+                    default:
+                        break;
+                }
+            }
+        });
     }
 
     private void setupScoreboardPanel() {
