@@ -2,6 +2,7 @@ package tetris.network;
 
 import tetris.concurrent.GameThread;
 import tetris.concurrent.NetworkThread;
+import tetris.domain.model.Block;
 import tetris.domain.model.GameState;
 import tetris.network.protocol.GameMessage;
 import tetris.network.protocol.MessageType;
@@ -53,6 +54,12 @@ public class NetworkManager implements INetworkThreadCallback {
         @Override
         public void sendPlayerInput(PlayerInput input) {
             sendPlayerInput(input);
+        }
+
+        @Override
+        public void sendBlockRotation(Block block) {
+            // TODO Auto-generated method stub
+            throw new UnsupportedOperationException("Unimplemented method 'sendBlockRotation'");
         }
     });
 }

@@ -10,7 +10,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Random;
 import java.util.function.Supplier;
-
 import tetris.domain.setting.SettingService;
 import tetris.domain.block.BlockLike;
 import tetris.domain.handler.GameHandler;
@@ -563,6 +562,10 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         } else {
             activeItemBlock = null;
         }
+
+        if (secondaryListener != null) {
+            secondaryListener.onBlockSpawned(block);
+        }
     }
 
     @Override
@@ -608,6 +611,10 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
             nextBlockIsItem = true;
         }
         itemManager.onLineClear(itemContext, null);
+
+        if (secondaryListener != null) {
+            secondaryListener.onLinesCleared(clearedLines);
+        }
     }
 
     @Override
@@ -1030,6 +1037,12 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
             
             // TODO: 공격 적용 후 블록이 겹쳐서 게임 오버 조건이 충족되는지 확인하는 로직 추가
         }
+    }
+
+    private tetris.domain.engine.GameplayEngine.GameplayEvents secondaryListener;
+
+    public void setSecondaryListener(tetris.domain.engine.GameplayEngine.GameplayEvents listener) {
+        this.secondaryListener = listener;
     }
 
      // 공격 대기열 필드 추가 (최대 10줄)

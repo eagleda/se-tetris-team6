@@ -99,10 +99,8 @@ public class GameThread implements Runnable, GameplayEngine.GameplayEvents {
         // 도메인 객체들 참조 (읽기 전용)
         this.board = gameModel.getBoard();
         this.inputState = gameModel.getInputState();
-        
-        // GameplayEngine 이벤트 리스너로 등록
-        // 주의: GameModel 내부의 GameplayEngine에 접근하는 방법이 필요
-        // 현재는 GameModel의 메서드들을 통해 간접 처리
+
+        gameModel.setSecondaryListener(this);
         
         this.lastUpdateTime = System.currentTimeMillis();
         
@@ -179,6 +177,10 @@ public class GameThread implements Runnable, GameplayEngine.GameplayEvents {
             
             gameEventQueue.offer(new GameEvent(GameEvent.Type.LINE_CLEARED, result));
             System.out.println(playerId + ": " + clearedLines + "줄 삭제!");
+
+            if (isLocalPlayer && networkListener != null) {
+                networkListener.sendAttackLines(attackLines);
+            }
         }
     }
     
@@ -377,15 +379,17 @@ public class GameThread implements Runnable, GameplayEngine.GameplayEvents {
     
     // === 공격 받기 처리 ===
     public void receiveAttack(AttackLine[] attackLines) {
-        if (attackLines != null && attackLines.length > 0) {
-            gameStateLock.writeLock().lock();
-            try {
-                gameModel.applyAttackLines(attackLines); 
-                // 이벤트 큐에 추가 (UI/로깅 목적)
-                gameEventQueue.offer(new GameEvent(GameEvent.Type.ATTACK_RECEIVED, attackLines));
-            } finally {
-                gameStateLock.writeLock().unlock();
-            }
+        gameStateLock.writeLock().lock();
+        try {
+            // GameModel에 공격을 적용하는 메서드가 필요합니다. (GameModel에 구현되어 있어야 함)
+            gameModel.applyAttackLines(attackLines); 
+            
+            // 공격 수신 이벤트를 큐에 넣어 UI 등에 알립니다.
+            gameEventQueue.offer(new GameEvent(GameEvent.Type.ATTACK_RECEIVED, attackLines));
+            
+            System.out.println(playerId + ": 네트워크로부터 " + attackLines.length + "개의 공격 라인 수신 및 적용");
+        } finally {
+            gameStateLock.writeLock().unlock();
         }
     }
     
