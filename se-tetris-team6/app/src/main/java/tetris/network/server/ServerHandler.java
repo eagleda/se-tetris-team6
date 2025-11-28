@@ -101,6 +101,12 @@ import java.util.concurrent.atomic.AtomicInteger; // 추가: 스레드 안전한
             // 3. CONNECTION_ACCEPTED 메시지를 클라이언트에게 전송합니다.
             GameMessage acceptance = new GameMessage(MessageType.CONNECTION_ACCEPTED, "SERVER", this.clientId);
             sendMessage(acceptance);
+            // 4. 서버에 연결 완료 알림
+            try {
+                server.notifyClientConnected(this);
+            } catch (Exception ex) {
+                System.err.println("Error notifying server of new client: " + ex.getMessage());
+            }
             System.out.println("Connection accepted for client: " + this.clientId);
             this.isConnected = true;
         } else {
@@ -129,7 +135,22 @@ import java.util.concurrent.atomic.AtomicInteger; // 추가: 스레드 안전한
 
     // 클라이언트로부터 메시지 수신 및 처리
     private void handleMessage(GameMessage message){
-        /* Step 3 구현 예정 */ }
+        if (message == null) return;
+        switch (message.getType()) {
+            case PLAYER_READY:
+                System.out.println("ServerHandler: PLAYER_READY from " + clientId);
+                server.setClientReady(this, true);
+                break;
+            case DISCONNECT:
+                System.out.println("ServerHandler: DISCONNECT from " + clientId);
+                disconnect();
+                break;
+            default:
+                // 기본 동작: 서버가 다른 클라이언트에게 그대로 브로드캐스트
+                server.broadcastMessage(message);
+                break;
+        }
+    }
 
          // 핑 처리 - 지연시간 측정 및 연결 상태 확인
     private void handlePing(GameMessage pingMessage){

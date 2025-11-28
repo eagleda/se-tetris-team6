@@ -57,6 +57,41 @@ public class GameServer {
         }).start();
     }
 
+    // Return number of connected clients
+    public int getConnectedCount() {
+        return connectedClients.size();
+    }
+
+    // Mark host ready (host pressed Start)
+    private volatile boolean hostReady = false;
+    private final java.util.Map<ServerHandler, Boolean> clientReady = new java.util.concurrent.ConcurrentHashMap<>();
+    private volatile boolean started = false;
+
+    public void setHostReady(boolean ready) {
+        this.hostReady = ready;
+        checkAndStartIfReady();
+    }
+
+    // Called by ServerHandler when client signals ready
+    public void setClientReady(ServerHandler handler, boolean ready) {
+        if (handler == null) return;
+        clientReady.put(handler, ready);
+        checkAndStartIfReady();
+    }
+
+    private void checkAndStartIfReady() {
+        // For simple 1v1: if hostReady and at least one client ready -> start
+        boolean anyClientReady = clientReady.values().stream().anyMatch(Boolean::booleanValue);
+        if (hostReady && anyClientReady && !started) {
+            System.out.println("All players ready. Broadcasting GAME_START");
+            // broadcast selected mode (could be null)
+            broadcastMessage(new tetris.network.protocol.GameMessage(tetris.network.protocol.MessageType.GAME_START, "SERVER", selectedGameMode));
+            started = true;
+        }
+    }
+
+    public boolean isStarted() { return started; }
+
 
     // 서버 중지 - 모든 연결 종료 및 리소스 정리
     public void stopServer() {
@@ -111,6 +146,12 @@ public class GameServer {
     // 게임 모드 선택 (서버가 결정)
     public void selectGameMode(String mode){
         /* Step 4 구현 예정 */ }
+
+    public void setSelectedGameMode(String mode) {
+        this.selectedGameMode = mode;
+    }
+
+    public String getSelectedGameMode() { return this.selectedGameMode; }
 
     // 게임 시작 - 모든 클라이언트가 준비되었을 때
     public void startGame(){

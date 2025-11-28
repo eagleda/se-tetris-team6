@@ -67,6 +67,9 @@ public class ClientHandler implements Runnable {
                 System.out.println("Server requested disconnect.");
                 client.disconnect();
                 break;
+            case GAME_START:
+                handleGameStart(message);
+                break;
             // Step 3에서 다른 메시지 타입 처리 로직 추가 예정
             default:
                 System.out.println("Received unhandled message type: " + message.getType());
@@ -117,7 +120,13 @@ public class ClientHandler implements Runnable {
 
     // 게임 시작 처리 - 서버가 게임 시작 신호를 보낼 때
     private void handleGameStart(GameMessage message){
-        /* Step 4 구현 예정 */
+        // 서버가 보낸 게임 시작 신호 수신: 페이로드로 게임 모드(문자열)를 기대합니다.
+        Object payload = message.getPayload();
+        String mode = payload instanceof String ? (String) payload : null;
+        System.out.println("Received GAME_START from server. mode=" + mode);
+        // 전달받은 정보를 GameClient에 기록하여 UI가 확인할 수 있게 함
+        client.setStartReceived(true);
+        client.setStartMode(mode);
     }
 
     // 상대방 입력 처리 - 상대방의 키 입력을 받을 때

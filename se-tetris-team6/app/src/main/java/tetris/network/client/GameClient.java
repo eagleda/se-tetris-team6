@@ -38,6 +38,9 @@ public class GameClient {
     private GameStateListener gameStateListener;  // 게임 상태 변경 리스너
 
     private CountDownLatch handshakeLatch;
+    // Game start signal tracking
+    private volatile boolean startReceived = false;
+    private volatile String startMode = null;
 
     // === 주요 메서드들 ===
 
@@ -99,6 +102,20 @@ public class GameClient {
             clientHandler.sendMessage(message);
         }
     }
+
+    // Send READY signal to server
+    public void sendReady() {
+        if (isConnected && clientHandler != null) {
+            GameMessage ready = new GameMessage(MessageType.PLAYER_READY, this.playerId == null ? "CLIENT" : this.playerId, null);
+            clientHandler.sendMessage(ready);
+            System.out.println("GameClient: sent PLAYER_READY");
+        }
+    }
+
+    public boolean isStartReceived() { return startReceived; }
+    public String getStartMode() { return startMode; }
+    public void setStartReceived(boolean v) { this.startReceived = v; }
+    public void setStartMode(String m) { this.startMode = m; }
     
     // 플레이어 ID 설정
     public void setPlayerId(String id) {

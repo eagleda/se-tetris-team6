@@ -322,7 +322,7 @@ public class MainPanel extends JPanel {
      * @param isServer true if Server role is chosen (meaningful only when
      *                 isOnline==true)
      */
-    private void onMultiPlayConfirmed(String mode, boolean isOnline, boolean isServer) {
+    protected void onMultiPlayConfirmed(String mode, boolean isOnline, boolean isServer) {
         if (isOnline) {
             if (isServer) {
                 java.awt.Window win = SwingUtilities.getWindowAncestor(this);

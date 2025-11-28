@@ -29,9 +29,11 @@ import tetris.domain.leaderboard.LeaderboardResult;
 import tetris.domain.model.GameState;
 import tetris.domain.setting.Setting;
 import tetris.multiplayer.session.LocalMultiplayerSession;
+import tetris.network.client.GameClient;
 import tetris.view.GameComponent.SingleGameLayout;
 import tetris.view.GameComponent.GameOverPanel;
 import tetris.view.GameComponent.MultiGameLayout;
+import tetris.network.server.GameServer;
 
 public class TetrisFrame extends JFrame {
     private static final String FRAME_TITLE = "Tetris Game - Team 06";
@@ -63,6 +65,8 @@ public class TetrisFrame extends JFrame {
     private LocalMultiplayerSession boundLocalSession;
     private GameModel.UiBridge localP1UiBridge;
     private GameModel.UiBridge localP2UiBridge;
+    // Optional in-process server when user chooses to host a game
+    private GameServer hostedServer;
 
     public TetrisFrame(GameModel gameModel) {
         super(FRAME_TITLE);
@@ -177,6 +181,121 @@ public class TetrisFrame extends JFrame {
     private void setupMainPanel() {
         mainPanel = new MainPanel() {
             @Override
+            protected void onMultiPlayConfirmed(String mode, boolean isOnline, boolean isServer) {
+                if (isOnline && isServer) {
+                    final int port = 5000; // default port
+                    try {
+                        if (hostedServer == null) hostedServer = new GameServer();
+
+                        // start server in background
+                        new Thread(() -> {
+                            try { hostedServer.startServer(port); } catch (Exception ex) {
+                                System.err.println("[NET] Failed to start server: " + ex.getMessage());
+                            }
+                        }, "GameServer-Starter").start();
+
+                        // Show a dialog with server IP and port and wait for client
+                        java.awt.Window win = SwingUtilities.getWindowAncestor(TetrisFrame.this);
+                        final javax.swing.JDialog dlg = new javax.swing.JDialog(win, java.awt.Dialog.ModalityType.APPLICATION_MODAL);
+                        dlg.setTitle("Hosting: Server Address");
+                        javax.swing.JPanel root = new javax.swing.JPanel(new java.awt.BorderLayout());
+                        root.setBorder(javax.swing.BorderFactory.createEmptyBorder(12,12,12,12));
+                        String ip = "<unknown>";
+                        try { ip = java.net.InetAddress.getLocalHost().getHostAddress(); } catch (Exception ignore) {}
+                        // mode selection for host
+                        javax.swing.JPanel center = new javax.swing.JPanel();
+                        center.setLayout(new javax.swing.BoxLayout(center, javax.swing.BoxLayout.Y_AXIS));
+                        final javax.swing.JLabel info = new javax.swing.JLabel("Server IP: " + ip + "  Port: " + port, javax.swing.SwingConstants.CENTER);
+                        center.add(info);
+                        center.add(javax.swing.Box.createVerticalStrut(8));
+                        javax.swing.JRadioButton rNormal = new javax.swing.JRadioButton("Normal");
+                        javax.swing.JRadioButton rItem = new javax.swing.JRadioButton("Item");
+                        javax.swing.JRadioButton rTime = new javax.swing.JRadioButton("Time Limit");
+                        javax.swing.ButtonGroup bg = new javax.swing.ButtonGroup();
+                        bg.add(rNormal); bg.add(rItem); bg.add(rTime);
+                        rNormal.setSelected(true);
+                        javax.swing.JPanel modeRow = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.CENTER,8,0));
+                        modeRow.add(rNormal); modeRow.add(rItem); modeRow.add(rTime);
+                        center.add(modeRow);
+                        root.add(center, java.awt.BorderLayout.CENTER);
+                        root.add(info, java.awt.BorderLayout.CENTER);
+
+                        javax.swing.JPanel btns = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.CENTER,8,6));
+                        javax.swing.JButton stop = new javax.swing.JButton("Stop Server");
+                        javax.swing.JButton start = new javax.swing.JButton("Start Game");
+                        start.setEnabled(false);
+                        btns.add(start);
+                        btns.add(stop);
+                        root.add(btns, java.awt.BorderLayout.SOUTH);
+
+                        stop.addActionListener(ae -> {
+                            try { hostedServer.stopServer(); } catch (Exception ex) { System.err.println(ex.getMessage()); }
+                            dlg.dispose();
+                            showMainPanel();
+                        });
+
+                        // When host presses Start, mark host ready on server
+                        start.addActionListener(ae -> {
+                            String selected = rItem.isSelected() ? "ITEM" : rTime.isSelected() ? "TIME_LIMIT" : "NORMAL";
+                            hostedServer.setSelectedGameMode(selected);
+                            hostedServer.setHostReady(true);
+                            start.setEnabled(false);
+                            info.setText("Host ready — waiting for client...");
+                        });
+
+                        // Polling thread: enable Start when client connected, and update when client ready
+                        new Thread(() -> {
+                            try {
+                                // 1) wait until a client connects
+                                while (!Thread.currentThread().isInterrupted()) {
+                                    int count = hostedServer.getConnectedCount();
+                                    if (count >= 1) {
+                                        javax.swing.SwingUtilities.invokeLater(() -> {
+                                            info.setText("Client connected — press Start when ready. (Clients: " + count + ")");
+                                            start.setEnabled(true);
+                                        });
+                                        break;
+                                    }
+                                    Thread.sleep(300);
+                                }
+
+                                // 2) after host pressed start, wait until server reports started
+                                while (!Thread.currentThread().isInterrupted()) {
+                                    if (hostedServer.isStarted()) {
+                                        // start local game on UI thread according to selected mode
+                                        String selectedMode = hostedServer.getSelectedGameMode();
+                                        javax.swing.SwingUtilities.invokeLater(() -> {
+                                            dlg.dispose();
+                                            if ("ITEM".equalsIgnoreCase(selectedMode)) gameController.startItemGame();
+                                            else gameController.startGame();
+                                            bindMultiPanelToCurrentSession();
+                                            displayPanel(multiGameLayout);
+                                        });
+                                        break;
+                                    }
+                                    Thread.sleep(200);
+                                }
+                            } catch (InterruptedException ignored) {}
+                        }, "Host-Watcher").start();
+
+                        dlg.getContentPane().add(root);
+                        dlg.pack();
+                        dlg.setResizable(false);
+                        dlg.setLocationRelativeTo(win);
+                        dlg.setVisible(true);
+
+                    } catch (Exception ex) {
+                        System.err.println("[UI] Could not start hosted server: " + ex.getMessage());
+                    }
+                } else if (isOnline && !isServer) {
+                    // show connect dialog (MainPanel already implements the input dialog path)
+                    // Let MainPanel's client dialog call connectToServer via overridden method below
+                } else {
+                    onLocalMultiPlayConfirmed(mode);
+                }
+            }
+
+            @Override
             protected void onSinglePlayConfirmed(String mode) {
                 displayPanel(singleGameLayout);
                 GameMode selectedMode = TetrisFrame.this.resolveMenuMode(mode);
@@ -214,8 +333,92 @@ public class TetrisFrame extends JFrame {
 
             @Override
             protected void connectToServer(String address) throws Exception {
+                // Attempt to connect to remote host (address may be hostname:port or ip:port)
+                String host = address == null ? "127.0.0.1" : address.trim();
+                int port = 5000; // default
+                if (host.contains(":")) {
+                    String[] parts = host.split(":");
+                    host = parts[0];
+                    try { port = Integer.parseInt(parts[1]); } catch (NumberFormatException ignore) {}
+                }
+
                 displayPanel(multiGameLayout);
-                // gameModel.startOnlineMultiplayerGame(address);
+
+                // Create client and connect with handshake latch
+                final java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(1);
+                final GameClient client = new GameClient();
+                boolean ok = client.connectToServer(host, port, latch);
+                if (!ok) {
+                    javax.swing.JOptionPane.showMessageDialog(this, "서버에 연결할 수 없습니다.", "연결 실패", javax.swing.JOptionPane.ERROR_MESSAGE);
+                    showMainPanel();
+                    return;
+                }
+
+                // Wait briefly for handshake acceptance
+                boolean accepted = false;
+                try { accepted = latch.await(5, java.util.concurrent.TimeUnit.SECONDS); } catch (InterruptedException ex) { Thread.currentThread().interrupt(); }
+                if (!accepted) {
+                    javax.swing.JOptionPane.showMessageDialog(this, "서버의 응답이 없습니다.", "연결 실패", javax.swing.JOptionPane.ERROR_MESSAGE);
+                    client.disconnect();
+                    showMainPanel();
+                    return;
+                }
+
+                // Show waiting-for-host dialog with Ready button
+                java.awt.Window win = SwingUtilities.getWindowAncestor(this);
+                final javax.swing.JDialog dlg = new javax.swing.JDialog(win, java.awt.Dialog.ModalityType.APPLICATION_MODAL);
+                dlg.setTitle("Connected to Server");
+                javax.swing.JPanel root = new javax.swing.JPanel(new java.awt.BorderLayout());
+                root.setBorder(javax.swing.BorderFactory.createEmptyBorder(12,12,12,12));
+                final javax.swing.JLabel info = new javax.swing.JLabel("Connected to " + host + ":" + port + " — waiting for host to start.", javax.swing.SwingConstants.CENTER);
+                root.add(info, java.awt.BorderLayout.CENTER);
+                javax.swing.JPanel btns = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.CENTER,8,6));
+                javax.swing.JButton ready = new javax.swing.JButton("Ready");
+                javax.swing.JButton cancel = new javax.swing.JButton("Disconnect");
+                btns.add(ready); btns.add(cancel);
+                root.add(btns, java.awt.BorderLayout.SOUTH);
+
+                ready.addActionListener(ae -> {
+                    client.sendReady();
+                    ready.setEnabled(false);
+                    info.setText("Ready sent. Waiting for host to start...");
+                });
+
+                cancel.addActionListener(ae -> {
+                    client.disconnect();
+                    dlg.dispose();
+                    showMainPanel();
+                });
+
+                // Poll for GAME_START signal from server
+                new Thread(() -> {
+                    try {
+                        while (!Thread.currentThread().isInterrupted()) {
+                            if (client.isStartReceived()) {
+                                String mode = client.getStartMode();
+                                javax.swing.SwingUtilities.invokeLater(() -> {
+                                    dlg.dispose();
+                                    // Start local game with provided mode
+                                    if ("ITEM".equalsIgnoreCase(mode)) {
+                                        gameController.startItemGame();
+                                    } else {
+                                        gameController.startGame();
+                                    }
+                                    bindMultiPanelToCurrentSession();
+                                    displayPanel(multiGameLayout);
+                                });
+                                break;
+                            }
+                            Thread.sleep(200);
+                        }
+                    } catch (InterruptedException ignored) {}
+                }, "Client-Start-Watcher").start();
+
+                dlg.getContentPane().add(root);
+                dlg.pack();
+                dlg.setResizable(false);
+                dlg.setLocationRelativeTo(win);
+                dlg.setVisible(true);
             }
 
             @Override
