@@ -262,12 +262,12 @@ public class TetrisFrame extends JFrame {
                                 // 2) after host pressed start, wait until server reports started
                                 while (!Thread.currentThread().isInterrupted()) {
                                     if (hostedServer.isStarted()) {
-                                        // start local game on UI thread according to selected mode
+                                        // start local multiplayer session on UI thread according to selected mode
                                         String selectedMode = hostedServer.getSelectedGameMode();
                                         javax.swing.SwingUtilities.invokeLater(() -> {
                                             dlg.dispose();
-                                            if ("ITEM".equalsIgnoreCase(selectedMode)) gameController.startItemGame();
-                                            else gameController.startGame();
+                                            GameMode gameMode = TetrisFrame.this.resolveMenuMode(selectedMode);
+                                            gameController.startLocalMultiplayerGame(gameMode);
                                             bindMultiPanelToCurrentSession();
                                             displayPanel(multiGameLayout);
                                         });
@@ -341,7 +341,6 @@ public class TetrisFrame extends JFrame {
                     dlg.setResizable(false);
                     dlg.setLocationRelativeTo(win);
                     dlg.setVisible(true);
-                    onLocalMultiPlayConfirmed(mode);
                 }
             }
 
@@ -448,12 +447,9 @@ public class TetrisFrame extends JFrame {
                                 String mode = client.getStartMode();
                                 javax.swing.SwingUtilities.invokeLater(() -> {
                                     dlg.dispose();
-                                    // Start local game with provided mode
-                                    if ("ITEM".equalsIgnoreCase(mode)) {
-                                        gameController.startItemGame();
-                                    } else {
-                                        gameController.startGame();
-                                    }
+                                    // Start local multiplayer session with provided mode
+                                    GameMode gameMode = TetrisFrame.this.resolveMenuMode(mode);
+                                    gameController.startLocalMultiplayerGame(gameMode);
                                     bindMultiPanelToCurrentSession();
                                     displayPanel(multiGameLayout);
                                 });
