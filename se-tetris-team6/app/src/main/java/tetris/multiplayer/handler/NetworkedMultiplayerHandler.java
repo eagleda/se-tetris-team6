@@ -43,9 +43,11 @@ public final class NetworkedMultiplayerHandler implements MultiplayerHandler {
 
     @Override
     public void update(tetris.domain.GameModel model) {
-        // Only tick the local player's GameModel; opponent is updated via network
-        game.modelOf(localPlayerId).update();
-        // If local player's game over, mark loser locally and notify central model
+        // Tick both player models (local player updates normally, opponent updates from network)
+        game.modelOf(1).update();
+        game.modelOf(2).update();
+        
+        // Check if local player's game over
         if (game.modelOf(localPlayerId).getCurrentState() == GameState.GAME_OVER) {
             game.markLoser(localPlayerId);
             model.changeState(GameState.GAME_OVER);
