@@ -76,9 +76,15 @@ public class NetworkThread implements Runnable {
 
     // === 주요 메서드들 ===
 
+    // 접속 대상 호스트/포트 설정을 허용하는 생성자
+    private final String host;
+    private final int port;
+
     // 생성자
-    public NetworkThread(INetworkThreadCallback callback) {
+    public NetworkThread(INetworkThreadCallback callback, String host, int port) {
         this.callback = callback;
+        this.host = host == null ? "localhost" : host;
+        this.port = port <= 0 ? DEFAULT_PORT : port;
         this.lastPingTime = System.currentTimeMillis();
         this.lastSyncTime = System.currentTimeMillis();
     }
@@ -119,23 +125,23 @@ public class NetworkThread implements Runnable {
     // 초기 연결 시도 (클라이언트 역할 가정)
     private void attemptConnection() {
         try {
-            System.out.println("서버 연결 시도 중...");
-            
-            // 실제 소켓 연결
-            socket = new Socket("localhost", DEFAULT_PORT); 
-            
+            System.out.println("서버 연결 시도 중... host=" + host + " port=" + port);
+
+            // 실제 소켓 연결 (호스트/포트 사용)
+            socket = new Socket(host, port);
+
             // 출력 스트림은 입력 스트림보다 먼저 초기화되어야 함 (Java Object Stream 특성)
             outputStream = new ObjectOutputStream(socket.getOutputStream());
             outputStream.flush();
             inputStream = new ObjectInputStream(socket.getInputStream());
-            
+
             isConnected.set(true);
-            
+
             // 메시지 수신 전담 스레드 시작
             NetworkReader reader = new NetworkReader();
             readerThread = new Thread(reader, "Network-Reader");
             readerThread.start();
-            
+
             onConnectionEstablished();
         } catch (IOException e) {
             System.err.println("연결 실패: " + e.getMessage());

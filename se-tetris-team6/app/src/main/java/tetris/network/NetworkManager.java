@@ -45,7 +45,7 @@ public class NetworkManager implements INetworkThreadCallback {
     
     // GameThread가 NetworkManager를 통해 이벤트를 보낼 수 있도록 GameEventListener를 구현하여 설정
     // GameEventListener는 두 개의 메서드를 가지므로 익명 클래스를 사용해야 함
-    this.localGameThread.setNetworkListener(new GameEventListener() {
+        this.localGameThread.setNetworkListener(new GameEventListener() {
         @Override
         public void sendAttackLines(AttackLine[] lines) {
             sendAttackLines(lines);
@@ -58,8 +58,13 @@ public class NetworkManager implements INetworkThreadCallback {
 
         @Override
         public void sendBlockRotation(Block block) {
-            // TODO Auto-generated method stub
-            throw new UnsupportedOperationException("Unimplemented method 'sendBlockRotation'");
+                // 안전한 기본 동작: 블록 회전 정보를 간단한 직렬화 가능한 배열로 전송
+                if (isConnected() && networkThread != null && block != null) {
+                    // payload: [x, y, kindOrdinal]
+                    int[] payload = new int[] { block.getX(), block.getY(), block.getKind().ordinal() };
+                    GameMessage message = new GameMessage(MessageType.BLOCK_PLACEMENT, localPlayerId, payload);
+                    networkThread.sendMessage(message);
+                }
         }
     });
 }
@@ -67,18 +72,24 @@ public class NetworkManager implements INetworkThreadCallback {
     // === 주요 메서드들 ===
 
     public boolean startAsServer(int port) {
-        if (networkThread != null) networkThread.shutdown();
-        // NetworkThread 초기화 및 실행
-        networkThread = new NetworkThread(this);
-        new Thread(networkThread).start();
-        currentMode = NetworkMode.SERVER;
-        return true;
+        // 기존 NetworkThread는 클라이언트용입니다. 서버 모드는 GameServer를 사용해 시작합니다.
+        try {
+            if (server == null) {
+                server = new GameServer();
+            }
+            server.startServer(port);
+            currentMode = NetworkMode.SERVER;
+            return true;
+        } catch (Exception e) {
+            System.err.println("서버 시작 실패: " + e.getMessage());
+            return false;
+        }
     }
 
     public boolean connectAsClient(String serverIP, int port) {
         if (networkThread != null) networkThread.shutdown();
-        // NetworkThread 초기화 및 실행
-        networkThread = new NetworkThread(this);
+        // NetworkThread 초기화 및 실행 (호스트/포트 전달)
+        networkThread = new NetworkThread(this, serverIP, port);
         new Thread(networkThread).start();
         currentMode = NetworkMode.CLIENT;
         return true;
@@ -158,18 +169,18 @@ public class NetworkManager implements INetworkThreadCallback {
         switch (message.getType()) {
             case PLAYER_INPUT:
                 PlayerInput input = (PlayerInput) message.getPayload();
-                gameDataListener.onOpponentInput(input);
+                javax.swing.SwingUtilities.invokeLater(() -> gameDataListener.onOpponentInput(input));
                 break;
             case ATTACK_LINES:
                 AttackLine[] lines = (AttackLine[]) message.getPayload();
-                gameDataListener.onIncomingAttack(lines);
+                javax.swing.SwingUtilities.invokeLater(() -> gameDataListener.onIncomingAttack(lines));
                 break;
             case BOARD_STATE:
                 GameState state = (GameState) message.getPayload();
-                gameDataListener.onGameStateUpdate(state);
+                javax.swing.SwingUtilities.invokeLater(() -> gameDataListener.onGameStateUpdate(state));
                 break;
             case GAME_START:
-                gameDataListener.onGameStart();
+                javax.swing.SwingUtilities.invokeLater(() -> gameDataListener.onGameStart());
                 break;
             default:
                 break;
