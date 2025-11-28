@@ -12,7 +12,10 @@ import java.util.Random;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Supplier;
 
-import tetris.domain.setting.SettingService;
+import tetris.domain.BlockGenerator;
+import tetris.domain.BlockKind;
+import tetris.domain.BlockShape;
+import tetris.domain.RandomBlockGenerator;
 import tetris.domain.block.BlockLike;
 import tetris.domain.setting.SettingService;
 import tetris.domain.handler.GameHandler;
@@ -137,7 +140,6 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
             () -> new LineClearBehavior(),
             WeightBehavior::new);
     private final List<MultiplayerHook> multiplayerHooks = new CopyOnWriteArrayList<>();
-            () -> new WeightBehavior());
 
     public static final class ActiveItemInfo {
         private final BlockLike block;
@@ -683,15 +685,9 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         if (currentMode == GameMode.ITEM && activeItemBlock != null && activeItemBlock.getDelegate() == block) {
             itemManager.onLock(itemContext, activeItemBlock);
             activeItemBlock = null;
-        // 1. 아이템 모드 로직 (기존 로직 유지)
-        if (currentMode == GameMode.ITEM) {
-            if (activeItemBlock != null && activeItemBlock.getDelegate() == block) {
-                itemManager.onLock(itemContext, activeItemBlock);
-                activeItemBlock = null;
-            }
         }
-        
-        // 2. ✅ 대전 모드 로직 추가: 블록 고정 시 공격 대기열 적용
+
+        // 대전/아이템 모드에서 블록 고정 시 공격 대기열 적용
         if (currentMode == GameMode.STANDARD || currentMode == GameMode.ITEM /* 또는 대전 모드 플래그 */) {
             commitPendingGarbageLines();
         }
@@ -1253,6 +1249,8 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
             hook.onPieceLocked(snapshot, cleared, Board.W);
         }
         lastLockedPieceSnapshot = null;
+
+    }
 
     public void commitPendingGarbageLines() {
         if (this.pendingGarbageLines > 0) {
