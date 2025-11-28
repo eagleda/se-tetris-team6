@@ -51,7 +51,7 @@ public class Setting {
         kb.put("HARD_DROP", java.awt.event.KeyEvent.VK_SPACE);
         kb.put("HOLD", java.awt.event.KeyEvent.VK_C);
         // Multiplayer Player 1 defaults
-        kb.put("P1_MOVE_LEFT", java.awt.event.KeyEvent.VK_W);
+        kb.put("P1_MOVE_LEFT", java.awt.event.KeyEvent.VK_A);
         kb.put("P1_MOVE_RIGHT", java.awt.event.KeyEvent.VK_D);
         kb.put("P1_ROTATE_CW", java.awt.event.KeyEvent.VK_W);
         kb.put("P1_SOFT_DROP", java.awt.event.KeyEvent.VK_S);
