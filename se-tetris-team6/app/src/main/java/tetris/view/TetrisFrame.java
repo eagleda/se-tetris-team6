@@ -460,7 +460,23 @@ public class TetrisFrame extends JFrame {
                                 break;
                             case GAME_END:
                                 // forward to main GameModel to show overlay if needed
-                                gameModel.showMultiplayerResult(0);
+                                LocalMultiplayerSession sess = gameModel.getActiveLocalMultiplayerSession().orElse(null);
+                                if (sess != null) {
+                                    // Terminate game for both players
+                                    tetris.domain.GameModel localModel = sess.isPlayerOneLocal() ? sess.playerOneModel() : sess.playerTwoModel();
+                                    tetris.domain.GameModel opponentModel = sess.isPlayerOneLocal() ? sess.playerTwoModel() : sess.playerOneModel();
+                                    
+                                    // Mark opponent as loser (since they sent GAME_END)
+                                    int opponentId = sess.isPlayerOneLocal() ? 2 : 1;
+                                    sess.game().markLoser(opponentId);
+                                    
+                                    // Change states to GAME_OVER
+                                    localModel.changeState(tetris.domain.model.GameState.GAME_OVER);
+                                    opponentModel.changeState(tetris.domain.model.GameState.GAME_OVER);
+                                    
+                                    // Show result
+                                    gameModel.showMultiplayerResult(sess.game().getWinnerId() == null ? -1 : sess.game().getWinnerId());
+                                }
                                 break;
                             default:
                                 break;
@@ -637,7 +653,22 @@ public class TetrisFrame extends JFrame {
                         }
                         break;
                     case GAME_END:
-                        gameModel.showMultiplayerResult(0);
+                        LocalMultiplayerSession sess = gameModel.getActiveLocalMultiplayerSession().orElse(null);
+                        if (sess != null) {
+                            // Terminate game for both players
+                            tetris.domain.GameModel localModel = sess.playerOneModel();  // Host is always player 1
+                            tetris.domain.GameModel opponentModel = sess.playerTwoModel();
+                            
+                            // Mark opponent (player 2) as loser
+                            sess.game().markLoser(2);
+                            
+                            // Change states to GAME_OVER
+                            localModel.changeState(tetris.domain.model.GameState.GAME_OVER);
+                            opponentModel.changeState(tetris.domain.model.GameState.GAME_OVER);
+                            
+                            // Show result
+                            gameModel.showMultiplayerResult(sess.game().getWinnerId() == null ? -1 : sess.game().getWinnerId());
+                        }
                         break;
                     default:
                         break;

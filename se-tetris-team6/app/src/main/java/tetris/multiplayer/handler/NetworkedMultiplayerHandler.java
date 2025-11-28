@@ -17,16 +17,20 @@ public final class NetworkedMultiplayerHandler implements MultiplayerHandler {
     private final MultiPlayerController controller;
     private final GameState state;
     private final int localPlayerId;
+    private final Runnable sendGameEndCallback;
+    private boolean gameEndSent = false;
 
     public NetworkedMultiplayerHandler(MultiPlayerGame game,
                                        MultiPlayerController controller,
                                        GameState state,
-                                       int localPlayerId) {
+                                       int localPlayerId,
+                                       Runnable sendGameEndCallback) {
         this.game = Objects.requireNonNull(game, "game");
         this.controller = Objects.requireNonNull(controller, "controller");
         this.state = Objects.requireNonNull(state, "state");
         if (localPlayerId != 1 && localPlayerId != 2) throw new IllegalArgumentException("localPlayerId must be 1 or 2");
         this.localPlayerId = localPlayerId;
+        this.sendGameEndCallback = sendGameEndCallback;
     }
 
     @Override
@@ -39,6 +43,8 @@ public final class NetworkedMultiplayerHandler implements MultiplayerHandler {
         game.player(2).setReady(false);
         // register hooks only for the local model
         registerHookForLocal();
+        // reset game end flag
+        gameEndSent = false;
     }
 
     @Override
@@ -52,6 +58,12 @@ public final class NetworkedMultiplayerHandler implements MultiplayerHandler {
             game.markLoser(localPlayerId);
             model.changeState(GameState.GAME_OVER);
             model.showMultiplayerResult(game.getWinnerId() == null ? -1 : game.getWinnerId());
+            
+            // Send GAME_END message to opponent (only once)
+            if (!gameEndSent && sendGameEndCallback != null) {
+                sendGameEndCallback.run();
+                gameEndSent = true;
+            }
         }
     }
 

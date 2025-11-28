@@ -39,7 +39,7 @@ public final class LocalMultiplayerSessionFactory {
      * is driven by the network. The local player side is determined by
      * {@code localIsPlayerOne}.
      */
-    public static LocalMultiplayerSession createNetworkedSession(GameMode mode, boolean localIsPlayerOne) {
+    public static LocalMultiplayerSession createNetworkedSession(GameMode mode, boolean localIsPlayerOne, Runnable sendGameEndCallback) {
         GameModel p1 = GameModelFactory.createDefault();
         GameModel p2 = GameModelFactory.createDefault();
         PlayerState playerOne = new PlayerState(1, p1, localIsPlayerOne);
@@ -47,7 +47,7 @@ public final class LocalMultiplayerSessionFactory {
         VersusRules rules = new VersusRules();
         MultiPlayerGame game = new MultiPlayerGame(playerOne, playerTwo, rules);
         MultiPlayerController controller = new MultiPlayerController(game);
-        tetris.multiplayer.handler.NetworkedMultiplayerHandler handler = new tetris.multiplayer.handler.NetworkedMultiplayerHandler(game, controller, GameState.PLAYING, localIsPlayerOne ? 1 : 2);
+        tetris.multiplayer.handler.NetworkedMultiplayerHandler handler = new tetris.multiplayer.handler.NetworkedMultiplayerHandler(game, controller, GameState.PLAYING, localIsPlayerOne ? 1 : 2, sendGameEndCallback);
         LocalMultiplayerSession session = new LocalMultiplayerSession(playerOne, playerTwo, game, controller, handler);
         session.restartPlayers(mode);
         return session;
