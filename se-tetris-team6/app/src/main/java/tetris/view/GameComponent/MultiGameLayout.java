@@ -100,22 +100,23 @@ public class MultiGameLayout extends JPanel {
                 repaint();
         }
 
-        /**
-         * 로컬 멀티 세션에서 각 패널이 P1/P2 모델을 따로 그리도록 연결한다.
-         * - 공격 대기 줄은 LocalMultiplayerHandler#getPendingAttackLines 공급자를 통해 실시간으로 갱신한다.
-         */
-        public void bindLocalMultiplayerSession(LocalMultiplayerSession session) {
-                if (session == null) {
-                        return;
-                }
-                bindPlayerModels(session.playerOneModel(), session.playerTwoModel());
-                // 각 패널이 해당 플레이어의 공격 패턴(구멍 위치 포함)을 바로 읽어오도록 공급자를 연결한다.
-                attackQueuePanel_1.bindAttackLinesSupplier(() -> session.handler().getPendingAttackLines(1));
-                attackQueuePanel_2.bindAttackLinesSupplier(() -> session.handler().getPendingAttackLines(2));
-                repaint();
+    /**
+     * 로컬 멀티 세션에서 각 패널이 P1/P2 모델을 따로 그리도록 연결한다.
+     * - 공격 대기 줄은 LocalMultiplayerHandler#getPendingAttackLines 공급자를 통해 실시간으로 갱신한다.
+     */
+    public void bindLocalMultiplayerSession(LocalMultiplayerSession session) {
+        System.out.println("[MultiGameLayout] bindLocalMultiplayerSession called - session=" + (session != null ? "ACTIVE" : "NULL"));
+        if (session == null) {
+            return;
         }
-
-        /**
+        System.out.println("[MultiGameLayout] Binding player models - P1=" + session.playerOneModel() + ", P2=" + session.playerTwoModel());
+        bindPlayerModels(session.playerOneModel(), session.playerTwoModel());
+        // 각 패널이 해당 플레이어의 공격 패턴(구멍 위치 포함)을 바로 읽어오도록 공급자를 연결한다.
+        attackQueuePanel_1.bindAttackLinesSupplier(() -> session.handler().getPendingAttackLines(1));
+        attackQueuePanel_2.bindAttackLinesSupplier(() -> session.handler().getPendingAttackLines(2));
+        System.out.println("[MultiGameLayout] Session binding complete, repainting");
+        repaint();
+    }        /**
          * 온라인 멀티플레이에서 자신을 P1(왼쪽), 상대를 P2(오른쪽)에 표시한다.
          * - 상대방 모델은 네트워크를 통해 업데이트되어야 하지만, 임시로 자신의 모델을 표시한다.
          */

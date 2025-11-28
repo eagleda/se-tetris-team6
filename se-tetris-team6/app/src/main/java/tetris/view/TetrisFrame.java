@@ -268,11 +268,14 @@ public class TetrisFrame extends JFrame {
                                             dlg.dispose();
                                             GameMode gameMode = TetrisFrame.this.resolveMenuMode(selectedMode);
                                             // Start a networked session as host (host is Player-1)
+                                            System.out.println("[UI][SERVER] Starting networked multiplayer as Player-1 (Host)");
                                             gameController.setNetworkServer(hostedServer); // 서버 연결
                                             gameController.startNetworkedMultiplayerGame(gameMode, true);
                                             // 호스트는 서버를 통해 클라이언트 메시지를 받음
                                             TetrisFrame.this.setupHostNetworkListener();
+                                            System.out.println("[UI][SERVER] Binding multi panel to session");
                                             TetrisFrame.this.bindMultiPanelToCurrentSession();
+                                            System.out.println("[UI][SERVER] Displaying multiGameLayout");
                                             TetrisFrame.this.displayPanel(multiGameLayout);
                                         });
                                         break;
@@ -556,9 +559,12 @@ public class TetrisFrame extends JFrame {
                                     // this client controls Player-1 based on assigned playerId.
                                     GameMode gameMode = TetrisFrame.this.resolveMenuMode(mode);
                                     boolean localIsPlayerOne = "Player-1".equals(client.getPlayerId());
+                                    System.out.println("[UI][CLIENT] Starting networked multiplayer as Player-" + (localIsPlayerOne ? "1" : "2"));
                                     gameController.setNetworkClient(client); // 네트워크 클라이언트 연결
                                     gameController.startNetworkedMultiplayerGame(gameMode, localIsPlayerOne);
+                                    System.out.println("[UI][CLIENT] Binding multi panel to session");
                                     bindMultiPanelToCurrentSession();
+                                    System.out.println("[UI][CLIENT] Displaying multiGameLayout");
                                     displayPanel(multiGameLayout);
                                 });
                                 break;
@@ -1006,8 +1012,10 @@ public class TetrisFrame extends JFrame {
             return;
         ensureLocalSessionUiBridges();
         if (boundLocalSession != null) {
+            System.out.println("[UI] Binding MultiGameLayout to LocalMultiplayerSession");
             multiGameLayout.bindLocalMultiplayerSession(boundLocalSession);
         } else {
+            System.out.println("[UI][WARN] No active session found, binding single GameModel to both panels");
             multiGameLayout.bindGameModel(gameModel);
         }
     }
@@ -1031,6 +1039,7 @@ public class TetrisFrame extends JFrame {
      */
     private void ensureLocalSessionUiBridges() {
         LocalMultiplayerSession session = gameModel.getActiveLocalMultiplayerSession().orElse(null);
+        System.out.println("[UI] ensureLocalSessionUiBridges - session=" + (session != null ? "ACTIVE" : "NULL"));
         if (session == null) {
             clearLocalSessionUiBridges();
         } else if (session != boundLocalSession) {

@@ -397,6 +397,7 @@ public class GameController {
      * @param localIsPlayerOne true if this process controls player 1
      */
     public LocalMultiplayerSession startNetworkedMultiplayerGame(GameMode mode, boolean localIsPlayerOne) {
+        System.out.println("[GameController] Starting networked multiplayer - localIsPlayerOne=" + localIsPlayerOne);
         deactivateLocalMultiplayer();
         
         // Create callback to send GAME_END message when local player loses
@@ -425,11 +426,14 @@ public class GameController {
             }
         };
         
+        System.out.println("[GameController] Creating networked session");
         LocalMultiplayerSession session = LocalMultiplayerSessionFactory.createNetworkedSession(mode, localIsPlayerOne, sendGameEndCallback);
         localSession = session;
+        System.out.println("[GameController] Session created - " + (session != null ? "SUCCESS" : "FAILED"));
         
         // Set up network event handler
         tetris.multiplayer.controller.NetworkMultiPlayerController networkController = session.networkController();
+        System.out.println("[GameController] NetworkController - " + (networkController != null ? "FOUND" : "NULL"));
         if (networkController != null) {
             networkController.setNetworkHandler(new tetris.multiplayer.controller.NetworkMultiPlayerController.NetworkEventHandler() {
                 @Override
@@ -449,11 +453,15 @@ public class GameController {
             });
         }
         
+        System.out.println("[GameController] Enabling local multiplayer in GameModel");
         gameModel.enableLocalMultiplayer(session);
+        System.out.println("[GameController] Starting local multiplayer tick");
         startLocalMultiplayerTick();
         pauseKeyPressed = false;
         lastKeyPressTime.clear();
+        System.out.println("[GameController] Starting game with mode: " + mode);
         gameModel.startGame(mode);
+        System.out.println("[GameController] Networked multiplayer setup complete");
         return session;
     }
     
