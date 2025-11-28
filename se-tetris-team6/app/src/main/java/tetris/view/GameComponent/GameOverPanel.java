@@ -31,6 +31,7 @@ public class GameOverPanel extends JPanel {
 
     private final JLabel title = new JLabel("Game Over");
     private final JLabel scoreLabel = new JLabel("Score: 0");
+    private final JLabel winnerLabel = new JLabel("");
     private final JTextField nameField = new JTextField(12);
     private final JButton saveButton = new JButton("Save");
     private final JButton skipButton = new JButton("Skip");
@@ -60,6 +61,8 @@ public class GameOverPanel extends JPanel {
         title.setForeground(Color.WHITE);
         scoreLabel.setFont(new Font("SansSerif", Font.BOLD, 20));
         scoreLabel.setForeground(Color.WHITE);
+        winnerLabel.setFont(new Font("SansSerif", Font.BOLD, 24));
+        winnerLabel.setForeground(Color.YELLOW);
 
         // left scoreboard area as CardLayout (STANDARD / ITEM)
         StandardModePanel standardPanel = new StandardModePanel(standardList);
@@ -85,10 +88,11 @@ public class GameOverPanel extends JPanel {
         gbc.insets = new Insets(8, 8, 8, 8);
         gbc.gridx = 0; gbc.gridy = 0; right.add(title, gbc);
         gbc.gridy = 1; right.add(scoreLabel, gbc);
-        gbc.gridy = 2; right.add(nameField, gbc);
-        gbc.gridy = 3; right.add(saveButton, gbc);
-        gbc.gridy = 4; right.add(skipButton, gbc);
-        gbc.gridy = 5; right.add(backToMenu, gbc);
+        gbc.gridy = 2; right.add(winnerLabel, gbc);
+        gbc.gridy = 3; right.add(nameField, gbc);
+        gbc.gridy = 4; right.add(saveButton, gbc);
+        gbc.gridy = 5; right.add(skipButton, gbc);
+        gbc.gridy = 6; right.add(backToMenu, gbc);
 
         saveButton.addActionListener((ActionEvent e) -> {
             if (listener != null) listener.onSave(nameField.getText().trim());
@@ -122,6 +126,20 @@ public class GameOverPanel extends JPanel {
         skipButton.setVisible(allowNameEntry);
         this.setVisible(true);
         nameField.requestFocusInWindow();
+    }
+
+    /**
+     * 멀티플레이 승자 오버레이 표시: 입력 없이 메시지와 닫기 버튼만 노출.
+     */
+    public void showMultiplayerResult(String message) {
+        title.setText("Match Result");
+        scoreLabel.setText("");
+        winnerLabel.setText(message == null ? "" : message);
+        nameField.setVisible(false);
+        saveButton.setVisible(false);
+        skipButton.setVisible(false);
+        this.setVisible(true);
+        backToMenu.requestFocusInWindow();
     }
 
     public void hidePanel() {

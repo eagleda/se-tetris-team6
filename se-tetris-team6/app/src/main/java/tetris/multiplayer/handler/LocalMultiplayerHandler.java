@@ -46,8 +46,22 @@ public final class LocalMultiplayerHandler implements GameHandler {
     @Override
     public void update(GameModel model) {
         controller.tick();
+        // 개별 플레이어가 먼저 GAME_OVER가 되면 즉시 패배자로 표시한다.
+        if (!game.isGameOver()) {
+            if (game.modelOf(1).getCurrentState() == GameState.GAME_OVER) {
+                game.markLoser(1);
+            } else if (game.modelOf(2).getCurrentState() == GameState.GAME_OVER) {
+                game.markLoser(2);
+            }
+        }
+
         if (game.isGameOver() && model.getCurrentState() != GameState.GAME_OVER) {
+            int winnerId = game.getWinnerId() == null ? -1 : game.getWinnerId();
+            // 두 플레이어 모델 모두 GAME_OVER 상태로 정지시킨다.
+            controller.withPlayer(1, m -> m.changeState(GameState.GAME_OVER));
+            controller.withPlayer(2, m -> m.changeState(GameState.GAME_OVER));
             model.changeState(GameState.GAME_OVER);
+            model.showMultiplayerResult(winnerId);
         }
     }
 
