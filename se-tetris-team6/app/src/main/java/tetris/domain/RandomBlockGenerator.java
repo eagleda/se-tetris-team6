@@ -10,7 +10,12 @@ import java.util.Random;
  */
 public final class RandomBlockGenerator implements BlockGenerator {
 
-    private final BlockKind[] kinds = BlockKind.values();
+    // private final BlockKind[] kinds = BlockKind.values();
+    private final BlockKind[] kinds =  {
+        BlockKind.I, BlockKind.J, BlockKind.L,
+        BlockKind.O, BlockKind.S, BlockKind.T,
+        BlockKind.Z
+    };
     private final Random random;
 
     // lookahead buffer so peekNext() can report the upcoming kind without
@@ -25,7 +30,7 @@ public final class RandomBlockGenerator implements BlockGenerator {
     private GameDifficulty difficulty = GameDifficulty.NORMAL;
     private boolean dirty = true;
     // 빠른 테스트용 플래그: true이면 I 블록만 생성한다.
-    private boolean forceIOnly = true;
+    private boolean forceIOnly = false;
 
     public RandomBlockGenerator() {
         this(new Random());

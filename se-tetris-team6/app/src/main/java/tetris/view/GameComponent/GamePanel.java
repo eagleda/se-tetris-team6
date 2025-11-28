@@ -121,7 +121,59 @@ public class GamePanel extends JPanel {
                     continue;
                 int px = originX + boardX * cellSize;
                 int py = originY + boardY * cellSize;
+                
+                // 먼저 기본 블록 색상으로 칸 채우기
                 g2.fillRect(px, py, cellSize, cellSize);
+                
+                // Bomb 아이템인 경우 (아이템 칸이 없고 블록 자체가 폭탄)
+                if (highlightItem && "bomb".equals(itemInfo.label()) && !itemInfo.hasItemCell()) {
+                    Graphics2D textG = (Graphics2D) g2.create();
+                    textG.setColor(Color.WHITE);
+                    Font cellFont = new Font("SansSerif", Font.BOLD, (int)(cellSize * 0.6f));
+                    textG.setFont(cellFont);
+                    int textWidth = textG.getFontMetrics().stringWidth("B");
+                    int textHeight = textG.getFontMetrics().getAscent();
+                    int textX = px + (cellSize - textWidth) / 2;
+                    int textY = py + (cellSize + textHeight) / 2 - textG.getFontMetrics().getDescent();
+                    textG.drawString("B", textX, textY);
+                    textG.dispose();
+                }
+                
+                // 아이템 칸인 경우 표시
+                if (highlightItem && itemInfo.hasItemCell() && sx == itemInfo.itemCellX() && sy == itemInfo.itemCellY()) {
+                    String itemId = itemInfo.label();
+                    Graphics2D textG = (Graphics2D) g2.create();
+                    textG.setColor(Color.WHITE);
+                    
+                    String displayText = "";
+                    float fontSize = cellSize * 0.6f;
+                    
+                    if ("line_clear".equals(itemId)) {
+                        displayText = "L";
+                    } else if ("slow".equals(itemId)) {
+                        displayText = "T";
+                    } else if ("double_score".equals(itemId)) {
+                        displayText = "2x";
+                        fontSize = cellSize * 0.5f; // 2x는 두 글자이므로 좀 더 작게
+                    } else {
+                        // 기본: 흰색으로 칸 채우기
+                        textG.dispose();
+                        g2.setColor(Color.WHITE);
+                        g2.fillRect(px, py, cellSize, cellSize);
+                        g2.setColor(colorFor(colorIndex)); // 원래 색으로 복원
+                        continue;
+                    }
+                    
+                    // 글자 표시
+                    Font cellFont = new Font("SansSerif", Font.BOLD, (int)fontSize);
+                    textG.setFont(cellFont);
+                    int textWidth = textG.getFontMetrics().stringWidth(displayText);
+                    int textHeight = textG.getFontMetrics().getAscent();
+                    int textX = px + (cellSize - textWidth) / 2;
+                    int textY = py + (cellSize + textHeight) / 2 - textG.getFontMetrics().getDescent();
+                    textG.drawString(displayText, textX, textY);
+                    textG.dispose();
+                }
             }
         }
 
@@ -138,7 +190,7 @@ public class GamePanel extends JPanel {
                 int textWidth = overlay.getFontMetrics().stringWidth(label);
                 int textHeight = overlay.getFontMetrics().getAscent();
                 int labelX = blockMinPx + (blockWidthPx - textWidth) / 2;
-                int labelY = blockMinPy + textHeight;
+                int labelY = blockMinPy + textHeight - 20;
                 overlay.setColor(ITEM_LABEL_BACKGROUND);
                 overlay.fillRoundRect(labelX - 4, labelY - textHeight, textWidth + 8, textHeight + 4, 8, 8);
                 overlay.setColor(ITEM_LABEL_COLOR);
