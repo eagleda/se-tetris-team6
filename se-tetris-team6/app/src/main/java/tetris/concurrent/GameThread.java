@@ -380,15 +380,9 @@ public class GameThread implements Runnable, GameplayEngine.GameplayEvents {
         if (attackLines != null && attackLines.length > 0) {
             gameStateLock.writeLock().lock();
             try {
-                // Board에 직접 접근하여 공격 라인 추가
-                for (AttackLine attackLine : attackLines) {
-                    // Board.addGarbageLine() 메서드가 있다고 가정
-                    // 없다면 GameModel에 메서드 추가 필요
-                    // board.addGarbageLine(attackLine.getStrength());
-                    
-                    // 임시로 이벤트 큐에 추가
-                    gameEventQueue.offer(new GameEvent(GameEvent.Type.ATTACK_RECEIVED, attackLines));
-                }
+                gameModel.applyAttackLines(attackLines); 
+                // 이벤트 큐에 추가 (UI/로깅 목적)
+                gameEventQueue.offer(new GameEvent(GameEvent.Type.ATTACK_RECEIVED, attackLines));
             } finally {
                 gameStateLock.writeLock().unlock();
             }

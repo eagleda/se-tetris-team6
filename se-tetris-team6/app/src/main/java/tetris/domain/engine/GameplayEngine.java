@@ -223,6 +223,9 @@ public class GameplayEngine implements GameClock.Listener {
             BlockShape rotated = activeBlock.getShape().rotatedCW();
             if (board.canPlace(rotated, activeBlock.getX(), activeBlock.getY())) {
                 activeBlock.setShape(rotated);
+                if (events != null) { // 이벤트 호출
+                    events.onBlockRotated(activeBlock, 1);
+                }
             }
         }
 
@@ -230,6 +233,9 @@ public class GameplayEngine implements GameClock.Listener {
             BlockShape rotated = activeBlock.getShape().rotatedCW().rotatedCW().rotatedCW();
             if (board.canPlace(rotated, activeBlock.getX(), activeBlock.getY())) {
                 activeBlock.setShape(rotated);
+                if (events != null) { //이벤트 호출
+                    events.onBlockRotated(activeBlock, 3);
+                }
             }
         }
 
