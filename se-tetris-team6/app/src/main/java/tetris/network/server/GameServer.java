@@ -31,6 +31,7 @@ public class GameServer {
     private GameState currentGameState;         // 현재 게임 상태
     private String selectedGameMode;            // 선택된 게임 모드
     private boolean gameInProgress;             // 게임 진행 중 여부
+    private tetris.network.client.GameStateListener gameStateListener; // 호스트 UI 리스너
 
     // === 주요 메서드들 ===
 
@@ -152,6 +153,29 @@ public class GameServer {
     }
 
     public String getSelectedGameMode() { return this.selectedGameMode; }
+
+    /**
+     * Set listener for host to receive messages from clients.
+     */
+    public void setGameStateListener(tetris.network.client.GameStateListener listener) {
+        this.gameStateListener = listener;
+    }
+
+    /**
+     * Notify the host of a message from a client.
+     */
+    public void notifyHostOfMessage(GameMessage message) {
+        if (gameStateListener != null) {
+            gameStateListener.onGameStateChange(message);
+        }
+    }
+
+    /**
+     * Send a message from the host to all clients.
+     */
+    public void sendHostMessage(GameMessage message) {
+        broadcastMessage(message);
+    }
 
     // 게임 시작 - 모든 클라이언트가 준비되었을 때
     public void startGame(){

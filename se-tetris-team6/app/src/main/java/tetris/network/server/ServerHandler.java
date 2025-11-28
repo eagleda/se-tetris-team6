@@ -145,6 +145,11 @@ import java.util.concurrent.atomic.AtomicInteger; // 추가: 스레드 안전한
                 System.out.println("ServerHandler: DISCONNECT from " + clientId);
                 disconnect();
                 break;
+            case PLAYER_INPUT:
+            case ATTACK_LINES:
+                // 클라이언트 입력을 호스트에게 전달
+                server.notifyHostOfMessage(message);
+                break;
             default:
                 // 기본 동작: 서버가 다른 클라이언트에게 그대로 브로드캐스트
                 server.broadcastMessage(message);
