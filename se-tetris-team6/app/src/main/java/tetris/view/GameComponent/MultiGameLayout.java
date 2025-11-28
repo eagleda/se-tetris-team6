@@ -110,8 +110,8 @@ public class MultiGameLayout extends JPanel {
                 }
                 bindPlayerModels(session.playerOneModel(), session.playerTwoModel());
                 // 각 패널이 해당 플레이어의 쓰레기 줄 대기량을 바로 읽어오도록 공급자를 연결한다.
-                attackQueuePanel_1.bindPendingLinesSupplier(() -> session.handler().getPendingLines(1));
-                attackQueuePanel_2.bindPendingLinesSupplier(() -> session.handler().getPendingLines(2));
+                attackQueuePanel_1.bindAttackLinesSupplier(() -> session.handler().getPendingAttackLines(1));
+                attackQueuePanel_2.bindAttackLinesSupplier(() -> session.handler().getPendingAttackLines(2));
                 repaint();
         }
 

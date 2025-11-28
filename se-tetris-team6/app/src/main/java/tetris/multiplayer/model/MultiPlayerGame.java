@@ -75,4 +75,11 @@ public final class MultiPlayerGame {
     public int getPendingLines(int playerId) {
         return versusRules.getPendingLineCount(playerId);
     }
+
+    /**
+     * 특정 플레이어가 받을 공격 줄의 실제 패턴을 반환한다.
+     */
+    public java.util.List<AttackLine> getPendingAttackLines(int playerId) {
+        return versusRules.getPendingAttackLines(playerId);
+    }
 }

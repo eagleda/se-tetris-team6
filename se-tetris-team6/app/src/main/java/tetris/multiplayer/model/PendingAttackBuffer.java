@@ -45,4 +45,11 @@ final class PendingAttackBuffer {
         }
         return result;
     }
+
+    /**
+     * 현재 대기 중인 AttackLine 리스트를 복사하여 반환한다. (버퍼를 비우지 않음)
+     */
+    List<AttackLine> peekAll() {
+        return new ArrayList<>(queue);
+    }
 }

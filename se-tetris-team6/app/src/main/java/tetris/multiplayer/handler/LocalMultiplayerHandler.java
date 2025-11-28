@@ -81,6 +81,13 @@ public final class LocalMultiplayerHandler implements MultiplayerHandler {
         return controller.getPendingLines(playerId);
     }
 
+    /**
+     * 특정 플레이어가 받을 공격 줄의 실제 패턴을 반환한다.
+     */
+    public java.util.List<tetris.multiplayer.model.AttackLine> getPendingAttackLines(int playerId) {
+        return controller.getPendingAttackLines(playerId);
+    }
+
     private void registerHooks() {
         // GameModel 훅은 중복 등록을 피하기 위해 항상 기존 값을 제거하고 새로 등록한다.
         unregisterHooks();
