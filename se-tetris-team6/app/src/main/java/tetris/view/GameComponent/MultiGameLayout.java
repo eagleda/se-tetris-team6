@@ -36,7 +36,7 @@ public class MultiGameLayout extends JPanel {
         public MultiGameLayout() {
                 super(new GridBagLayout());
                 setOpaque(true);
-                setVisible(false);
+                setVisible(true);
 
                 // 각 요소 객체 생성 및 배치
                 gamePanel_1 = new GamePanel();
@@ -136,6 +136,21 @@ public class MultiGameLayout extends JPanel {
                 scoreboard_2.bindGameModel(playerTwo);
                 // 중앙 타이머 패널은 P1 기준으로 공유(추후 필요 시 P2 전용 UI를 추가할 수 있다).
                 timerPanel.bindGameModel(playerOne);
+                
+                // 모든 컴포넌트가 보이도록 명시적으로 설정
+                gamePanel_1.setVisible(true);
+                gamePanel_2.setVisible(true);
+                nextBlockPanel_1.setVisible(true);
+                nextBlockPanel_2.setVisible(true);
+                scoreboard_1.setVisible(true);
+                scoreboard_2.setVisible(true);
+                attackQueuePanel_1.setVisible(true);
+                attackQueuePanel_2.setVisible(true);
+                timerPanel.setVisible(true);
+                
+                // 레이아웃 재검증 및 다시 그리기
+                revalidate();
+                repaint();
         }
 
         public void addToRegion(Component comp, int x, int y, int w, int h, int fill, int anchor) {
