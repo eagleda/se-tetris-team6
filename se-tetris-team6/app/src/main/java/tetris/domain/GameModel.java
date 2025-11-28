@@ -66,6 +66,26 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         /** Show a dedicated name-entry overlay (optional). */
         void showNameEntryOverlay(tetris.domain.score.Score score);
     }
+    /**
+     * 현재 슬로우 버프의 남은 시간을 ms 단위로 반환합니다. 버프가 없으면 0을 반환합니다.
+     */
+    public long getSlowBuffRemainingTimeMs() {
+        if (slowBuffExpiresAtMs <= 0) return 0L;
+        long remaining = slowBuffExpiresAtMs - System.currentTimeMillis();
+        return Math.max(0L, remaining);
+    }
+
+    /**
+     * 현재 더블 스코어 버프의 남은 시간을 ms 단위로 반환합니다. 버프가 없으면 0을 반환합니다.
+     */
+    public long getDoubleScoreBuffRemainingTimeMs() {
+        if (doubleScoreUntilTick <= 0) return 0L;
+        // Tick을 ms로 환산 (tick은 내부적으로 1프레임 단위, 1프레임=약 16ms로 가정)
+        long nowTick = currentTick;
+        long remainingTick = doubleScoreUntilTick - nowTick;
+        long remainingMs = remainingTick * 16L;
+        return Math.max(0L, remainingMs);
+    }
 
     private static final UiBridge NO_OP_UI_BRIDGE = new UiBridge() {
         @Override
@@ -169,7 +189,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
     private int slowLevelOffset;
     private long slowBuffExpiresAtMs;
     private ItemContextImpl itemContext;
-    private Supplier<ItemBehavior> behaviorOverride = null;
+    private Supplier<ItemBehavior> behaviorOverride = () -> new WeightBehavior();
     private int itemSpawnIntervalLines = DEFAULT_ITEM_SPAWN_INTERVAL;
     private int currentGravityLevel;
     private boolean colorBlindMode;
@@ -932,6 +952,13 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         if (!isPlayingState() || !ensureActiveBlockPresent()) {
             return;
         }
+        // weight 아이템일 때 회전 무시
+        if (isItemMode() && activeItemBlock != null && !activeItemBlock.getBehaviors().isEmpty()) {
+            ItemBehavior behavior = activeItemBlock.getBehaviors().get(0);
+            if ("weight".equals(behavior.id())) {
+                return;
+            }
+        }
         recordPlayerInput();
         gameplayEngine.rotateBlockClockwise();
     }
@@ -939,6 +966,13 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
     public void rotateBlockCounterClockwise() {
         if (!isPlayingState() || !ensureActiveBlockPresent()) {
             return;
+        }
+        // weight 아이템일 때 회전 무시
+        if (isItemMode() && activeItemBlock != null && !activeItemBlock.getBehaviors().isEmpty()) {
+            ItemBehavior behavior = activeItemBlock.getBehaviors().get(0);
+            if ("weight".equals(behavior.id())) {
+                return;
+            }
         }
         recordPlayerInput();
         gameplayEngine.rotateBlockCounterClockwise();
