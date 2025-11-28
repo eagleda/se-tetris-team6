@@ -115,6 +115,17 @@ public class MultiGameLayout extends JPanel {
                 repaint();
         }
 
+        /**
+         * 온라인 멀티플레이에서 자신을 P1(왼쪽), 상대를 P2(오른쪽)에 표시한다.
+         * - 상대방 모델은 네트워크를 통해 업데이트되어야 하지만, 임시로 자신의 모델을 표시한다.
+         */
+        public void bindOnlineMultiplayer(GameModel selfModel, GameModel opponentModel) {
+                bindPlayerModels(selfModel, opponentModel != null ? opponentModel : selfModel);
+                attackQueuePanel_1.bindGameModel(selfModel);
+                attackQueuePanel_2.bindGameModel(opponentModel != null ? opponentModel : selfModel);
+                repaint();
+        }
+
         private void bindPlayerModels(GameModel playerOne, GameModel playerTwo) {
                 // 좌측 UI는 P1 모델, 우측 UI는 P2 모델을 그대로 바라보도록 분리한다.
                 gamePanel_1.bindGameModel(playerOne);
