@@ -100,6 +100,16 @@ public class NetworkManager implements INetworkThreadCallback {
             networkThread.shutdown();
             networkThread = null;
         }
+        // 서버가 실행 중이면 중지
+        if (server != null) {
+            try {
+                server.stopServer();
+            } catch (Exception e) {
+                System.err.println("서버 중지 중 오류: " + e.getMessage());
+            }
+            server = null;
+        }
+
         currentMode = NetworkMode.OFFLINE;
         if (eventListener != null) {
             eventListener.onDisconnected();
