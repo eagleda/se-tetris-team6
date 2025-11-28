@@ -130,7 +130,6 @@ public class ScorePanel extends JPanel {
         }
 
         long doubleScoreBuffRemaining = gameModel.getDoubleScoreBuffRemainingTimeMs();
-        doubleScoreBuffRemaining = 1234l;
         if (doubleScoreBuffRemaining > 0) {
             doubleScoreBuffTimerText.setText(String.format("Double Score: %.1f s", doubleScoreBuffRemaining / 1000.0));
         } else {
