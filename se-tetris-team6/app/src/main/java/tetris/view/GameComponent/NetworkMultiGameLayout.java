@@ -6,6 +6,7 @@ import java.awt.GridBagLayout;
 import java.awt.Insets;
 
 import javax.swing.JPanel;
+import javax.swing.Timer;
 
 import tetris.domain.GameModel;
 import tetris.multiplayer.session.LocalMultiplayerSession;
@@ -34,11 +35,22 @@ public class NetworkMultiGameLayout extends JPanel {
 
     // 중앙 Timer
     private TimerPanel timerPanel;
+    
+    // 주기적인 화면 갱신을 위한 타이머
+    private Timer repaintTimer;
 
     public NetworkMultiGameLayout() {
         super(new GridBagLayout());
         setOpaque(true);
         setVisible(true);
+        
+        // 주기적인 repaint 타이머 시작 (30fps)
+        repaintTimer = new Timer(33, e -> {
+            if (isVisible()) {
+                repaint();
+            }
+        });
+        repaintTimer.start();
 
         // 각 요소 객체 생성 및 배치
         gamePanel_1 = new GamePanel();

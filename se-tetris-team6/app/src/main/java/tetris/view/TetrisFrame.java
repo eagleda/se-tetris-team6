@@ -1069,6 +1069,13 @@ public class TetrisFrame extends JFrame {
         }
         // NetworkMultiGameLayout의 bindOnlineMultiplayerSession 메서드 호출
         onlineMultiGameLayout.bindOnlineMultiplayerSession(session);
+        
+        // EDT에서 명시적으로 레이아웃 갱신 보장
+        SwingUtilities.invokeLater(() -> {
+            onlineMultiGameLayout.revalidate();
+            onlineMultiGameLayout.repaint();
+        });
+        
         System.out.println("[UI] Bound online multiplayer session to NetworkMultiGameLayout");
     }
 

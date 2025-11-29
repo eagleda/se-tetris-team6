@@ -987,6 +987,21 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
     public void applySnapshot(tetris.network.protocol.GameSnapshot snapshot) {
         if (snapshot == null) return;
         
+        // EDT에서 실행 중인지 확인하고, 아니면 EDT로 전달
+        if (!javax.swing.SwingUtilities.isEventDispatchThread()) {
+            javax.swing.SwingUtilities.invokeLater(() -> applySnapshotImpl(snapshot));
+            return;
+        }
+        
+        applySnapshotImpl(snapshot);
+    }
+    
+    /**
+     * 실제 스냅샷 적용 구현 (반드시 EDT에서 실행됨)
+     */
+    private void applySnapshotImpl(tetris.network.protocol.GameSnapshot snapshot) {
+        if (snapshot == null) return;
+        
         // 보드 상태 적용
         int[][] b = snapshot.board();
         if (b != null) {

@@ -19,7 +19,7 @@ import tetris.multiplayer.session.LocalMultiplayerSessionFactory;
  * Controller 역할을 수행하는 클래스.
  * View(GamePanel)와 Model(추후 생성할 GameModel)을 연결합니다.
  */
-public class GameController {
+public class GameController implements tetris.network.client.GameStateListener {
 
     private final GameModel gameModel; // Model 참조
 
@@ -574,6 +574,9 @@ public class GameController {
      */
     public void setNetworkClient(tetris.network.client.GameClient client) {
         this.networkClient = client;
+        if (client != null) {
+            client.setGameStateListener(this);
+        }
     }
 
     /**
@@ -785,6 +788,66 @@ public class GameController {
         if (localMultiplayerTimer != null) {
             localMultiplayerTimer.stop();
             localMultiplayerTimer = null;
+        }
+    }
+
+    // ===== GameStateListener 구현 =====
+
+    @Override
+    public void onOpponentBoardUpdate(tetris.network.protocol.GameMessage message) {
+        // 기존 메시지 기반 업데이트는 스냅샷으로 대체됨
+    }
+
+    @Override
+    public void onGameStateChange(tetris.network.protocol.GameMessage message) {
+        // 게임 상태 변경 처리
+    }
+
+    @Override
+    public void onGameStateSnapshot(tetris.network.protocol.GameSnapshot snapshot) {
+        // EDT에서 실행 중인지 확인하고, 아니면 EDT로 전달
+        if (!javax.swing.SwingUtilities.isEventDispatchThread()) {
+            javax.swing.SwingUtilities.invokeLater(() -> applySnapshotToOpponent(snapshot));
+        } else {
+            applySnapshotToOpponent(snapshot);
+        }
+    }
+
+    /**
+     * 상대방(P2) 모델에 스냅샷을 적용하고 화면 갱신을 보장합니다.
+     */
+    private void applySnapshotToOpponent(tetris.network.protocol.GameSnapshot snapshot) {
+        if (snapshot == null || localSession == null) {
+            return;
+        }
+
+        try {
+            // 네트워크 멀티플레이어에서 클라이언트는 P2 역할
+            // 호스트의 게임 상태(P1)를 받아서 상대방 모델(P2)에 적용
+            MultiplayerHandler handler = localSession.handler();
+            if (handler instanceof tetris.multiplayer.handler.NetworkedMultiplayerHandler) {
+                tetris.multiplayer.handler.NetworkedMultiplayerHandler netHandler = 
+                    (tetris.multiplayer.handler.NetworkedMultiplayerHandler) handler;
+                int localPlayerId = netHandler.getLocalPlayerId();
+                
+                // 클라이언트(P2)인 경우, 받은 스냅샷을 P1(상대방) 모델에 적용
+                if (localPlayerId == 2) {
+                    GameModel opponentModel = localSession.playerOneModel();
+                    if (opponentModel != null) {
+                        opponentModel.applySnapshot(snapshot);
+                    }
+                }
+                // 호스트(P1)인 경우, 받은 스냅샷을 P2(상대방) 모델에 적용 (피어 투 피어)
+                else if (localPlayerId == 1) {
+                    GameModel opponentModel = localSession.playerTwoModel();
+                    if (opponentModel != null) {
+                        opponentModel.applySnapshot(snapshot);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("[GameController] Error applying snapshot: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 }
