@@ -144,6 +144,18 @@ public class GameClient {
         clientHandler.sendMessage(msg);
     }
 
+    // 게임 상태 스냅샷 전송 (클라이언트도 자신의 게임 상태를 호스트에게 전송)
+    public void sendGameStateSnapshot(tetris.network.protocol.GameSnapshot snapshot) {
+        if (!isConnected || clientHandler == null || snapshot == null) return;
+        GameMessage msg = new GameMessage(
+            tetris.network.protocol.MessageType.GAME_STATE,
+            this.playerId == null ? "CLIENT" : this.playerId,
+            snapshot
+        );
+        clientHandler.sendMessage(msg);
+        System.out.println("[Client] Sent game state snapshot to server");
+    }
+
     // 게임 시작 준비 완료 신호
     public void sendReadySignal(){
         sendReady();

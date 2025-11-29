@@ -56,12 +56,15 @@ public final class NetworkedMultiplayerHandler implements MultiplayerHandler {
             return;
         }
         
-        // Tick both player models (local player updates normally, opponent updates from network)
-        game.modelOf(1).update();
-        game.modelOf(2).update();
+        // 네트워크 모드에서는 로컬 플레이어만 update
+        // 상대방은 네트워크 스냅샷으로만 업데이트됨
+        GameModel localModel = game.modelOf(localPlayerId);
+        if (localModel != null) {
+            localModel.update();
+        }
         
         // Check if local player's game over
-        if (game.modelOf(localPlayerId).getCurrentState() == GameState.GAME_OVER) {
+        if (localModel.getCurrentState() == GameState.GAME_OVER) {
             // Mark that we've handled game end to prevent re-processing
             gameEndHandled = true;
             

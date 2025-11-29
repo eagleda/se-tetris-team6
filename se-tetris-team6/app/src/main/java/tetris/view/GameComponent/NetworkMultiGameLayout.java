@@ -10,6 +10,7 @@ import javax.swing.Timer;
 
 import tetris.domain.GameModel;
 import tetris.multiplayer.session.LocalMultiplayerSession;
+import tetris.multiplayer.handler.MultiplayerHandler;
 
 /**
  * 네트워크 멀티플레이어 게임 화면 레이아웃 (온라인 P2P 전용)
@@ -105,16 +106,39 @@ public class NetworkMultiGameLayout extends JPanel {
 
     /**
      * 네트워크 멀티플레이어 세션을 바인딩합니다.
-     * - 자신(P1, 좌측)과 상대(P2, 우측) 모델을 각각 표시합니다.
-     * - 공격 대기열은 LocalMultiplayerSession의 handler를 통해 실시간으로 갱신됩니다.
+     * 
+     * 화면 구성:
+     * - 호스트(P1): 좌측에 자신(P1), 우측에 클라이언트(P2 - 빈 화면 또는 최소 정보)
+     * - 클라이언트(P2): 좌측에 호스트(P1 - 네트워크로 받은 상태), 우측에 자신(P2)
+     * 
+     * 네트워크 동기화:
+     * - 호스트는 자신(P1)의 게임 상태를 매 틱마다 브로드캐스트
+     * - 클라이언트는 받은 호스트 상태를 P1 화면에 표시
      */
     public void bindOnlineMultiplayerSession(LocalMultiplayerSession session) {
         System.out.println("[NetworkMultiGameLayout] bindOnlineMultiplayerSession called - session=" + (session != null ? "ACTIVE" : "NULL"));
         if (session == null) {
             return;
         }
-        System.out.println("[NetworkMultiGameLayout] Binding player models - P1=" + session.playerOneModel() + ", P2=" + session.playerTwoModel());
-        bindPlayerModels(session.playerOneModel(), session.playerTwoModel());
+        
+        // 세션에서 로컬 플레이어 ID 확인
+        MultiplayerHandler handler = session.handler();
+        int localPlayerId = 1; // 기본값
+        if (handler instanceof tetris.multiplayer.handler.NetworkedMultiplayerHandler) {
+            localPlayerId = ((tetris.multiplayer.handler.NetworkedMultiplayerHandler) handler).getLocalPlayerId();
+        }
+        
+        System.out.println("[NetworkMultiGameLayout] LocalPlayerId=" + localPlayerId);
+        
+        // 화면 배치: 항상 좌측 P1, 우측 P2
+        // 호스트(P1): 좌측=자신, 우측=상대
+        // 클라이언트(P2): 좌측=상대(호스트), 우측=자신
+        GameModel p1Model = session.playerOneModel();
+        GameModel p2Model = session.playerTwoModel();
+        
+        System.out.println("[NetworkMultiGameLayout] Binding - P1=" + p1Model + ", P2=" + p2Model);
+        bindPlayerModels(p1Model, p2Model);
+        
         // 각 패널이 해당 플레이어의 공격 패턴(구멍 위치 포함)을 바로 읽어오도록 공급자를 연결합니다.
         attackQueuePanel_1.bindAttackLinesSupplier(() -> session.handler().getPendingAttackLines(1));
         attackQueuePanel_2.bindAttackLinesSupplier(() -> session.handler().getPendingAttackLines(2));

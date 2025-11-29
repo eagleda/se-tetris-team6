@@ -512,6 +512,11 @@ public class GameController implements tetris.network.client.GameStateListener {
 
                 @Override
                 public void sendGameState(tetris.domain.GameModel gameState) {
+                    // 클라이언트도 자신의 게임 상태 스냅샷을 서버에 전송
+                    if (networkClient != null && gameState != null) {
+                        tetris.network.protocol.GameSnapshot snapshot = gameState.toSnapshot();
+                        networkClient.sendGameStateSnapshot(snapshot);
+                    }
                 }
 
                 @Override
@@ -604,125 +609,101 @@ public class GameController implements tetris.network.client.GameStateListener {
             return false;
         }
 
-        // 네트워크 모드인 경우, 로컬 플레이어만 처리
+        // 네트워크 모드인 경우, 로컬 플레이어만 처리하고 싱글 플레이 키 바인딩 사용
         boolean isNetworked = handler instanceof tetris.multiplayer.handler.NetworkedMultiplayerHandler;
         int localPlayerId = 0;
         if (isNetworked) {
             localPlayerId = ((tetris.multiplayer.handler.NetworkedMultiplayerHandler) handler).getLocalPlayerId();
+            
+            // 온라인 멀티플레이: 싱글 플레이 키 바인딩 사용
+            if (keyCode == keyBindings.get("MOVE_LEFT")) {
+                handler.dispatchToPlayer(localPlayerId, GameModel::moveBlockLeft);
+                sendNetworkInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.MOVE_LEFT));
+                notifyNetworkControllerInput();
+                return true;
+            }
+            if (keyCode == keyBindings.get("MOVE_RIGHT")) {
+                handler.dispatchToPlayer(localPlayerId, GameModel::moveBlockRight);
+                sendNetworkInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.MOVE_RIGHT));
+                notifyNetworkControllerInput();
+                return true;
+            }
+            if (keyCode == keyBindings.get("SOFT_DROP")) {
+                handler.dispatchToPlayer(localPlayerId, GameModel::moveBlockDown);
+                sendNetworkInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.SOFT_DROP));
+                notifyNetworkControllerInput();
+                return true;
+            }
+            if (keyCode == keyBindings.get("ROTATE_CW")) {
+                handler.dispatchToPlayer(localPlayerId, GameModel::rotateBlockClockwise);
+                sendNetworkInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.ROTATE));
+                notifyNetworkControllerInput();
+                return true;
+            }
+            if (keyCode == keyBindings.get("ROTATE_CCW")) {
+                handler.dispatchToPlayer(localPlayerId, GameModel::rotateBlockCounterClockwise);
+                sendNetworkInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.ROTATE));
+                notifyNetworkControllerInput();
+                return true;
+            }
+            if (keyCode == keyBindings.get("HARD_DROP")) {
+                handler.dispatchToPlayer(localPlayerId, GameModel::hardDropBlock);
+                sendNetworkInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.HARD_DROP));
+                notifyNetworkControllerInput();
+                return true;
+            }
+            if (keyCode == keyBindings.get("HOLD")) {
+                handler.dispatchToPlayer(localPlayerId, GameModel::holdCurrentBlock);
+                sendNetworkInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.HOLD));
+                notifyNetworkControllerInput();
+                return true;
+            }
+            return false;
         }
 
+        // 로컬 멀티플레이: P1/P2 키 바인딩 사용
         // P1 입력 처리
         if (keyCode == keyFor("P1_MOVE_LEFT")) {
-            if (!isNetworked || localPlayerId == 1) {
-                handler.dispatchToPlayer(1, GameModel::moveBlockLeft);
-                if (isNetworked) {
-                    sendNetworkInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.MOVE_LEFT));
-                    notifyNetworkControllerInput();
-                }
-                return true;
-            }
-            return false;
+            handler.dispatchToPlayer(1, GameModel::moveBlockLeft);
+            return true;
         }
         if (keyCode == keyFor("P1_MOVE_RIGHT")) {
-            if (!isNetworked || localPlayerId == 1) {
-                handler.dispatchToPlayer(1, GameModel::moveBlockRight);
-                if (isNetworked) {
-                    sendNetworkInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.MOVE_RIGHT));
-                    notifyNetworkControllerInput();
-                }
-                return true;
-            }
-            return false;
+            handler.dispatchToPlayer(1, GameModel::moveBlockRight);
+            return true;
         }
         if (keyCode == keyFor("P1_SOFT_DROP")) {
-            if (!isNetworked || localPlayerId == 1) {
-                handler.dispatchToPlayer(1, GameModel::moveBlockDown);
-                if (isNetworked) {
-                    sendNetworkInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.SOFT_DROP));
-                    notifyNetworkControllerInput();
-                }
-                return true;
-            }
-            return false;
+            handler.dispatchToPlayer(1, GameModel::moveBlockDown);
+            return true;
         }
         if (keyCode == keyFor("P1_ROTATE_CW")) {
-            if (!isNetworked || localPlayerId == 1) {
-                handler.dispatchToPlayer(1, GameModel::rotateBlockClockwise);
-                if (isNetworked) {
-                    sendNetworkInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.ROTATE));
-                    notifyNetworkControllerInput();
-                }
-                return true;
-            }
-            return false;
+            handler.dispatchToPlayer(1, GameModel::rotateBlockClockwise);
+            return true;
         }
         if (keyCode == keyFor("P1_HARD_DROP")) {
-            if (!isNetworked || localPlayerId == 1) {
-                handler.dispatchToPlayer(1, GameModel::hardDropBlock);
-                if (isNetworked) {
-                    sendNetworkInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.HARD_DROP));
-                    notifyNetworkControllerInput();
-                }
-                return true;
-            }
-            return false;
+            handler.dispatchToPlayer(1, GameModel::hardDropBlock);
+            return true;
         }
 
         // P2 입력 처리
         if (keyCode == keyFor("P2_MOVE_LEFT")) {
-            if (!isNetworked || localPlayerId == 2) {
-                handler.dispatchToPlayer(2, GameModel::moveBlockLeft);
-                if (isNetworked) {
-                    sendNetworkInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.MOVE_LEFT));
-                    notifyNetworkControllerInput();
-                }
-                return true;
-            }
-            return false;
+            handler.dispatchToPlayer(2, GameModel::moveBlockLeft);
+            return true;
         }
         if (keyCode == keyFor("P2_MOVE_RIGHT")) {
-            if (!isNetworked || localPlayerId == 2) {
-                handler.dispatchToPlayer(2, GameModel::moveBlockRight);
-                if (isNetworked) {
-                    sendNetworkInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.MOVE_RIGHT));
-                    notifyNetworkControllerInput();
-                }
-                return true;
-            }
-            return false;
+            handler.dispatchToPlayer(2, GameModel::moveBlockRight);
+            return true;
         }
         if (keyCode == keyFor("P2_SOFT_DROP")) {
-            if (!isNetworked || localPlayerId == 2) {
-                handler.dispatchToPlayer(2, GameModel::moveBlockDown);
-                if (isNetworked) {
-                    sendNetworkInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.SOFT_DROP));
-                    notifyNetworkControllerInput();
-                }
-                return true;
-            }
-            return false;
+            handler.dispatchToPlayer(2, GameModel::moveBlockDown);
+            return true;
         }
         if (keyCode == keyFor("P2_ROTATE_CW")) {
-            if (!isNetworked || localPlayerId == 2) {
-                handler.dispatchToPlayer(2, GameModel::rotateBlockClockwise);
-                if (isNetworked) {
-                    sendNetworkInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.ROTATE));
-                    notifyNetworkControllerInput();
-                }
-                return true;
-            }
-            return false;
+            handler.dispatchToPlayer(2, GameModel::rotateBlockClockwise);
+            return true;
         }
         if (keyCode == keyFor("P2_HARD_DROP")) {
-            if (!isNetworked || localPlayerId == 2) {
-                handler.dispatchToPlayer(2, GameModel::hardDropBlock);
-                if (isNetworked) {
-                    sendNetworkInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.HARD_DROP));
-                    notifyNetworkControllerInput();
-                }
-                return true;
-            }
-            return false;
+            handler.dispatchToPlayer(2, GameModel::hardDropBlock);
+            return true;
         }
         return false;
     }
@@ -814,7 +795,8 @@ public class GameController implements tetris.network.client.GameStateListener {
     }
 
     /**
-     * 상대방(P2) 모델에 스냅샷을 적용하고 화면 갱신을 보장합니다.
+     * 상대방 모델에 스냅샷을 적용합니다.
+     * 모든 플레이어가 상대방의 스냅샷을 받아 화면에 표시합니다.
      */
     private void applySnapshotToOpponent(tetris.network.protocol.GameSnapshot snapshot) {
         if (snapshot == null || localSession == null) {
@@ -822,27 +804,26 @@ public class GameController implements tetris.network.client.GameStateListener {
         }
 
         try {
-            // 네트워크 멀티플레이어에서 클라이언트는 P2 역할
-            // 호스트의 게임 상태(P1)를 받아서 상대방 모델(P2)에 적용
             MultiplayerHandler handler = localSession.handler();
             if (handler instanceof tetris.multiplayer.handler.NetworkedMultiplayerHandler) {
                 tetris.multiplayer.handler.NetworkedMultiplayerHandler netHandler = 
                     (tetris.multiplayer.handler.NetworkedMultiplayerHandler) handler;
                 int localPlayerId = netHandler.getLocalPlayerId();
                 
-                // 클라이언트(P2)인 경우, 받은 스냅샷을 P1(상대방) 모델에 적용
-                if (localPlayerId == 2) {
-                    GameModel opponentModel = localSession.playerOneModel();
-                    if (opponentModel != null) {
-                        opponentModel.applySnapshot(snapshot);
-                    }
+                // 모든 플레이어가 상대방의 스냅샷을 받아 적용
+                GameModel opponentModel;
+                if (localPlayerId == 1) {
+                    // 호스트(P1): 클라이언트(P2)의 스냅샷을 P2 모델에 적용
+                    opponentModel = localSession.playerTwoModel();
+                    System.out.println("[Host] Applying client snapshot to P2 display");
+                } else {
+                    // 클라이언트(P2): 호스트(P1)의 스냅샷을 P1 모델에 적용
+                    opponentModel = localSession.playerOneModel();
+                    System.out.println("[Client] Applying host snapshot to P1 display");
                 }
-                // 호스트(P1)인 경우, 받은 스냅샷을 P2(상대방) 모델에 적용 (피어 투 피어)
-                else if (localPlayerId == 1) {
-                    GameModel opponentModel = localSession.playerTwoModel();
-                    if (opponentModel != null) {
-                        opponentModel.applySnapshot(snapshot);
-                    }
+                
+                if (opponentModel != null) {
+                    opponentModel.applySnapshot(snapshot);
                 }
             }
         } catch (Exception e) {
