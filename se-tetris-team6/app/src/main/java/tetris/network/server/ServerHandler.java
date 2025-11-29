@@ -84,9 +84,10 @@ import java.util.concurrent.atomic.AtomicInteger; // 추가: 스레드 안전한
     public void sendMessage(GameMessage message) {
         try {
             if (outputStream != null) {
-            outputStream.writeObject(message);
-            // 💡 핵심 수정: 버퍼링된 데이터를 즉시 전송합니다.
-            outputStream.flush(); 
+            synchronized (outputStream) {
+                outputStream.writeObject(message);
+                outputStream.flush();
+            }
             System.out.println("ServerHandler sent message: " + message.getType());
             }
         } catch (IOException e) {
