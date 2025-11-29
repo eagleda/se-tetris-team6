@@ -563,9 +563,14 @@ public class TetrisFrame extends JFrame {
                                     // this client controls Player-1 based on assigned playerId.
                                     GameMode gameMode = TetrisFrame.this.resolveMenuMode(mode);
                                     boolean localIsPlayerOne = "Player-1".equals(client.getPlayerId());
+                                    Long seed = client.getStartSeed();
                                     System.out.println("[UI][CLIENT] Starting networked multiplayer as Player-" + (localIsPlayerOne ? "1" : "2"));
                                     gameController.setNetworkClient(client); // 네트워크 클라이언트 연결
-                                    gameController.startNetworkedMultiplayerGame(gameMode, localIsPlayerOne);
+                                    if (seed != null) {
+                                        gameController.startNetworkedMultiplayerGame(gameMode, localIsPlayerOne, seed);
+                                    } else {
+                                        gameController.startNetworkedMultiplayerGame(gameMode, localIsPlayerOne);
+                                    }
                                     System.out.println("[UI][CLIENT] Binding multi panel to session");
                                     bindOnlinePanelToCurrentSession();
                                     System.out.println("[UI][CLIENT] Displaying onlineMultiGameLayout");

@@ -53,4 +53,21 @@ public final class LocalMultiplayerSessionFactory {
         session.restartPlayers(mode);
         return session;
     }
+
+    /**
+     * 네트워크 세션(시드 지정): 양측 동일 시드로 블록 순서를 동기화.
+     */
+    public static LocalMultiplayerSession createNetworkedSession(GameMode mode, boolean localIsPlayerOne, Runnable sendGameEndCallback, long seed) {
+        GameModel p1 = GameModelFactory.createWithSeed(seed);
+        GameModel p2 = GameModelFactory.createWithSeed(seed);
+        PlayerState playerOne = new PlayerState(1, p1, localIsPlayerOne);
+        PlayerState playerTwo = new PlayerState(2, p2, !localIsPlayerOne);
+        VersusRules rules = new VersusRules();
+        MultiPlayerGame game = new MultiPlayerGame(playerOne, playerTwo, rules);
+        NetworkMultiPlayerController controller = new NetworkMultiPlayerController(game, localIsPlayerOne ? 1 : 2);
+        tetris.multiplayer.handler.NetworkedMultiplayerHandler handler = new tetris.multiplayer.handler.NetworkedMultiplayerHandler(game, controller, GameState.PLAYING, localIsPlayerOne ? 1 : 2, sendGameEndCallback);
+        LocalMultiplayerSession session = new LocalMultiplayerSession(playerOne, playerTwo, game, controller, handler);
+        session.restartPlayers(mode);
+        return session;
+    }
 }

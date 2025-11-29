@@ -464,6 +464,70 @@ public class GameController {
         System.out.println("[GameController] Networked multiplayer setup complete");
         return session;
     }
+
+    /**
+     * RNG 시드를 지정하여 네트워크 멀티플레이를 시작합니다.
+     */
+    public LocalMultiplayerSession startNetworkedMultiplayerGame(GameMode mode, boolean localIsPlayerOne, long seed) {
+        deactivateLocalMultiplayer();
+
+        Runnable sendGameEndCallback = () -> {
+            try {
+                java.util.Map<String, Object> data = new java.util.HashMap<>();
+                data.put("winnerId", localIsPlayerOne ? 2 : 1);
+                if (networkClient != null) {
+                    tetris.network.protocol.GameMessage message = new tetris.network.protocol.GameMessage(
+                            tetris.network.protocol.MessageType.GAME_END,
+                            "CLIENT",
+                            data);
+                    networkClient.sendMessage(message);
+                } else if (networkServer != null) {
+                    tetris.network.protocol.GameMessage message = new tetris.network.protocol.GameMessage(
+                            tetris.network.protocol.MessageType.GAME_END,
+                            "SERVER",
+                            data);
+                    networkServer.sendHostMessage(message);
+                }
+            } catch (Exception e) {
+                System.err.println("Failed to send GAME_END message: " + e.getMessage());
+            }
+        };
+
+        System.out.println("[GameController] Creating networked session with seed=" + seed);
+        LocalMultiplayerSession session = LocalMultiplayerSessionFactory.createNetworkedSession(mode, localIsPlayerOne, sendGameEndCallback, seed);
+        localSession = session;
+
+        tetris.multiplayer.controller.NetworkMultiPlayerController networkController = session.networkController();
+        System.out.println("[GameController] NetworkController - " + (networkController != null ? "FOUND" : "NULL"));
+        if (networkController != null) {
+            networkController.setNetworkHandler(new tetris.multiplayer.controller.NetworkMultiPlayerController.NetworkEventHandler() {
+                @Override
+                public void sendPieceLockedEvent(tetris.multiplayer.model.LockedPieceSnapshot snapshot, int[] clearedYs) {
+                    sendNetworkPieceLocked(snapshot, clearedYs);
+                }
+
+                @Override
+                public void sendGameState(tetris.domain.GameModel gameState) {
+                }
+
+                @Override
+                public void sendGameOverEvent() {
+                    sendGameEndCallback.run();
+                }
+            });
+        }
+
+        System.out.println("[GameController] Enabling local multiplayer in GameModel");
+        gameModel.enableLocalMultiplayer(session);
+        System.out.println("[GameController] Starting local multiplayer tick");
+        startLocalMultiplayerTick();
+        pauseKeyPressed = false;
+        lastKeyPressTime.clear();
+        System.out.println("[GameController] Starting game with mode: " + mode);
+        gameModel.startGame(mode);
+        System.out.println("[GameController] Networked multiplayer setup complete");
+        return session;
+    }
     
     /**
      * Send piece locked event over network

@@ -85,8 +85,12 @@ public class GameServer {
         boolean anyClientReady = clientReady.values().stream().anyMatch(Boolean::booleanValue);
         if (hostReady && anyClientReady && !started) {
             System.out.println("All players ready. Broadcasting GAME_START");
-            // broadcast selected mode (could be null)
-            broadcastMessage(new tetris.network.protocol.GameMessage(tetris.network.protocol.MessageType.GAME_START, "SERVER", selectedGameMode));
+            // Generate a shared RNG seed and broadcast with mode
+            long seed = new java.util.Random().nextLong();
+            java.util.Map<String,Object> payload = new java.util.HashMap<>();
+            payload.put("mode", selectedGameMode);
+            payload.put("seed", seed);
+            broadcastMessage(new tetris.network.protocol.GameMessage(tetris.network.protocol.MessageType.GAME_START, "SERVER", payload));
             started = true;
         }
     }

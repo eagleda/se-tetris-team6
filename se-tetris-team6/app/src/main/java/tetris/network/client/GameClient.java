@@ -41,6 +41,7 @@ public class GameClient {
     // Game start signal tracking
     private volatile boolean startReceived = false;
     private volatile String startMode = null;
+    private volatile Long startSeed = null;
 
     // === 주요 메서드들 ===
 
@@ -114,8 +115,10 @@ public class GameClient {
 
     public boolean isStartReceived() { return startReceived; }
     public String getStartMode() { return startMode; }
+    public Long getStartSeed() { return startSeed; }
     public void setStartReceived(boolean v) { this.startReceived = v; }
     public void setStartMode(String m) { this.startMode = m; }
+    public void setStartSeed(Long s) { this.startSeed = s; }
     
     // 플레이어 ID 설정
     public void setPlayerId(String id) {
