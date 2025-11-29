@@ -586,10 +586,10 @@ public class TetrisFrame extends JFrame {
         hostedServer.setGameStateListener(new tetris.network.client.GameStateListener() {
             @Override
             public void onOpponentBoardUpdate(tetris.network.protocol.GameMessage message) {
-                LocalMultiplayerSession session = gameModel.getActiveLocalMultiplayerSession().orElse(null);
-                        if (session == null) return;
-                        ensureLocalSessionUiBridges();
-                        if (onlineMultiGameLayout != null) onlineMultiGameLayout.repaint();
+                NetworkMultiplayerSession session = gameModel.getActiveNetworkMultiplayerSession().orElse(null);
+                if (session == null) return;
+                ensureOnlineSessionUiBridges();
+                if (onlineMultiGameLayout != null) onlineMultiGameLayout.repaint();
             }
 
             @Override
@@ -600,7 +600,7 @@ public class TetrisFrame extends JFrame {
 
             @Override
             public void onGameStateChange(tetris.network.protocol.GameMessage message) {
-                LocalMultiplayerSession session = gameModel.getActiveLocalMultiplayerSession().orElse(null);
+                NetworkMultiplayerSession session = gameModel.getActiveNetworkMultiplayerSession().orElse(null);
                 if (session == null) return;
                 // Host is Player-1, so opponent is Player-2
                 tetris.domain.GameModel opponent = session.playerTwoModel();
@@ -663,7 +663,7 @@ public class TetrisFrame extends JFrame {
                         }
                         break;
                     case GAME_END:
-                        LocalMultiplayerSession sess = gameModel.getActiveLocalMultiplayerSession().orElse(null);
+                        NetworkMultiplayerSession sess = gameModel.getActiveNetworkMultiplayerSession().orElse(null);
                         if (sess != null) {
                             // Terminate game for both players
                             tetris.domain.GameModel localModel = sess.playerOneModel();  // Host is always player 1
