@@ -15,19 +15,6 @@ import tetris.network.protocol.MessageType;
 import tetris.network.INetworkThreadCallback; 
 
 // =================================================================
-// NetworkThread에서 사용하는 유틸리티
-// =================================================================
-
-class NetworkStats {
-    public final long currentLatency;
-    public final int sendQueueSize;
-    public NetworkStats(long latency, int size) {
-        this.currentLatency = latency;
-        this.sendQueueSize = size;
-    }
-}
-
-// =================================================================
 // NetworkThread 구현 시작
 // =================================================================
 
@@ -68,6 +55,10 @@ public class NetworkThread implements Runnable {
     private volatile long currentLatency = 0;               // 현재 지연시간
     private final Queue<Long> latencyHistory = new LinkedList<>(); // 지연시간 히스토리
     private long lastPingTime;                 // 마지막 핑 시간
+
+    // === 통계 관리 ===
+    private volatile long messagesSent = 0;        // 전송한 메시지 수
+    private volatile long messagesReceived = 0;    // 수신한 메시지 수
 
     // === 재연결 관리 ===
     private int reconnectAttempts = 0;             // 재연결 시도 횟수
@@ -221,7 +212,8 @@ public class NetworkThread implements Runnable {
             try {
                 while (isRunning.get() && isConnected.get()) {
                     // 블로킹 호출: 메시지가 올 때까지 대기
-                    GameMessage message = (GameMessage) inputStream.readObject(); 
+                    GameMessage message = (GameMessage) inputStream.readObject();
+                    messagesReceived++;
                     
                     // 메시지 타입에 따라 큐에 분배
                     if (message.getType() == MessageType.PING || 
@@ -319,7 +311,7 @@ public class NetworkThread implements Runnable {
     }
 
     public NetworkStats getNetworkStats() {
-        return new NetworkStats(currentLatency, outgoingQueue.size());
+        return new NetworkStats(messagesSent, messagesReceived, currentLatency);
     }
 
     public void shutdown() {
@@ -368,25 +360,21 @@ public class NetworkThread implements Runnable {
     }
     
     private void closeStreamsAndSocket() {
-        try {
-            if (readerThread != null) {
-                readerThread.interrupt();
-            }
-            // 먼저 소켓의 입력/출력 스트림을 shutdown 시도하여 readObject 블로킹을 해제
-            if (socket != null && !socket.isClosed()) {
-                try { socket.shutdownInput(); } catch (IOException ignore) {}
-                try { socket.shutdownOutput(); } catch (IOException ignore) {}
-            }
-            if (outputStream != null) try { outputStream.close(); } catch (IOException ignore) {}
-            if (inputStream != null) try { inputStream.close(); } catch (IOException ignore) {}
-            if (socket != null && !socket.isClosed()) try { socket.close(); } catch (IOException ignore) {}
-        } catch (IOException e) {
-            System.err.println("스트림/소켓 닫기 오류: " + e.getMessage());
-        } finally {
-            outputStream = null;
-            inputStream = null;
-            socket = null;
+        if (readerThread != null) {
+            readerThread.interrupt();
         }
+        // 먼저 소켓의 입력/출력 스트림을 shutdown 시도하여 readObject 블로킹을 해제
+        if (socket != null && !socket.isClosed()) {
+            try { socket.shutdownInput(); } catch (IOException ignore) {}
+            try { socket.shutdownOutput(); } catch (IOException ignore) {}
+        }
+        if (outputStream != null) try { outputStream.close(); } catch (IOException ignore) {}
+        if (inputStream != null) try { inputStream.close(); } catch (IOException ignore) {}
+        if (socket != null && !socket.isClosed()) try { socket.close(); } catch (IOException ignore) {}
+        
+        outputStream = null;
+        inputStream = null;
+        socket = null;
     }
     
     private void cleanup() {

@@ -46,6 +46,7 @@ import tetris.domain.score.ScoreRuleEngine;
 import tetris.multiplayer.model.Cell;
 import tetris.multiplayer.model.LockedPieceSnapshot;
 import tetris.multiplayer.session.LocalMultiplayerSession;
+import tetris.multiplayer.session.NetworkMultiplayerSession;
 
 /**
  * 게임 핵심 도메인 모델.
@@ -134,6 +135,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
     private final Map<GameState, GameHandler> handlers = new EnumMap<>(GameState.class);
     private GameHandler defaultPlayHandler;
     private LocalMultiplayerSession activeLocalSession;
+    private NetworkMultiplayerSession activeNetworkSession;
     private GameMode currentMode = GameMode.STANDARD;
     private GameMode lastMode = GameMode.STANDARD;
     private final ItemManager itemManager = new ItemManager();
@@ -588,6 +590,10 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
             // 로컬 멀티가 활성화되어 있다면 각 플레이어 모델을 동일한 모드로 재가동한다.
             activeLocalSession.restartPlayers(selected);
             handlers.put(GameState.PLAYING, activeLocalSession.handler());
+        } else if (activeNetworkSession != null) {
+            // 네트워크 멀티가 활성화되어 있다면 각 플레이어 모델을 동일한 모드로 재가동한다.
+            activeNetworkSession.restartPlayers(selected);
+            handlers.put(GameState.PLAYING, activeNetworkSession.handler());
         } else if (defaultPlayHandler != null) {
             handlers.put(GameState.PLAYING, defaultPlayHandler);
         }
@@ -926,7 +932,20 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         if (session == null) {
             return;
         }
+        clearMultiplayerSessions();
         this.activeLocalSession = session;
+        handlers.put(GameState.PLAYING, session.handler());
+    }
+
+    /**
+     * 네트워크 멀티 세션을 상태 머신에 연결한다.
+     */
+    public void enableNetworkMultiplayer(NetworkMultiplayerSession session) {
+        if (session == null) {
+            return;
+        }
+        clearMultiplayerSessions();
+        this.activeNetworkSession = session;
         handlers.put(GameState.PLAYING, session.handler());
     }
 
@@ -934,22 +953,141 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
      * 메뉴 복귀 / 싱글 모드 전환 등으로 더 이상 세션이 필요 없을 때 정리한다.
      */
     public void clearLocalMultiplayerSession() {
-        if (activeLocalSession == null) {
-            return;
+        clearMultiplayerSessions();
+    }
+
+    /**
+     * 모든 멀티플레이 세션을 정리한다.
+     */
+    private void clearMultiplayerSessions() {
+        if (activeLocalSession != null) {
+            activeLocalSession.shutdown();
+            activeLocalSession = null;
         }
-        activeLocalSession.shutdown();
+        if (activeNetworkSession != null) {
+            activeNetworkSession.shutdown();
+            activeNetworkSession = null;
+        }
         if (defaultPlayHandler != null) {
             handlers.put(GameState.PLAYING, defaultPlayHandler);
         }
-        activeLocalSession = null;
     }
 
     public boolean isLocalMultiplayerActive() {
-        return activeLocalSession != null;
+        return activeLocalSession != null || activeNetworkSession != null;
     }
 
     public Optional<LocalMultiplayerSession> getActiveLocalMultiplayerSession() {
         return Optional.ofNullable(activeLocalSession);
+    }
+
+    public Optional<NetworkMultiplayerSession> getActiveNetworkMultiplayerSession() {
+        return Optional.ofNullable(activeNetworkSession);
+    }
+
+    /** 네트워크 전송용 스냅샷 생성 */
+    public tetris.network.protocol.GameSnapshot toSnapshot(int playerId) {
+        int[][] copy = board.gridView(); // 이미 깊은 복사 반환
+        // 현재/다음 블록 타입 식별자 계산
+        Block active = gameplayEngine != null ? gameplayEngine.getActiveBlock() : null;
+        int currentId = 0;
+        int blockX = -1;
+        int blockY = -1;
+        int blockRotation = 0;
+        
+        if (active != null && active.getShape() != null && active.getShape().kind() != null) {
+            currentId = active.getShape().kind().ordinal() + 1; // 1..7 등
+            blockX = active.getX();
+            blockY = active.getY();
+            blockRotation = active.getRotation();
+        }
+        
+        BlockKind nextKind = getNextBlockKind();
+        int nextId = nextKind != null ? (nextKind.ordinal() + 1) : 0;
+        int pts = 0;
+        try {
+            tetris.domain.score.Score sc = scoreRepository != null ? scoreRepository.load() : null;
+            pts = sc != null ? sc.getPoints() : 0;
+        } catch (Exception ignore) {
+            pts = 0;
+        }
+        int elapsed = (int) (getElapsedMillis() / 1000L);
+        int pending = pendingGarbageLines;
+        return new tetris.network.protocol.GameSnapshot(playerId, copy, currentId, nextId, pts, elapsed, pending, blockX, blockY, blockRotation);
+    }
+
+    /** 스냅샷을 적용 (클라이언트 렌더링 전용) */
+    public void applySnapshot(tetris.network.protocol.GameSnapshot snapshot) {
+        if (snapshot == null) return;
+        
+        // EDT에서 실행 중인지 확인하고, 아니면 EDT로 전달
+        if (!javax.swing.SwingUtilities.isEventDispatchThread()) {
+            javax.swing.SwingUtilities.invokeLater(() -> applySnapshotImpl(snapshot));
+            return;
+        }
+        
+        applySnapshotImpl(snapshot);
+    }
+    
+    /**
+     * 실제 스냅샷 적용 구현 (반드시 EDT에서 실행됨)
+     */
+    private void applySnapshotImpl(tetris.network.protocol.GameSnapshot snapshot) {
+        if (snapshot == null) return;
+        
+        // 보드 상태 적용
+        int[][] b = snapshot.board();
+        if (b != null) {
+            board.clear();
+            int h = Math.min(Board.H, b.length);
+            int w = Math.min(Board.W, b[0].length);
+            for (int y = 0; y < h; y++) {
+                for (int x = 0; x < w; x++) {
+                    board.setCell(x, y, b[y][x]);
+                }
+            }
+        }
+        
+        // 현재 블록 위치 및 회전 상태 적용
+        if (snapshot.currentBlockId() > 0 && snapshot.blockX() >= 0 && snapshot.blockY() >= 0) {
+            BlockKind kind = BlockKind.values()[snapshot.currentBlockId() - 1];
+            Block block = Block.spawn(kind, snapshot.blockX(), snapshot.blockY());
+            
+            // 회전 상태 적용
+            int rotation = snapshot.blockRotation();
+            for (int i = 0; i < rotation; i++) {
+                block.rotateCW();
+            }
+            
+            if (gameplayEngine != null) {
+                gameplayEngine.setActiveBlock(block);
+            }
+        } else if (gameplayEngine != null) {
+            gameplayEngine.setActiveBlock(null);
+        }
+        
+        // 점수 업데이트
+        if (scoreRepository != null) {
+            tetris.domain.score.Score currentScore = scoreRepository.load();
+            if (currentScore.getPoints() != snapshot.score()) {
+                scoreRepository.save(currentScore.withAdditionalPoints(snapshot.score() - currentScore.getPoints()));
+            }
+        }
+        
+        // 경과 시간 업데이트 (밀리초로 변환)
+        long snapshotElapsedMs = snapshot.elapsedSeconds() * 1000L;
+        if (gameplayStartedAtMillis > 0) {
+            long currentElapsed = getElapsedMillis();
+            if (Math.abs(snapshotElapsedMs - currentElapsed) > 1000) {
+                // 1초 이상 차이나면 동기화
+                gameplayStartedAtMillis = System.currentTimeMillis() - snapshotElapsedMs;
+                accumulatedPauseMillis = 0;
+            }
+        }
+        
+        // 가비지 라인 업데이트
+        this.pendingGarbageLines = snapshot.pendingGarbage();
+        if (uiBridge != null) uiBridge.refreshBoard();
     }
 
     public void stepGameplay() {

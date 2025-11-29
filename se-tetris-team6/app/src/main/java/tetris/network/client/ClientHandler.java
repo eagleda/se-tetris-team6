@@ -82,6 +82,9 @@ public class ClientHandler implements Runnable {
                     javax.swing.SwingUtilities.invokeLater(() -> client.getGameStateListener().onOpponentBoardUpdate(message));
                 }
                 break;
+            case GAME_STATE:
+                handleGameState(message);
+                break;
             case PONG:
                 handlePong(message);
                 break;
@@ -141,13 +144,23 @@ public class ClientHandler implements Runnable {
 
     // 게임 시작 처리 - 서버가 게임 시작 신호를 보낼 때
     private void handleGameStart(GameMessage message){
-        // 서버가 보낸 게임 시작 신호 수신: 페이로드로 게임 모드(문자열)를 기대합니다.
+        // 서버가 보낸 게임 시작 신호 수신: 페이로드로 {mode, seed}
         Object payload = message.getPayload();
-        String mode = payload instanceof String ? (String) payload : null;
-        System.out.println("Received GAME_START from server. mode=" + mode);
+        String mode = null;
+        Long seed = null;
+        if (payload instanceof java.util.Map<?,?> map) {
+            Object m = map.get("mode");
+            Object s = map.get("seed");
+            if (m instanceof String) mode = (String)m;
+            if (s instanceof Number) seed = ((Number)s).longValue();
+        } else if (payload instanceof String) {
+            mode = (String) payload;
+        }
+        System.out.println("Received GAME_START from server. mode=" + mode + ", seed=" + seed);
         // 전달받은 정보를 GameClient에 기록하여 UI가 확인할 수 있게 함
         client.setStartReceived(true);
         client.setStartMode(mode);
+        if (seed != null) client.setStartSeed(seed);
     }
 
     // 상대방 입력 처리 - 상대방의 키 입력을 받을 때
@@ -166,6 +179,22 @@ public class ClientHandler implements Runnable {
             javax.swing.SwingUtilities.invokeLater(() -> client.getGameStateListener().onGameStateChange(message));
         } else {
             System.out.println("Incoming attack received but no GameStateListener registered: " + message);
+        }
+    }
+
+    // 게임 상태 스냅샷 처리 - 호스트의 권위 있는 게임 상태를 수신
+    private void handleGameState(GameMessage message) {
+        // 페이로드로 GameSnapshot 객체가 전달됨
+        Object payload = message.getPayload();
+        if (payload instanceof tetris.network.protocol.GameSnapshot) {
+            tetris.network.protocol.GameSnapshot snapshot = (tetris.network.protocol.GameSnapshot) payload;
+            if (client.getGameStateListener() != null) {
+                javax.swing.SwingUtilities.invokeLater(() -> client.getGameStateListener().onGameStateSnapshot(snapshot));
+            } else {
+                System.out.println("GameState snapshot received but no listener registered.");
+            }
+        } else {
+            System.out.println("GAME_STATE payload is not a GameSnapshot: " + payload);
         }
     }
 

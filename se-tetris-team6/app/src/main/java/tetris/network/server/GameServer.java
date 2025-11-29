@@ -31,6 +31,7 @@ public class GameServer {
     private GameState currentGameState;         // 현재 게임 상태
     private String selectedGameMode;            // 선택된 게임 모드
     private boolean gameInProgress;             // 게임 진행 중 여부
+    private tetris.network.client.GameStateListener gameStateListener; // 호스트 UI 리스너
 
     // === 주요 메서드들 ===
 
@@ -84,8 +85,12 @@ public class GameServer {
         boolean anyClientReady = clientReady.values().stream().anyMatch(Boolean::booleanValue);
         if (hostReady && anyClientReady && !started) {
             System.out.println("All players ready. Broadcasting GAME_START");
-            // broadcast selected mode (could be null)
-            broadcastMessage(new tetris.network.protocol.GameMessage(tetris.network.protocol.MessageType.GAME_START, "SERVER", selectedGameMode));
+            // Generate a shared RNG seed and broadcast with mode
+            long seed = new java.util.Random().nextLong();
+            java.util.Map<String,Object> payload = new java.util.HashMap<>();
+            payload.put("mode", selectedGameMode);
+            payload.put("seed", seed);
+            broadcastMessage(new tetris.network.protocol.GameMessage(tetris.network.protocol.MessageType.GAME_START, "SERVER", payload));
             started = true;
         }
     }
@@ -152,6 +157,49 @@ public class GameServer {
     }
 
     public String getSelectedGameMode() { return this.selectedGameMode; }
+
+    /**
+     * Set listener for host to receive messages from clients.
+     */
+    public void setGameStateListener(tetris.network.client.GameStateListener listener) {
+        this.gameStateListener = listener;
+    }
+
+    /**
+     * Notify the host of a message from a client.
+     */
+    public void notifyHostOfMessage(GameMessage message) {
+        if (gameStateListener != null) {
+            gameStateListener.onGameStateChange(message);
+        }
+    }
+
+    /**
+     * Send a message from the host to all clients.
+     */
+    public void sendHostMessage(GameMessage message) {
+        broadcastMessage(message);
+    }
+
+    /**
+     * Broadcast a game state snapshot to all connected clients.
+     * 호스트가 주기적으로 호출하여 권위 있는 게임 상태를 전송합니다.
+     */
+    public void broadcastGameStateSnapshot(tetris.network.protocol.GameSnapshot snapshot) {
+        if (snapshot == null) return;
+        GameMessage msg = new GameMessage(
+            tetris.network.protocol.MessageType.GAME_STATE,
+            "SERVER",
+            snapshot
+        );
+        broadcastMessage(msg);
+    }
+
+    /** 서버 권한 모드: 두 플레이어 스냅샷을 모두 전송 */
+    public void broadcastDualSnapshots(tetris.network.protocol.GameSnapshot p1, tetris.network.protocol.GameSnapshot p2) {
+        broadcastGameStateSnapshot(p1);
+        broadcastGameStateSnapshot(p2);
+    }
 
     // 게임 시작 - 모든 클라이언트가 준비되었을 때
     public void startGame(){

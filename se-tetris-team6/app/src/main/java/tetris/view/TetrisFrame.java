@@ -29,6 +29,7 @@ import tetris.domain.leaderboard.LeaderboardResult;
 import tetris.domain.model.GameState;
 import tetris.domain.setting.Setting;
 import tetris.multiplayer.session.LocalMultiplayerSession;
+import tetris.multiplayer.session.NetworkMultiplayerSession;
 import tetris.network.client.GameClient;
 import tetris.view.GameComponent.SingleGameLayout;
 import tetris.view.GameComponent.GameOverPanel;
@@ -45,7 +46,8 @@ public class TetrisFrame extends JFrame {
     // 모든 패널과 모델/컨트롤러를 인스턴스 변수로 변경 (static 제거)
     protected MainPanel mainPanel;
     protected SingleGameLayout singleGameLayout;
-    protected MultiGameLayout multiGameLayout;
+    protected MultiGameLayout localMultiGameLayout;
+    protected tetris.view.GameComponent.NetworkMultiGameLayout onlineMultiGameLayout;
     protected SettingPanel settingPanel;
     protected ScoreboardPanel scoreboardPanel;
     protected PausePanel pausePanel;
@@ -65,6 +67,10 @@ public class TetrisFrame extends JFrame {
     private LocalMultiplayerSession boundLocalSession;
     private GameModel.UiBridge localP1UiBridge;
     private GameModel.UiBridge localP2UiBridge;
+    // 온라인(네트워크) 세션용 브리지 상태
+    private NetworkMultiplayerSession boundOnlineSession;
+    private GameModel.UiBridge onlineP1UiBridge;
+    private GameModel.UiBridge onlineP2UiBridge;
     // Optional in-process server when user chooses to host a game
     private GameServer hostedServer;
 
@@ -83,7 +89,8 @@ public class TetrisFrame extends JFrame {
         setupPausePanel();
         setupGameOverPanel();
         setupSingleGameLayout();
-        setupMultiGameLayout();
+        setupLocalMultiGameLayout();
+        setupOnlineMultiGameLayout();
 
         gameModel.bindUiBridge(new GameModel.UiBridge() {
             @Override
@@ -102,8 +109,10 @@ public class TetrisFrame extends JFrame {
                     ensureLocalSessionUiBridges();
                     if (singleGameLayout != null)
                         singleGameLayout.repaint();
-                    if (multiGameLayout != null)
-                        multiGameLayout.repaint();
+                    if (localMultiGameLayout != null)
+                        localMultiGameLayout.repaint();
+                    if (onlineMultiGameLayout != null)
+                        onlineMultiGameLayout.repaint();
                 });
             }
 
@@ -268,9 +277,15 @@ public class TetrisFrame extends JFrame {
                                             dlg.dispose();
                                             GameMode gameMode = TetrisFrame.this.resolveMenuMode(selectedMode);
                                             // Start a networked session as host (host is Player-1)
+                                            System.out.println("[UI][SERVER] Starting networked multiplayer as Player-1 (Host)");
+                                            gameController.setNetworkServer(hostedServer); // 서버 연결
                                             gameController.startNetworkedMultiplayerGame(gameMode, true);
-                                            bindMultiPanelToCurrentSession();
-                                            displayPanel(multiGameLayout);
+                                            // 호스트는 서버를 통해 클라이언트 메시지를 받음
+                                            TetrisFrame.this.setupHostNetworkListener();
+                                            System.out.println("[UI][SERVER] Binding online panel to session");
+                                            TetrisFrame.this.bindOnlinePanelToCurrentSession();
+                                            System.out.println("[UI][SERVER] Displaying onlineMultiGameLayout");
+                                            TetrisFrame.this.displayPanel(onlineMultiGameLayout);
                                         });
                                         break;
                                     }
@@ -361,7 +376,7 @@ public class TetrisFrame extends JFrame {
                 GameMode selectedMode = TetrisFrame.this.resolveMenuMode(mode);
                 gameController.startLocalMultiplayerGame(selectedMode);
                 TetrisFrame.this.bindMultiPanelToCurrentSession();
-                displayPanel(multiGameLayout);
+                displayPanel(localMultiGameLayout);
             }
 
             @Override
@@ -395,7 +410,7 @@ public class TetrisFrame extends JFrame {
                     try { port = Integer.parseInt(parts[1]); } catch (NumberFormatException ignore) {}
                 }
 
-                displayPanel(multiGameLayout);
+                    displayPanel(onlineMultiGameLayout);
 
                 // Create client and connect with handshake latch
                 final java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(1);
@@ -417,53 +432,11 @@ public class TetrisFrame extends JFrame {
                     return;
                 }
 
-                // Wire GameStateListener to apply incoming network messages to the opponent model
-                client.setGameStateListener(new tetris.network.client.GameStateListener() {
-                    @Override
-                    public void onOpponentBoardUpdate(tetris.network.protocol.GameMessage message) {
-                        LocalMultiplayerSession session = gameModel.getActiveLocalMultiplayerSession().orElse(null);
-                        if (session == null) return;
-                        // For board updates we simply trigger a repaint (detailed state sync handled elsewhere)
-                        ensureLocalSessionUiBridges();
-                        if (multiGameLayout != null) multiGameLayout.repaint();
-                    }
-
-                    @Override
-                    public void onGameStateChange(tetris.network.protocol.GameMessage message) {
-                        LocalMultiplayerSession session = gameModel.getActiveLocalMultiplayerSession().orElse(null);
-                        if (session == null) return;
-                        tetris.domain.GameModel opponent = session.isPlayerOneLocal() ? session.playerTwoModel() : session.playerOneModel();
-                        switch (message.getType()) {
-                            case PLAYER_INPUT:
-                                Object payload = message.getPayload();
-                                if (payload instanceof tetris.network.protocol.PlayerInput pi) {
-                                    switch (pi.inputType()) {
-                                        case MOVE_LEFT -> opponent.moveBlockLeft();
-                                        case MOVE_RIGHT -> opponent.moveBlockRight();
-                                        case SOFT_DROP -> opponent.moveBlockDown();
-                                        case ROTATE -> opponent.rotateBlockClockwise();
-                                        case ROTATE_CCW -> opponent.rotateBlockCounterClockwise();
-                                        case HARD_DROP -> opponent.hardDropBlock();
-                                        case HOLD -> opponent.holdCurrentBlock();
-                                        default -> {}
-                                    }
-                                }
-                                break;
-                            case ATTACK_LINES:
-                                Object pl = message.getPayload();
-                                if (pl instanceof tetris.network.protocol.AttackLine[] lines) {
-                                    opponent.applyAttackLines(lines);
-                                }
-                                break;
-                            case GAME_END:
-                                // forward to main GameModel to show overlay if needed
-                                gameModel.showMultiplayerResult(0);
-                                break;
-                            default:
-                                break;
-                        }
-                    }
-                });
+                // Delegate network message handling to GameController.
+                // GameController implements GameStateListener and will be registered
+                // by setNetworkClient. This avoids UI-level direct manipulation of
+                // opponent models and centralizes input routing and network handling.
+                gameController.setNetworkClient(client);
 
                 // Show waiting-for-host dialog with Ready button
                 java.awt.Window win = SwingUtilities.getWindowAncestor(this);
@@ -503,9 +476,18 @@ public class TetrisFrame extends JFrame {
                                     // this client controls Player-1 based on assigned playerId.
                                     GameMode gameMode = TetrisFrame.this.resolveMenuMode(mode);
                                     boolean localIsPlayerOne = "Player-1".equals(client.getPlayerId());
-                                    gameController.startNetworkedMultiplayerGame(gameMode, localIsPlayerOne);
-                                    bindMultiPanelToCurrentSession();
-                                    displayPanel(multiGameLayout);
+                                    Long seed = client.getStartSeed();
+                                    System.out.println("[UI][CLIENT] Starting networked multiplayer as Player-" + (localIsPlayerOne ? "1" : "2"));
+                                    gameController.setNetworkClient(client); // 네트워크 클라이언트 연결
+                                    if (seed != null) {
+                                        gameController.startNetworkedMultiplayerGame(gameMode, localIsPlayerOne, seed);
+                                    } else {
+                                        gameController.startNetworkedMultiplayerGame(gameMode, localIsPlayerOne);
+                                    }
+                                    System.out.println("[UI][CLIENT] Binding multi panel to session");
+                                    bindOnlinePanelToCurrentSession();
+                                    System.out.println("[UI][CLIENT] Displaying onlineMultiGameLayout");
+                                    displayPanel(onlineMultiGameLayout);
                                 });
                                 break;
                             }
@@ -546,11 +528,17 @@ public class TetrisFrame extends JFrame {
         layeredPane.add(singleGameLayout, JLayeredPane.DEFAULT_LAYER);
     }
 
-    private void setupMultiGameLayout() {
-        multiGameLayout = new MultiGameLayout();
-        multiGameLayout.setVisible(false);
+    private void setupLocalMultiGameLayout() {
+        localMultiGameLayout = new MultiGameLayout();
+        localMultiGameLayout.setVisible(false);
         bindMultiPanelToCurrentSession();
-        layeredPane.add(multiGameLayout, JLayeredPane.DEFAULT_LAYER);
+        layeredPane.add(localMultiGameLayout, JLayeredPane.DEFAULT_LAYER);
+    }
+
+    private void setupOnlineMultiGameLayout() {
+        onlineMultiGameLayout = new tetris.view.GameComponent.NetworkMultiGameLayout();
+        onlineMultiGameLayout.setVisible(false);
+        layeredPane.add(onlineMultiGameLayout, JLayeredPane.DEFAULT_LAYER);
     }
 
     private void setupSettingPanel() {
@@ -588,6 +576,113 @@ public class TetrisFrame extends JFrame {
             }
         };
         layeredPane.add(pausePanel, JLayeredPane.PALETTE_LAYER);
+    }
+
+    /**
+     * Setup network listener for the host to receive client messages.
+     */
+    private void setupHostNetworkListener() {
+        if (hostedServer == null) return;
+        hostedServer.setGameStateListener(new tetris.network.client.GameStateListener() {
+            @Override
+            public void onOpponentBoardUpdate(tetris.network.protocol.GameMessage message) {
+                LocalMultiplayerSession session = gameModel.getActiveLocalMultiplayerSession().orElse(null);
+                        if (session == null) return;
+                        ensureLocalSessionUiBridges();
+                        if (onlineMultiGameLayout != null) onlineMultiGameLayout.repaint();
+            }
+
+            @Override
+            public void onGameStateSnapshot(tetris.network.protocol.GameSnapshot snapshot) {
+                // 호스트는 스냅샷을 수신하지 않음 (자신이 송신함), 하지만 인터페이스 구현 필요
+                System.out.println("[TetrisFrame] Host received snapshot (unexpected, ignoring).");
+            }
+
+            @Override
+            public void onGameStateChange(tetris.network.protocol.GameMessage message) {
+                LocalMultiplayerSession session = gameModel.getActiveLocalMultiplayerSession().orElse(null);
+                if (session == null) return;
+                // Host is Player-1, so opponent is Player-2
+                tetris.domain.GameModel opponent = session.playerTwoModel();
+                switch (message.getType()) {
+                    case PLAYER_INPUT:
+                        Object payload = message.getPayload();
+                        if (payload instanceof tetris.network.protocol.PlayerInput pi) {
+                            switch (pi.inputType()) {
+                                case MOVE_LEFT -> opponent.moveBlockLeft();
+                                case MOVE_RIGHT -> opponent.moveBlockRight();
+                                case SOFT_DROP -> opponent.moveBlockDown();
+                                case ROTATE -> opponent.rotateBlockClockwise();
+                                case ROTATE_CCW -> opponent.rotateBlockCounterClockwise();
+                                case HARD_DROP -> opponent.hardDropBlock();
+                                case HOLD -> opponent.holdCurrentBlock();
+                                default -> {}
+                            }
+                            // Repaint to show opponent's updated state
+                            if (onlineMultiGameLayout != null) {
+                                onlineMultiGameLayout.repaint();
+                            }
+                        }
+                        break;
+                    case ATTACK_LINES:
+                        Object pl = message.getPayload();
+                        if (pl instanceof tetris.network.protocol.AttackLine[] networkLines) {
+                            // Apply network attack lines directly to opponent
+                            opponent.applyAttackLines(networkLines);
+                            
+                                    // Repaint to show attack lines
+                                    if (onlineMultiGameLayout != null) {
+                                        onlineMultiGameLayout.repaint();
+                                    }
+                        }
+                        break;
+                    case GAME_END:
+                        LocalMultiplayerSession sess = gameModel.getActiveLocalMultiplayerSession().orElse(null);
+                        if (sess != null) {
+                            // Terminate game for both players
+                            tetris.domain.GameModel localModel = sess.playerOneModel();  // Host is always player 1
+                            tetris.domain.GameModel opponentModel = sess.playerTwoModel();
+                            
+                            // Only process if not already in GAME_OVER state (prevent infinite loop)
+                            if (localModel.getCurrentState() != tetris.domain.model.GameState.GAME_OVER) {
+                                // Get winnerId from message payload
+                                Object payloadObj = message.getPayload();
+                                Integer winnerId = null;
+                                if (payloadObj instanceof java.util.Map) {
+                                    Object winnerIdObj = ((java.util.Map<?, ?>) payloadObj).get("winnerId");
+                                    if (winnerIdObj instanceof Number) {
+                                        winnerId = ((Number) winnerIdObj).intValue();
+                                    }
+                                }
+                                
+                                // Mark loser based on winnerId
+                                if (winnerId != null) {
+                                    int loserId = (winnerId == 1) ? 2 : 1;
+                                    sess.game().markLoser(loserId);
+                                } else {
+                                    // Fallback: client (player 2) sent GAME_END, so they lost
+                                    sess.game().markLoser(2);
+                                }
+                                
+                                // Change states to GAME_OVER
+                                localModel.changeState(tetris.domain.model.GameState.GAME_OVER);
+                                opponentModel.changeState(tetris.domain.model.GameState.GAME_OVER);
+                                
+                                // Show result and update display
+                                gameModel.showMultiplayerResult(sess.game().getWinnerId() == null ? -1 : sess.game().getWinnerId());
+                                
+                                        // Force repaint to show final state
+                                        if (onlineMultiGameLayout != null) {
+                                            onlineMultiGameLayout.repaint();
+                                        }
+                            }
+                        }
+                        break;
+                    default:
+                        break;
+                }
+            }
+        });
     }
 
     private void setupScoreboardPanel() {
@@ -653,8 +748,10 @@ public class TetrisFrame extends JFrame {
                 System.out.printf("[UI][WARN] scoreboard load failed: %s%n", ex.getMessage());
             }
         }
-        if (panel == multiGameLayout) {
+        if (panel == localMultiGameLayout) {
             bindMultiPanelToCurrentSession();
+        } else if (panel == onlineMultiGameLayout) {
+            bindOnlinePanelToCurrentSession();
         }
         // if (prevPanel != null)
         // prevPanel.setVisible(false);
@@ -847,14 +944,93 @@ public class TetrisFrame extends JFrame {
      * 세션이 없으면 기본 GameModel을 공유하고, 있으면 세션 내 플레이어 모델을 그린다.
      */
     private void bindMultiPanelToCurrentSession() {
-        if (multiGameLayout == null)
+        if (localMultiGameLayout == null)
             return;
         ensureLocalSessionUiBridges();
         if (boundLocalSession != null) {
-            multiGameLayout.bindLocalMultiplayerSession(boundLocalSession);
+            System.out.println("[UI] Binding MultiGameLayout to LocalMultiplayerSession");
+            localMultiGameLayout.bindLocalMultiplayerSession(boundLocalSession);
         } else {
-            multiGameLayout.bindGameModel(gameModel);
+            System.out.println("[UI][WARN] No active session found, binding single GameModel to both panels");
+            localMultiGameLayout.bindGameModel(gameModel);
         }
+    }
+
+    /**
+     * 온라인 멀티용 패널 바인딩: NetworkMultiGameLayout을 사용하여 네트워크 세션 바인딩.
+     */
+    private void bindOnlinePanelToCurrentSession() {
+        if (onlineMultiGameLayout == null)
+            return;
+        NetworkMultiplayerSession session = gameModel.getActiveNetworkMultiplayerSession().orElse(null);
+        if (session == null) {
+            System.out.println("[UI][WARN] No active network session found for online layout; skipping binding");
+            return;
+        }
+        // Ensure UI bridges are attached so GameModel.refreshBoard() calls repaint
+        ensureOnlineSessionUiBridges();
+
+        // NetworkMultiGameLayout의 bindOnlineMultiplayerSession 메서드 호출
+        onlineMultiGameLayout.bindOnlineMultiplayerSession(session);
+
+        // EDT에서 명시적으로 레이아웃 갱신 보장
+        SwingUtilities.invokeLater(() -> {
+            onlineMultiGameLayout.revalidate();
+            onlineMultiGameLayout.repaint();
+        });
+
+        System.out.println("[UI] Bound online multiplayer session to NetworkMultiGameLayout");
+    }
+
+    private void ensureOnlineSessionUiBridges() {
+        NetworkMultiplayerSession session = gameModel.getActiveNetworkMultiplayerSession().orElse(null);
+        System.out.println("[UI] ensureOnlineSessionUiBridges - session=" + (session != null ? "ACTIVE" : "NULL"));
+        if (session == null) {
+            clearOnlineSessionUiBridges();
+        } else if (session != boundOnlineSession) {
+            bindOnlineSessionUiBridges(session);
+        }
+    }
+
+    private void bindOnlineSessionUiBridges(NetworkMultiplayerSession session) {
+        clearOnlineSessionUiBridges();
+        boundOnlineSession = session;
+        onlineP1UiBridge = createOnlineUiBridge();
+        onlineP2UiBridge = createOnlineUiBridge();
+        try { session.playerOneModel().bindUiBridge(onlineP1UiBridge); } catch (Exception ignore) {}
+        try { session.playerTwoModel().bindUiBridge(onlineP2UiBridge); } catch (Exception ignore) {}
+    }
+
+    private void clearOnlineSessionUiBridges() {
+        if (boundOnlineSession != null) {
+            try { boundOnlineSession.playerOneModel().clearUiBridge(); } catch (Exception ignore) {}
+            try { boundOnlineSession.playerTwoModel().clearUiBridge(); } catch (Exception ignore) {}
+        }
+        boundOnlineSession = null;
+        onlineP1UiBridge = null;
+        onlineP2UiBridge = null;
+    }
+
+    private GameModel.UiBridge createOnlineUiBridge() {
+        return new GameModel.UiBridge() {
+            @Override
+            public void showPauseOverlay() { }
+
+            @Override
+            public void hidePauseOverlay() { }
+
+            @Override
+            public void refreshBoard() {
+                if (onlineMultiGameLayout == null) return;
+                SwingUtilities.invokeLater(() -> onlineMultiGameLayout.repaint());
+            }
+
+            @Override
+            public void showGameOverOverlay(tetris.domain.score.Score score, boolean canEnterName) { }
+
+            @Override
+            public void showNameEntryOverlay(tetris.domain.score.Score score) { }
+        };
     }
 
     private GameMode resolveMenuMode(String mode) {
@@ -876,6 +1052,7 @@ public class TetrisFrame extends JFrame {
      */
     private void ensureLocalSessionUiBridges() {
         LocalMultiplayerSession session = gameModel.getActiveLocalMultiplayerSession().orElse(null);
+        System.out.println("[UI] ensureLocalSessionUiBridges - session=" + (session != null ? "ACTIVE" : "NULL"));
         if (session == null) {
             clearLocalSessionUiBridges();
         } else if (session != boundLocalSession) {
@@ -918,9 +1095,9 @@ public class TetrisFrame extends JFrame {
     private GameModel.UiBridge createLocalUiBridge() {
         return new GameModel.UiBridge() {
             private void requestMultiRepaint() {
-                if (multiGameLayout == null)
+                if (localMultiGameLayout == null)
                     return;
-                SwingUtilities.invokeLater(() -> multiGameLayout.repaint());
+                SwingUtilities.invokeLater(() -> localMultiGameLayout.repaint());
             }
 
             @Override

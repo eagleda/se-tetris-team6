@@ -11,11 +11,13 @@ public final class Block implements BlockLike {
     private BlockShape shape;
     private int x;
     private int y;
+    private int rotation; // 회전 상태 (0-3)
 
     public Block(BlockShape shape, int spawnX, int spawnY) {
         this.shape = shape;
         this.x = spawnX;
         this.y = spawnY;
+        this.rotation = 0;
     }
 
     public static Block spawn(BlockKind kind, int spawnX, int spawnY) {
@@ -57,11 +59,22 @@ public final class Block implements BlockLike {
         this.y = y;
     }
 
+    public int getRotation() {
+        return rotation;
+    }
+
+    public void setRotation(int rotation) {
+        this.rotation = rotation % 4;
+    }
+
     public void rotateCW() {
         shape = shape.rotatedCW();
+        rotation = (rotation + 1) % 4;
     }
 
     public Block copy() {
-        return new Block(shape, x, y);
+        Block copied = new Block(shape, x, y);
+        copied.rotation = this.rotation;
+        return copied;
     }
 }

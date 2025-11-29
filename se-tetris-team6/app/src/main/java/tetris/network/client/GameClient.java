@@ -41,6 +41,7 @@ public class GameClient {
     // Game start signal tracking
     private volatile boolean startReceived = false;
     private volatile String startMode = null;
+    private volatile Long startSeed = null;
 
     // === 주요 메서드들 ===
 
@@ -114,8 +115,10 @@ public class GameClient {
 
     public boolean isStartReceived() { return startReceived; }
     public String getStartMode() { return startMode; }
+    public Long getStartSeed() { return startSeed; }
     public void setStartReceived(boolean v) { this.startReceived = v; }
     public void setStartMode(String m) { this.startMode = m; }
+    public void setStartSeed(Long s) { this.startSeed = s; }
     
     // 플레이어 ID 설정
     public void setPlayerId(String id) {
@@ -139,6 +142,18 @@ public class GameClient {
         if (!isConnected || clientHandler == null || lines == null) return;
         GameMessage msg = new GameMessage(tetris.network.protocol.MessageType.ATTACK_LINES, this.playerId == null ? "CLIENT" : this.playerId, lines);
         clientHandler.sendMessage(msg);
+    }
+
+    // 게임 상태 스냅샷 전송 (클라이언트도 자신의 게임 상태를 호스트에게 전송)
+    public void sendGameStateSnapshot(tetris.network.protocol.GameSnapshot snapshot) {
+        if (!isConnected || clientHandler == null || snapshot == null) return;
+        GameMessage msg = new GameMessage(
+            tetris.network.protocol.MessageType.GAME_STATE,
+            this.playerId == null ? "CLIENT" : this.playerId,
+            snapshot
+        );
+        clientHandler.sendMessage(msg);
+        System.out.println("[Client] Sent game state snapshot to server");
     }
 
     // 게임 시작 준비 완료 신호

@@ -28,4 +28,17 @@ public final class GameModelFactory {
         BlockGenerator generator = new RandomBlockGenerator();
         return new GameModel(generator, scoreRepository, leaderboardRepository, settingService);
     }
+
+    /**
+     * 주어진 시드로 동일한 블록 순서를 생성하는 GameModel을 만듭니다.
+     */
+    public static GameModel createWithSeed(long seed) {
+        ScoreRepository scoreRepository = new InMemoryScoreRepository();
+        LeaderboardRepository leaderboardRepository = new PreferencesLeaderboardRepository();
+        SettingRepository settingRepository = new PreferencesSettingRepository();
+        SettingService settingService = new SettingService(settingRepository, scoreRepository);
+        java.util.Random rng = new java.util.Random(seed);
+        BlockGenerator generator = new RandomBlockGenerator(rng);
+        return new GameModel(generator, scoreRepository, leaderboardRepository, settingService);
+    }
 }

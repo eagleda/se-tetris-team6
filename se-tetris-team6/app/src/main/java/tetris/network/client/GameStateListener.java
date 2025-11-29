@@ -19,6 +19,13 @@ public interface GameStateListener {
      * @param message 상태 변경 정보를 포함하는 GameMessage
      */
     void onGameStateChange(GameMessage message);
+
+    /**
+     * 호스트로부터 권위 있는 게임 상태 스냅샷을 수신했을 때 호출됩니다.
+     * 클라이언트는 이 스냅샷을 적용하여 화면을 렌더링합니다.
+     * @param snapshot 게임 보드, 블록, 점수, 시간 등을 포함하는 스냅샷
+     */
+    void onGameStateSnapshot(tetris.network.protocol.GameSnapshot snapshot);
     
     // Step 3, 4에서 필요한 다른 메서드들을 추가할 수 있습니다.
 }

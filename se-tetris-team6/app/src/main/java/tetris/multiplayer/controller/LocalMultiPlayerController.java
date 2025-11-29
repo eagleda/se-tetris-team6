@@ -1,9 +1,7 @@
 package tetris.multiplayer.controller;
-
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Consumer;
-
 import tetris.domain.Board;
 import tetris.domain.BlockKind;
 import tetris.domain.GameModel;
@@ -12,16 +10,15 @@ import tetris.multiplayer.model.AttackLine;
 import tetris.multiplayer.model.LockedPieceSnapshot;
 import tetris.multiplayer.model.MultiPlayerGame;
 
-/**
- * 두 개의 싱글용 {@link GameModel}을 멀티플레이 규칙과 연결하는 어댑터.
- * - 입력 처리는 외부에서 {@link #withPlayer(int, Consumer)}로 전달받는다.
- * - 블록 락/스폰 직전 이벤트는 GameModel 훅을 통해 자동으로 들어온다.
- */
-public final class MultiPlayerController {
+    /**
+     * 로컬 멀티플레이어용 컨트롤러.
+     * 두 플레이어가 같은 기기에서 플레이하는 경우 사용.
+     */
+public final class LocalMultiPlayerController {
 
     private final MultiPlayerGame game;
 
-    public MultiPlayerController(MultiPlayerGame game) {
+    public LocalMultiPlayerController(MultiPlayerGame game) {
         this.game = Objects.requireNonNull(game, "game");
     }
 
@@ -40,8 +37,8 @@ public final class MultiPlayerController {
      * GameModel에서 전달해 준 블록 락 이벤트를 VersusRules에 위임한다.
      */
     public void onPieceLocked(int playerId,
-                              LockedPieceSnapshot snapshot,
-                              int[] clearedYs) {
+                                LockedPieceSnapshot snapshot,
+                                int[] clearedYs) {
         if (snapshot == null || clearedYs == null || clearedYs.length == 0) {
             return;
         }
@@ -50,6 +47,9 @@ public final class MultiPlayerController {
         game.onPieceLocked(playerId, snapshot, clearedYs, boardWidth);
     }
 
+    /**
+     * 로컬 게임에서는 두 플레이어 모두 동시에 업데이트
+     */
     public void tick() {
         game.modelOf(1).update();
         game.modelOf(2).update();
@@ -75,10 +75,7 @@ public final class MultiPlayerController {
         return game.getPendingLines(playerId);
     }
 
-    /**
-     * 특정 플레이어가 받을 공격 줄의 실제 패턴을 반환한다.
-     */
-    public java.util.List<tetris.multiplayer.model.AttackLine> getPendingAttackLines(int playerId) {
+    public List<AttackLine> getPendingAttackLines(int playerId) {
         return game.getPendingAttackLines(playerId);
     }
 
@@ -125,12 +122,6 @@ public final class MultiPlayerController {
         }
     }
 
-    /**
-     * 공격 줄 주입 이후 다음 미노가 정상적으로 스폰 가능한지 미리 확인한다.
-     * - GameModel에 활성 블록이 있으면 현재 턴은 스폰을 하지 않으므로 true 유지
-     * - next 미노가 없으면 기본값으로 true
-     * - 실제 스폰 위치(Board.W/2-1, 0)에서 충돌이 발생하면 false로 처리해 패배 판정
-     */
     private static boolean canSpawnNextPiece(GameModel model) {
         if (model == null) {
             return true;

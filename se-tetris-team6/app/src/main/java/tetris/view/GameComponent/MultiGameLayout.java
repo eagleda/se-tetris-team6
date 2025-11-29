@@ -36,7 +36,7 @@ public class MultiGameLayout extends JPanel {
         public MultiGameLayout() {
                 super(new GridBagLayout());
                 setOpaque(true);
-                setVisible(false);
+                setVisible(true);
 
                 // 각 요소 객체 생성 및 배치
                 gamePanel_1 = new GamePanel();
@@ -100,31 +100,23 @@ public class MultiGameLayout extends JPanel {
                 repaint();
         }
 
-        /**
-         * 로컬 멀티 세션에서 각 패널이 P1/P2 모델을 따로 그리도록 연결한다.
-         * - 공격 대기 줄은 LocalMultiplayerHandler#getPendingAttackLines 공급자를 통해 실시간으로 갱신한다.
-         */
-        public void bindLocalMultiplayerSession(LocalMultiplayerSession session) {
-                if (session == null) {
-                        return;
-                }
-                bindPlayerModels(session.playerOneModel(), session.playerTwoModel());
-                // 각 패널이 해당 플레이어의 공격 패턴(구멍 위치 포함)을 바로 읽어오도록 공급자를 연결한다.
-                attackQueuePanel_1.bindAttackLinesSupplier(() -> session.handler().getPendingAttackLines(1));
-                attackQueuePanel_2.bindAttackLinesSupplier(() -> session.handler().getPendingAttackLines(2));
-                repaint();
+    /**
+     * 로컬 멀티 세션에서 각 패널이 P1/P2 모델을 따로 그리도록 연결한다.
+     * - 공격 대기 줄은 LocalMultiplayerHandler#getPendingAttackLines 공급자를 통해 실시간으로 갱신한다.
+     */
+    public void bindLocalMultiplayerSession(LocalMultiplayerSession session) {
+        System.out.println("[MultiGameLayout] bindLocalMultiplayerSession called - session=" + (session != null ? "ACTIVE" : "NULL"));
+        if (session == null) {
+            return;
         }
-
-        /**
-         * 온라인 멀티플레이에서 자신을 P1(왼쪽), 상대를 P2(오른쪽)에 표시한다.
-         * - 상대방 모델은 네트워크를 통해 업데이트되어야 하지만, 임시로 자신의 모델을 표시한다.
-         */
-        public void bindOnlineMultiplayer(GameModel selfModel, GameModel opponentModel) {
-                bindPlayerModels(selfModel, opponentModel != null ? opponentModel : selfModel);
-                attackQueuePanel_1.bindGameModel(selfModel);
-                attackQueuePanel_2.bindGameModel(opponentModel != null ? opponentModel : selfModel);
-                repaint();
-        }
+        System.out.println("[MultiGameLayout] Binding player models - P1=" + session.playerOneModel() + ", P2=" + session.playerTwoModel());
+        bindPlayerModels(session.playerOneModel(), session.playerTwoModel());
+        // 각 패널이 해당 플레이어의 공격 패턴(구멍 위치 포함)을 바로 읽어오도록 공급자를 연결한다.
+        attackQueuePanel_1.bindAttackLinesSupplier(() -> session.handler().getPendingAttackLines(1));
+        attackQueuePanel_2.bindAttackLinesSupplier(() -> session.handler().getPendingAttackLines(2));
+        System.out.println("[MultiGameLayout] Session binding complete, repainting");
+        repaint();
+    }
 
         private void bindPlayerModels(GameModel playerOne, GameModel playerTwo) {
                 // 좌측 UI는 P1 모델, 우측 UI는 P2 모델을 그대로 바라보도록 분리한다.
@@ -136,6 +128,21 @@ public class MultiGameLayout extends JPanel {
                 scoreboard_2.bindGameModel(playerTwo);
                 // 중앙 타이머 패널은 P1 기준으로 공유(추후 필요 시 P2 전용 UI를 추가할 수 있다).
                 timerPanel.bindGameModel(playerOne);
+                
+                // 모든 컴포넌트가 보이도록 명시적으로 설정
+                gamePanel_1.setVisible(true);
+                gamePanel_2.setVisible(true);
+                nextBlockPanel_1.setVisible(true);
+                nextBlockPanel_2.setVisible(true);
+                scoreboard_1.setVisible(true);
+                scoreboard_2.setVisible(true);
+                attackQueuePanel_1.setVisible(true);
+                attackQueuePanel_2.setVisible(true);
+                timerPanel.setVisible(true);
+                
+                // 레이아웃 재검증 및 다시 그리기
+                revalidate();
+                repaint();
         }
 
         public void addToRegion(Component comp, int x, int y, int w, int h, int fill, int anchor) {
