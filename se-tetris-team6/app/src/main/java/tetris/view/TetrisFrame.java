@@ -66,6 +66,10 @@ public class TetrisFrame extends JFrame {
     private LocalMultiplayerSession boundLocalSession;
     private GameModel.UiBridge localP1UiBridge;
     private GameModel.UiBridge localP2UiBridge;
+    // 온라인(네트워크) 세션용 브리지 상태
+    private LocalMultiplayerSession boundOnlineSession;
+    private GameModel.UiBridge onlineP1UiBridge;
+    private GameModel.UiBridge onlineP2UiBridge;
     // Optional in-process server when user chooses to host a game
     private GameServer hostedServer;
 
@@ -962,16 +966,70 @@ public class TetrisFrame extends JFrame {
             System.out.println("[UI][WARN] No active session found for online layout; skipping binding");
             return;
         }
+        // Ensure UI bridges are attached so GameModel.refreshBoard() calls repaint
+        ensureOnlineSessionUiBridges();
+
         // NetworkMultiGameLayout의 bindOnlineMultiplayerSession 메서드 호출
         onlineMultiGameLayout.bindOnlineMultiplayerSession(session);
-        
+
         // EDT에서 명시적으로 레이아웃 갱신 보장
         SwingUtilities.invokeLater(() -> {
             onlineMultiGameLayout.revalidate();
             onlineMultiGameLayout.repaint();
         });
-        
+
         System.out.println("[UI] Bound online multiplayer session to NetworkMultiGameLayout");
+    }
+
+    private void ensureOnlineSessionUiBridges() {
+        LocalMultiplayerSession session = gameModel.getActiveLocalMultiplayerSession().orElse(null);
+        System.out.println("[UI] ensureOnlineSessionUiBridges - session=" + (session != null ? "ACTIVE" : "NULL"));
+        if (session == null) {
+            clearOnlineSessionUiBridges();
+        } else if (session != boundOnlineSession) {
+            bindOnlineSessionUiBridges(session);
+        }
+    }
+
+    private void bindOnlineSessionUiBridges(LocalMultiplayerSession session) {
+        clearOnlineSessionUiBridges();
+        boundOnlineSession = session;
+        onlineP1UiBridge = createOnlineUiBridge();
+        onlineP2UiBridge = createOnlineUiBridge();
+        try { session.playerOneModel().bindUiBridge(onlineP1UiBridge); } catch (Exception ignore) {}
+        try { session.playerTwoModel().bindUiBridge(onlineP2UiBridge); } catch (Exception ignore) {}
+    }
+
+    private void clearOnlineSessionUiBridges() {
+        if (boundOnlineSession != null) {
+            try { boundOnlineSession.playerOneModel().clearUiBridge(); } catch (Exception ignore) {}
+            try { boundOnlineSession.playerTwoModel().clearUiBridge(); } catch (Exception ignore) {}
+        }
+        boundOnlineSession = null;
+        onlineP1UiBridge = null;
+        onlineP2UiBridge = null;
+    }
+
+    private GameModel.UiBridge createOnlineUiBridge() {
+        return new GameModel.UiBridge() {
+            @Override
+            public void showPauseOverlay() { }
+
+            @Override
+            public void hidePauseOverlay() { }
+
+            @Override
+            public void refreshBoard() {
+                if (onlineMultiGameLayout == null) return;
+                SwingUtilities.invokeLater(() -> onlineMultiGameLayout.repaint());
+            }
+
+            @Override
+            public void showGameOverOverlay(tetris.domain.score.Score score, boolean canEnterName) { }
+
+            @Override
+            public void showNameEntryOverlay(tetris.domain.score.Score score) { }
+        };
     }
 
     private GameMode resolveMenuMode(String mode) {
