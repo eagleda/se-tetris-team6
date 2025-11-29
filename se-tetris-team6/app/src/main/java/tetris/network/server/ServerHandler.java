@@ -46,6 +46,8 @@ import java.util.concurrent.atomic.AtomicInteger; // 추가: 스레드 안전한
     private String clientId;                   // 클라이언트 고유 ID
     private boolean isConnected;               // 연결 상태
     private long lastPingTime;                 // 마지막 핑 시간
+    // 최근으로 처리한 시퀀스 번호(중복 방지)
+    private int lastProcessedSequence = -1;
 
     // === 서버 참조 ===
     private GameServer server;                 // 부모 서버 참조
@@ -147,8 +149,14 @@ import java.util.concurrent.atomic.AtomicInteger; // 추가: 스레드 안전한
                 break;
             case PLAYER_INPUT:
             case ATTACK_LINES:
-                // 클라이언트 입력을 호스트에게 전달
-                System.out.println("[ServerHandler] received " + message.getType() + " from clientId=" + clientId + " senderId=" + message.getSenderId() + " payload=" + message.getPayload());
+                // 클라이언트 입력을 호스트에게 전달 (중복 시퀀스 필터링)
+                int seq = message.getSequenceNumber();
+                if (seq == lastProcessedSequence) {
+                    System.out.println("[ServerHandler] duplicate message ignored seq=" + seq + " from clientId=" + clientId);
+                    break;
+                }
+                lastProcessedSequence = seq;
+                System.out.println("[ServerHandler] received " + message.getType() + " from clientId=" + clientId + " senderId=" + message.getSenderId() + " payload=" + message.getPayload() + " seq=" + seq);
                 server.notifyHostOfMessage(message);
                 break;
             default:
