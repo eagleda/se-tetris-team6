@@ -958,9 +958,17 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         // 현재/다음 블록 타입 식별자 계산
         Block active = gameplayEngine != null ? gameplayEngine.getActiveBlock() : null;
         int currentId = 0;
+        int blockX = -1;
+        int blockY = -1;
+        int blockRotation = 0;
+        
         if (active != null && active.getShape() != null && active.getShape().kind() != null) {
             currentId = active.getShape().kind().ordinal() + 1; // 1..7 등
+            blockX = active.getX();
+            blockY = active.getY();
+            blockRotation = active.getRotation();
         }
+        
         BlockKind nextKind = getNextBlockKind();
         int nextId = nextKind != null ? (nextKind.ordinal() + 1) : 0;
         int pts = 0;
@@ -972,14 +980,17 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         }
         int elapsed = (int) (getElapsedMillis() / 1000L);
         int pending = pendingGarbageLines;
-        return new tetris.network.protocol.GameSnapshot(copy, currentId, nextId, pts, elapsed, pending);
+        return new tetris.network.protocol.GameSnapshot(copy, currentId, nextId, pts, elapsed, pending, blockX, blockY, blockRotation);
     }
 
     /** 스냅샷을 적용 (클라이언트 렌더링 전용) */
     public void applySnapshot(tetris.network.protocol.GameSnapshot snapshot) {
         if (snapshot == null) return;
+        
+        // 보드 상태 적용
         int[][] b = snapshot.board();
         if (b != null) {
+            board.clear();
             int h = Math.min(Board.H, b.length);
             int w = Math.min(Board.W, b[0].length);
             for (int y = 0; y < h; y++) {
@@ -988,8 +999,45 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
                 }
             }
         }
-        // 현재/다음 블록은 타입 id만 반영(실제 블록 객체 생성은 렌더링 엔진에 위임 가능)
-        // 점수/타이머/가비지는 UI 패널에서 표시만 갱신 (필드 보존)
+        
+        // 현재 블록 위치 및 회전 상태 적용
+        if (snapshot.currentBlockId() > 0 && snapshot.blockX() >= 0 && snapshot.blockY() >= 0) {
+            BlockKind kind = BlockKind.values()[snapshot.currentBlockId() - 1];
+            Block block = Block.spawn(kind, snapshot.blockX(), snapshot.blockY());
+            
+            // 회전 상태 적용
+            int rotation = snapshot.blockRotation();
+            for (int i = 0; i < rotation; i++) {
+                block.rotateCW();
+            }
+            
+            if (gameplayEngine != null) {
+                gameplayEngine.setActiveBlock(block);
+            }
+        } else if (gameplayEngine != null) {
+            gameplayEngine.setActiveBlock(null);
+        }
+        
+        // 점수 업데이트
+        if (scoreRepository != null) {
+            tetris.domain.score.Score currentScore = scoreRepository.load();
+            if (currentScore.getPoints() != snapshot.score()) {
+                scoreRepository.save(currentScore.withAdditionalPoints(snapshot.score() - currentScore.getPoints()));
+            }
+        }
+        
+        // 경과 시간 업데이트 (밀리초로 변환)
+        long snapshotElapsedMs = snapshot.elapsedSeconds() * 1000L;
+        if (gameplayStartedAtMillis > 0) {
+            long currentElapsed = getElapsedMillis();
+            if (Math.abs(snapshotElapsedMs - currentElapsed) > 1000) {
+                // 1초 이상 차이나면 동기화
+                gameplayStartedAtMillis = System.currentTimeMillis() - snapshotElapsedMs;
+                accumulatedPauseMillis = 0;
+            }
+        }
+        
+        // 가비지 라인 업데이트
         this.pendingGarbageLines = snapshot.pendingGarbage();
         if (uiBridge != null) uiBridge.refreshBoard();
     }
