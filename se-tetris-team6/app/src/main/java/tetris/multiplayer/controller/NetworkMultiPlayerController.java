@@ -399,19 +399,18 @@ public final class NetworkMultiPlayerController {
                 if (message == null) return;
                 switch (message.getType()) {
                     case PLAYER_INPUT: {
+                        // 클라이언트는 입력 메시지를 직접 적용하지 않고, 서버가 브로드캐스트한 스냅샷에만 의존
                         Object payload = message.getPayload();
                         if (payload instanceof tetris.network.protocol.PlayerInput pi) {
-                            System.out.println("[NetCtrl] onGameStateChange PLAYER_INPUT from sender='" + message.getSenderId() + "' seq=" + message.getSequenceNumber() + " payload=" + pi + " identity=" + System.identityHashCode(message));
-                            applyRemotePlayerInput(getRemotePlayerId(), pi);
+                            System.out.println("[NetCtrl][CLIENT] Received PLAYER_INPUT from '" + message.getSenderId() + "' (ignored, waiting for snapshot): " + pi);
                         }
                         break;
                     }
                     case ATTACK_LINES: {
+                        // 공격 라인도 서버 스냅샷에 반영되어 오므로 직접 적용하지 않음
                         Object payload = message.getPayload();
-                        if (payload instanceof tetris.network.protocol.AttackLine[] lines) {
-                            System.out.println("[NetCtrl] onGameStateChange ATTACK_LINES from sender='" + message.getSenderId() + "' linesCount=" + (lines == null ? 0 : lines.length));
-                            applyRemoteAttackLines(getRemotePlayerId(), lines);
-                        }
+                        int count = (payload instanceof tetris.network.protocol.AttackLine[] lines) ? (lines == null ? 0 : lines.length) : 0;
+                        System.out.println("[NetCtrl][CLIENT] Received ATTACK_LINES from '" + message.getSenderId() + "' count=" + count + " (ignored, waiting for snapshot)");
                         break;
                     }
                     case GAME_END: {
