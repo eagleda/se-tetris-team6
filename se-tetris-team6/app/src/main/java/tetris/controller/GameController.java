@@ -185,6 +185,12 @@ public class GameController implements tetris.network.client.GameStateListener {
             return;
         }
 
+        // 네트워크 멀티플레이어 입력 처리 (싱글 게임 키 바인딩 사용)
+        if (networkSession != null && routeNetworkMultiplayerInput(keyCode)) {
+            return;
+        }
+
+        // 로컬 멀티플레이어 입력 처리 (P1/P2 키 바인딩 사용)
         if (localSession != null && routeLocalMultiplayerInput(keyCode)) {
             return;
         }
@@ -731,64 +737,15 @@ public class GameController implements tetris.network.client.GameStateListener {
         }
     }
 
+    /**
+     * 로컬 멀티플레이어 전용 입력 처리 (P1/P2 키 바인딩 사용)
+     */
     private boolean routeLocalMultiplayerInput(int keyCode) {
         if (localSession == null || !gameModel.isLocalMultiplayerActive()) {
             return false;
         }
         MultiplayerHandler handler = localSession.handler();
         if (handler == null) {
-            return false;
-        }
-
-        // 네트워크 모드인 경우, 로컬 플레이어만 처리하고 싱글 플레이 키 바인딩 사용
-        boolean isNetworked = handler instanceof tetris.multiplayer.handler.NetworkedMultiplayerHandler;
-        int localPlayerId = 0;
-        if (isNetworked) {
-            localPlayerId = ((tetris.multiplayer.handler.NetworkedMultiplayerHandler) handler).getLocalPlayerId();
-            
-            // 온라인 멀티플레이: 싱글 플레이 키 바인딩 사용
-            if (keyCode == keyBindings.get("MOVE_LEFT")) {
-                handler.dispatchToPlayer(localPlayerId, GameModel::moveBlockLeft);
-                sendNetworkInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.MOVE_LEFT));
-                notifyNetworkControllerInput();
-                return true;
-            }
-            if (keyCode == keyBindings.get("MOVE_RIGHT")) {
-                handler.dispatchToPlayer(localPlayerId, GameModel::moveBlockRight);
-                sendNetworkInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.MOVE_RIGHT));
-                notifyNetworkControllerInput();
-                return true;
-            }
-            if (keyCode == keyBindings.get("SOFT_DROP")) {
-                handler.dispatchToPlayer(localPlayerId, GameModel::moveBlockDown);
-                sendNetworkInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.SOFT_DROP));
-                notifyNetworkControllerInput();
-                return true;
-            }
-            if (keyCode == keyBindings.get("ROTATE_CW")) {
-                handler.dispatchToPlayer(localPlayerId, GameModel::rotateBlockClockwise);
-                sendNetworkInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.ROTATE));
-                notifyNetworkControllerInput();
-                return true;
-            }
-            if (keyCode == keyBindings.get("ROTATE_CCW")) {
-                handler.dispatchToPlayer(localPlayerId, GameModel::rotateBlockCounterClockwise);
-                sendNetworkInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.ROTATE));
-                notifyNetworkControllerInput();
-                return true;
-            }
-            if (keyCode == keyBindings.get("HARD_DROP")) {
-                handler.dispatchToPlayer(localPlayerId, GameModel::hardDropBlock);
-                sendNetworkInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.HARD_DROP));
-                notifyNetworkControllerInput();
-                return true;
-            }
-            if (keyCode == keyBindings.get("HOLD")) {
-                handler.dispatchToPlayer(localPlayerId, GameModel::holdCurrentBlock);
-                sendNetworkInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.HOLD));
-                notifyNetworkControllerInput();
-                return true;
-            }
             return false;
         }
 
@@ -834,6 +791,72 @@ public class GameController implements tetris.network.client.GameStateListener {
         }
         if (keyCode == keyFor("P2_HARD_DROP")) {
             handler.dispatchToPlayer(2, GameModel::hardDropBlock);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * 네트워크 멀티플레이어 전용 입력 처리 (싱글 게임 키 바인딩 사용)
+     */
+    private boolean routeNetworkMultiplayerInput(int keyCode) {
+        if (networkSession == null) {
+            return false;
+        }
+        MultiplayerHandler handler = networkSession.handler();
+        if (handler == null) {
+            return false;
+        }
+
+        // NetworkedMultiplayerHandler에서 로컬 플레이어 ID 가져오기
+        int localPlayerId = 0;
+        if (handler instanceof tetris.multiplayer.handler.NetworkedMultiplayerHandler) {
+            localPlayerId = ((tetris.multiplayer.handler.NetworkedMultiplayerHandler) handler).getLocalPlayerId();
+        } else {
+            return false;
+        }
+
+        // 싱글 플레이 키 바인딩 사용하여 입력 처리 및 네트워크 전송
+        if (keyCode == keyBindings.get("MOVE_LEFT")) {
+            handler.dispatchToPlayer(localPlayerId, GameModel::moveBlockLeft);
+            sendNetworkInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.MOVE_LEFT));
+            notifyNetworkControllerInput();
+            return true;
+        }
+        if (keyCode == keyBindings.get("MOVE_RIGHT")) {
+            handler.dispatchToPlayer(localPlayerId, GameModel::moveBlockRight);
+            sendNetworkInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.MOVE_RIGHT));
+            notifyNetworkControllerInput();
+            return true;
+        }
+        if (keyCode == keyBindings.get("SOFT_DROP")) {
+            handler.dispatchToPlayer(localPlayerId, GameModel::moveBlockDown);
+            sendNetworkInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.SOFT_DROP));
+            notifyNetworkControllerInput();
+            return true;
+        }
+        if (keyCode == keyBindings.get("ROTATE_CW")) {
+            handler.dispatchToPlayer(localPlayerId, GameModel::rotateBlockClockwise);
+            sendNetworkInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.ROTATE));
+            notifyNetworkControllerInput();
+            return true;
+        }
+        if (keyCode == keyBindings.get("ROTATE_CCW")) {
+            handler.dispatchToPlayer(localPlayerId, GameModel::rotateBlockCounterClockwise);
+            sendNetworkInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.ROTATE));
+            notifyNetworkControllerInput();
+            return true;
+        }
+        if (keyCode == keyBindings.get("HARD_DROP")) {
+            handler.dispatchToPlayer(localPlayerId, GameModel::hardDropBlock);
+            sendNetworkInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.HARD_DROP));
+            notifyNetworkControllerInput();
+            return true;
+        }
+        if (keyCode == keyBindings.get("HOLD")) {
+            handler.dispatchToPlayer(localPlayerId, GameModel::holdCurrentBlock);
+            sendNetworkInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.HOLD));
+            notifyNetworkControllerInput();
             return true;
         }
         return false;
