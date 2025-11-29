@@ -622,6 +622,16 @@ public class TetrisFrame extends JFrame {
                             if (onlineMultiGameLayout != null) {
                                 onlineMultiGameLayout.repaint();
                             }
+                            // Immediately broadcast authoritative snapshots so client sees its own input reflected without waiting for next tick.
+                            if (hostedServer != null && session != null) {
+                                try {
+                                    tetris.domain.GameModel p1Model = session.playerOneModel();
+                                    tetris.domain.GameModel p2Model = session.playerTwoModel();
+                                    hostedServer.broadcastDualSnapshots(p1Model.toSnapshot(1), p2Model.toSnapshot(2));
+                                } catch (Exception ex) {
+                                    System.err.println("[Host] Failed to broadcast snapshots after remote input: " + ex.getMessage());
+                                }
+                            }
                         }
                         break;
                     case ATTACK_LINES:
