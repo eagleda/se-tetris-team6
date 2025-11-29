@@ -6,7 +6,7 @@ import java.io.Serializable;
  * 전체 게임 상태 스냅샷 (네트워크 전송용 DTO)
  */
 public final class GameSnapshot implements Serializable {
-    private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 2L;
 
     private final int playerId;       // 스냅샷 대상 플레이어 (1 또는 2)
     private final int[][] board;      // [y][x] 셀 값(0=빈칸, >0=블록 id)
@@ -18,6 +18,7 @@ public final class GameSnapshot implements Serializable {
     private final int blockX;         // 현재 블록 X 위치
     private final int blockY;         // 현재 블록 Y 위치
     private final int blockRotation;  // 현재 블록 회전 상태 (0-3)
+    private final boolean[][] attackLines; // 공격 대기열 [줄 인덱스][x] (true=구멍, false=블록)
 
     public GameSnapshot(int playerId,
                         int[][] board,
@@ -28,7 +29,8 @@ public final class GameSnapshot implements Serializable {
                         int pendingGarbage,
                         int blockX,
                         int blockY,
-                        int blockRotation) {
+                        int blockRotation,
+                        boolean[][] attackLines) {
         this.playerId = playerId;
         this.board = board;
         this.currentBlockId = currentBlockId;
@@ -39,6 +41,7 @@ public final class GameSnapshot implements Serializable {
         this.blockX = blockX;
         this.blockY = blockY;
         this.blockRotation = blockRotation;
+        this.attackLines = attackLines;
     }
 
     public int playerId() { return playerId; }
@@ -51,4 +54,5 @@ public final class GameSnapshot implements Serializable {
     public int blockX() { return blockX; }
     public int blockY() { return blockY; }
     public int blockRotation() { return blockRotation; }
+    public boolean[][] attackLines() { return attackLines; }
 }
