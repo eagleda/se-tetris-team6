@@ -266,9 +266,16 @@ public final class NetworkMultiPlayerController {
     /**
      * Apply an authoritative snapshot received from the network to a remote player's model.
      */
-    public void applyRemoteSnapshot(int playerId, tetris.network.protocol.GameSnapshot snapshot) {
+    /**
+     * Apply an authoritative snapshot received from the network to the correct player's model.
+     * Previously this always mapped every snapshot to getRemotePlayerId(), causing the client
+     * to overwrite only the host board and never update its own board. We now respect the
+     * snapshot's embedded playerId so both P1 and P2 snapshots update their respective models.
+     */
+    public void applyRemoteSnapshot(tetris.network.protocol.GameSnapshot snapshot) {
         if (snapshot == null) return;
-        GameModel model = game.modelOf(playerId);
+        int targetPlayerId = snapshot.playerId();
+        GameModel model = game.modelOf(targetPlayerId);
         if (model == null) return;
         model.applySnapshot(snapshot);
     }
@@ -363,10 +370,12 @@ public final class NetworkMultiPlayerController {
             @Override
             public void onGameStateSnapshot(tetris.network.protocol.GameSnapshot snapshot) {
                 if (snapshot == null) return;
+                // Apply snapshot to the actual player indicated inside the snapshot (authoritative id)
+                Runnable apply = () -> applyRemoteSnapshot(snapshot);
                 if (!javax.swing.SwingUtilities.isEventDispatchThread()) {
-                    javax.swing.SwingUtilities.invokeLater(() -> applyRemoteSnapshot(getRemotePlayerId(), snapshot));
+                    javax.swing.SwingUtilities.invokeLater(apply);
                 } else {
-                    applyRemoteSnapshot(getRemotePlayerId(), snapshot);
+                    apply.run();
                 }
             }
 
