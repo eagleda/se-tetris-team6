@@ -242,8 +242,9 @@ public class GameplayEngine implements GameClock.Listener {
         if (rotateCW) {
             BlockShape rotated = activeBlock.getShape().rotatedCW();
             if (board.canPlace(rotated, activeBlock.getX(), activeBlock.getY())) {
-                activeBlock.setShape(rotated);
-                if (events != null) { // 이벤트 호출
+                // rotation 필드까지 반영되는 메서드 사용
+                activeBlock.rotateCW();
+                if (events != null) {
                     events.onBlockRotated(activeBlock, 1);
                 }
             }
@@ -252,8 +253,9 @@ public class GameplayEngine implements GameClock.Listener {
         if (rotateCCW) {
             BlockShape rotated = activeBlock.getShape().rotatedCW().rotatedCW().rotatedCW();
             if (board.canPlace(rotated, activeBlock.getX(), activeBlock.getY())) {
-                activeBlock.setShape(rotated);
-                if (events != null) { //이벤트 호출
+                // 새로 추가된 CCW 회전 사용 (rotation 갱신 포함)
+                activeBlock.rotateCCW();
+                if (events != null) {
                     events.onBlockRotated(activeBlock, 3);
                 }
             }
