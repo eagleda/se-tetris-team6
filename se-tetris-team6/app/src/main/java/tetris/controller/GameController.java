@@ -443,7 +443,11 @@ public class GameController {
                 
                 @Override
                 public void sendGameState(tetris.domain.GameModel gameState) {
-                    // Game state sync can be added here if needed
+                    // 호스트가 주기적으로 게임 상태 스냅샷을 브로드캐스트
+                    if (networkServer != null && gameState != null) {
+                        tetris.network.protocol.GameSnapshot snapshot = gameState.toSnapshot();
+                        networkServer.broadcastGameStateSnapshot(snapshot);
+                    }
                 }
                 
                 @Override

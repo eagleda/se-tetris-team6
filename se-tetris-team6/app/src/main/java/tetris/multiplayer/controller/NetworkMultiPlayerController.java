@@ -73,13 +73,18 @@ public final class NetworkMultiPlayerController {
     /**
      * 네트워크 게임에서는 로컬 플레이어만 업데이트
      * 원격 플레이어 상태는 네트워크를 통해 동기화
+     * 
+     * 호스트인 경우 주기적으로 게임 상태 스냅샷을 브로드캐스트합니다.
      */
     public void tick() {
-        game.modelOf(localPlayerId).update();
+        GameModel localModel = game.modelOf(localPlayerId);
+        localModel.update();
         
-        // 네트워크 상태 동기화
-        if (networkHandler != null) {
-            networkHandler.sendGameState(game.modelOf(localPlayerId));
+        // 호스트(Player 1)인 경우 게임 상태 스냅샷 전송
+        if (networkHandler != null && localPlayerId == 1) {
+            if (localModel.getCurrentState() == tetris.domain.model.GameState.PLAYING) {
+                networkHandler.sendGameState(localModel);
+            }
         }
     }
 

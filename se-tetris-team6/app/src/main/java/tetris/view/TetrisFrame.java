@@ -46,7 +46,7 @@ public class TetrisFrame extends JFrame {
     protected MainPanel mainPanel;
     protected SingleGameLayout singleGameLayout;
     protected MultiGameLayout localMultiGameLayout;
-    protected MultiGameLayout onlineMultiGameLayout;
+    protected tetris.view.GameComponent.NetworkMultiGameLayout onlineMultiGameLayout;
     protected SettingPanel settingPanel;
     protected ScoreboardPanel scoreboardPanel;
     protected PausePanel pausePanel;
@@ -68,8 +68,6 @@ public class TetrisFrame extends JFrame {
     private GameModel.UiBridge localP2UiBridge;
     // Optional in-process server when user chooses to host a game
     private GameServer hostedServer;
-    // 호스트가 게임 상태를 주기적으로 브로드캐스트하기 위한 타이머
-    private javax.swing.Timer hostSnapshotBroadcastTimer;
 
     public TetrisFrame(GameModel gameModel) {
         super(FRAME_TITLE);
@@ -283,8 +281,6 @@ public class TetrisFrame extends JFrame {
                                             TetrisFrame.this.bindMultiPanelToCurrentSession();
                                             System.out.println("[UI][SERVER] Displaying multiGameLayout");
                                             TetrisFrame.this.displayPanel(onlineMultiGameLayout);
-                                            // 호스트 스냅샷 브로드캐스트 타이머 시작
-                                            TetrisFrame.this.startHostSnapshotBroadcast();
                                         });
                                         break;
                                     }
@@ -640,7 +636,7 @@ public class TetrisFrame extends JFrame {
     }
 
     private void setupOnlineMultiGameLayout() {
-        onlineMultiGameLayout = new MultiGameLayout();
+        onlineMultiGameLayout = new tetris.view.GameComponent.NetworkMultiGameLayout();
         onlineMultiGameLayout.setVisible(false);
         layeredPane.add(onlineMultiGameLayout, JLayeredPane.DEFAULT_LAYER);
     }
@@ -1061,20 +1057,19 @@ public class TetrisFrame extends JFrame {
     }
 
     /**
-     * 온라인 멀티용 패널 바인딩: 좌측은 로컬 플레이어, 우측은 상대 플레이어 모델.
+     * 온라인 멀티용 패널 바인딩: NetworkMultiGameLayout을 사용하여 네트워크 세션 바인딩.
      */
     private void bindOnlinePanelToCurrentSession() {
         if (onlineMultiGameLayout == null)
             return;
         LocalMultiplayerSession session = gameModel.getActiveLocalMultiplayerSession().orElse(null);
         if (session == null) {
-            System.out.println("[UI][WARN] No active session found for online layout; binding single model");
-            onlineMultiGameLayout.bindGameModel(gameModel);
+            System.out.println("[UI][WARN] No active session found for online layout; skipping binding");
             return;
         }
-        GameModel self = session.isPlayerOneLocal() ? session.playerOneModel() : session.playerTwoModel();
-        GameModel opp = session.isPlayerOneLocal() ? session.playerTwoModel() : session.playerOneModel();
-        onlineMultiGameLayout.bindOnlineMultiplayer(self, opp);
+        // NetworkMultiGameLayout의 bindOnlineMultiplayerSession 메서드 호출
+        onlineMultiGameLayout.bindOnlineMultiplayerSession(session);
+        System.out.println("[UI] Bound online multiplayer session to NetworkMultiGameLayout");
     }
 
     private GameMode resolveMenuMode(String mode) {
@@ -1174,39 +1169,5 @@ public class TetrisFrame extends JFrame {
                 // 로컬 뷰는 메인 UI 오버레이를 사용하므로 무시
             }
         };
-    }
-
-    /**
-     * 호스트가 주기적으로 자신의 게임 상태 스냅샷을 클라이언트들에게 브로드캐스트합니다.
-     * 약 100ms마다 호스트의 GameModel을 스냅샷하여 전송합니다.
-     */
-    private void startHostSnapshotBroadcast() {
-        if (hostedServer == null) return;
-        stopHostSnapshotBroadcast(); // 기존 타이머 정리
-        hostSnapshotBroadcastTimer = new javax.swing.Timer(100, e -> {
-            LocalMultiplayerSession session = gameModel.getActiveLocalMultiplayerSession().orElse(null);
-            if (session == null) {
-                stopHostSnapshotBroadcast();
-                return;
-            }
-            // 호스트는 Player-1이므로 playerOneModel이 호스트 모델
-            tetris.domain.GameModel hostModel = session.playerOneModel();
-            if (hostModel.getCurrentState() == tetris.domain.model.GameState.PLAYING) {
-                tetris.network.protocol.GameSnapshot snapshot = hostModel.toSnapshot();
-                hostedServer.broadcastGameStateSnapshot(snapshot);
-            }
-        });
-        hostSnapshotBroadcastTimer.start();
-        System.out.println("[TetrisFrame] Host snapshot broadcast timer started.");
-    }
-
-    /**
-     * 호스트 스냅샷 브로드캐스트 타이머 중지
-     */
-    private void stopHostSnapshotBroadcast() {
-        if (hostSnapshotBroadcastTimer != null && hostSnapshotBroadcastTimer.isRunning()) {
-            hostSnapshotBroadcastTimer.stop();
-            System.out.println("[TetrisFrame] Host snapshot broadcast timer stopped.");
-        }
     }
 }
