@@ -22,13 +22,13 @@ import tetris.multiplayer.handler.MultiplayerHandler;
  * 호스트가 주기적으로 스냅샷을 브로드캐스트하면 클라이언트는 그 상태로만 렌더링합니다.
  */
 public class NetworkMultiGameLayout extends JPanel {
-    // 플레이어 1 (자신)
+    // 플레이어 1 (자신) - 화면의 왼쪽 영역
     private GamePanel gamePanel_1;
     private NextBlockPanel nextBlockPanel_1;
     private ScorePanel scoreboard_1;
     private AttackQueuePanel attackQueuePanel_1;
 
-    // 플레이어 2 (상대)
+    // 플레이어 2 (상대) - 화면의 오른쪽 영역
     private GamePanel gamePanel_2;
     private NextBlockPanel nextBlockPanel_2;
     private ScorePanel scoreboard_2;
@@ -108,12 +108,8 @@ public class NetworkMultiGameLayout extends JPanel {
      * 네트워크 멀티플레이어 세션을 바인딩합니다.
      * 
      * 화면 구성:
-     * - 호스트(P1): 좌측에 자신(P1), 우측에 클라이언트(P2 - 빈 화면 또는 최소 정보)
-     * - 클라이언트(P2): 좌측에 호스트(P1 - 네트워크로 받은 상태), 우측에 자신(P2)
-     * 
-     * 네트워크 동기화:
-     * - 호스트는 자신(P1)의 게임 상태를 매 틱마다 브로드캐스트
-     * - 클라이언트는 받은 호스트 상태를 P1 화면에 표시
+     * - 로컬 플레이어: 항상 좌측에 표시
+     * - 원격 플레이어: 항상 우측에 표시
      */
     public void bindOnlineMultiplayerSession(NetworkMultiplayerSession session) {
         System.out.println("[NetworkMultiGameLayout] bindOnlineMultiplayerSession called - session=" + (session != null ? "ACTIVE" : "NULL"));
@@ -121,26 +117,14 @@ public class NetworkMultiGameLayout extends JPanel {
             return;
         }
         
-        // Determine left/right by asking the session's handler for which player is local.
+        // 1. 로컬 플레이어 ID 확인
         MultiplayerHandler handler = session.handler();
         int localPlayerId = 0;
         if (handler instanceof tetris.multiplayer.handler.NetworkedMultiplayerHandler) {
             localPlayerId = ((tetris.multiplayer.handler.NetworkedMultiplayerHandler) handler).getLocalPlayerId();
         }
-<<<<<<< HEAD
-        
-        System.out.println("[NetworkMultiGameLayout] LocalPlayerId=" + localPlayerId);
-        
-        // 🔧 FIX: 로컬 플레이어는 항상 왼쪽, 원격 플레이어는 항상 오른쪽에 표시
-        // localPlayerId에 따라 모델 바인딩도 함께 교체
-        GameModel localModel;
-        GameModel remoteModel;
-        
-        if (localPlayerId == 1) {
-            localModel = session.playerOneModel();   // P1 = 로컬
-            remoteModel = session.playerTwoModel();  // P2 = 원격
-=======
 
+        // 2. 왼쪽/오른쪽 플레이어 ID 결정 (로컬 플레이어가 항상 왼쪽)
         int leftPlayerId = 1;
         int rightPlayerId = 2;
         if (localPlayerId == 2) {
@@ -150,45 +134,29 @@ public class NetworkMultiGameLayout extends JPanel {
 
         System.out.println("[NetworkMultiGameLayout] Determined localPlayerId=" + localPlayerId + ", leftId=" + leftPlayerId + ", rightId=" + rightPlayerId);
 
+        // 3. 왼쪽/오른쪽 모델 결정
         GameModel leftModel = (leftPlayerId == 1) ? session.playerOneModel() : session.playerTwoModel();
         GameModel rightModel = (rightPlayerId == 1) ? session.playerOneModel() : session.playerTwoModel();
 
-        // Replace panels appropriately: left panel shows local, right panel remote
+        // 4. 패널 교체: 왼쪽 패널은 로컬, 오른쪽 패널은 원격으로 설정
         if (leftPlayerId == localPlayerId) {
->>>>>>> 49270cf72e766fd0fb497a5fa00491955c79a2bd
             replaceLeftWithLocal();
             replaceRightWithRemote();
         } else {
-            localModel = session.playerTwoModel();   // P2 = 로컬
-            remoteModel = session.playerOneModel();  // P1 = 원격
-            replaceLeftWithLocal();   // P2를 왼쪽에
-            replaceRightWithRemote(); // P1을 오른쪽에
+            // 이 경우는 로컬 플레이어가 P1이고 P2가 왼쪽으로 할당된 경우 (발생하지 않아야 함)
+            replaceLeftWithRemote();
+            replaceRightWithLocal();
         }
 
-<<<<<<< HEAD
-        System.out.println("[NetworkMultiGameLayout] Binding - Local(left)=" + localModel + ", Remote(right)=" + remoteModel);
-
-        // 왼쪽=로컬, 오른쪽=원격으로 바인딩
-        bindPlayerModels(localModel, remoteModel);
-        
-        // 🔧 FIX: 공격 대기열도 로컬/원격 플레이어 ID에 맞춰 바인딩
-        if (localPlayerId == 1) {
-            attackQueuePanel_1.bindAttackLinesSupplier(() -> session.handler().getPendingAttackLines(1)); // 왼쪽=P1
-            attackQueuePanel_2.bindAttackLinesSupplier(() -> session.handler().getPendingAttackLines(2)); // 오른쪽=P2
-        } else {
-            attackQueuePanel_1.bindAttackLinesSupplier(() -> session.handler().getPendingAttackLines(2)); // 왼쪽=P2
-            attackQueuePanel_2.bindAttackLinesSupplier(() -> session.handler().getPendingAttackLines(1)); // 오른쪽=P1
-        }
-=======
-        // Bind models according to left/right decided above
+        // 5. 모델 바인딩 (leftModel -> gamePanel_1, rightModel -> gamePanel_2)
         bindPlayerModels(leftModel, rightModel);
 
-        // Bind attack queues to the correct player IDs for left/right panels
+        // 6. 공격 대기열 바인딩 (leftPlayerId와 rightPlayerId에 맞춰)
         final int lp = leftPlayerId;
         final int rp = rightPlayerId;
         attackQueuePanel_1.bindAttackLinesSupplier(() -> session.handler().getPendingAttackLines(lp));
         attackQueuePanel_2.bindAttackLinesSupplier(() -> session.handler().getPendingAttackLines(rp));
->>>>>>> 49270cf72e766fd0fb497a5fa00491955c79a2bd
+
         System.out.println("[NetworkMultiGameLayout] Session binding complete, repainting");
         String out = tetris.view.PvPGameRenderer.render(session.playerOneModel(), session.playerTwoModel(), true, true, "상태 메시지");
         System.out.println(out);
