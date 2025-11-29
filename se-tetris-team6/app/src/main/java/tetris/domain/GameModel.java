@@ -1034,6 +1034,9 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
      */
     private void applySnapshotImpl(tetris.network.protocol.GameSnapshot snapshot) {
         if (snapshot == null) return;
+        try {
+            System.out.println("[GameModel] Applying snapshot -> player=" + snapshot.playerId() + ", currentId=" + snapshot.currentBlockId() + ", nextId=" + snapshot.nextBlockId() + ", pending=" + snapshot.pendingGarbage());
+        } catch (Exception ignore) {}
         
         // 보드 상태 적용
         int[][] b = snapshot.board();
@@ -1088,6 +1091,9 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         // 가비지 라인 업데이트
         this.pendingGarbageLines = snapshot.pendingGarbage();
         if (uiBridge != null) uiBridge.refreshBoard();
+        try {
+            System.out.println("[GameModel] Snapshot applied -> player=" + snapshot.playerId() + ", pending=" + this.pendingGarbageLines);
+        } catch (Exception ignore) {}
     }
 
     public void stepGameplay() {

@@ -607,7 +607,13 @@ public class TetrisFrame extends JFrame {
                 switch (message.getType()) {
                     case PLAYER_INPUT:
                         Object payload = message.getPayload();
+                        System.out.println("[Host][Listener] Received PLAYER_INPUT from sender=" + message.getSenderId() + ", seq=" + message.getSequenceNumber());
                         if (payload instanceof tetris.network.protocol.PlayerInput pi) {
+                            // Log opponent active block before applying input
+                            tetris.domain.model.Block before = opponent.getActiveBlock();
+                            String beforeInfo = before == null ? "<no-active>" : (before.getKind().name() + "(id=" + (before.getKind().ordinal()+1) + ")@x=" + before.getX() + ",y=" + before.getY() + ",rot=" + before.getRotation());
+                            System.out.println("[Host][Listener] Opponent BEFORE input -> " + beforeInfo + " | input=" + pi.inputType());
+
                             switch (pi.inputType()) {
                                 case MOVE_LEFT -> opponent.moveBlockLeft();
                                 case MOVE_RIGHT -> opponent.moveBlockRight();
@@ -618,16 +624,26 @@ public class TetrisFrame extends JFrame {
                                 case HOLD -> opponent.holdCurrentBlock();
                                 default -> {}
                             }
+
+                            // Log opponent active block after applying input
+                            tetris.domain.model.Block after = opponent.getActiveBlock();
+                            String afterInfo = after == null ? "<no-active>" : (after.getKind().name() + "(id=" + (after.getKind().ordinal()+1) + ")@x=" + after.getX() + ",y=" + after.getY() + ",rot=" + after.getRotation());
+                            System.out.println("[Host][Listener] Opponent AFTER input  -> " + afterInfo);
+
                             // Repaint to show opponent's updated state
                             if (onlineMultiGameLayout != null) {
                                 onlineMultiGameLayout.repaint();
                             }
+
                             // Immediately broadcast authoritative snapshots so client sees its own input reflected without waiting for next tick.
                             if (hostedServer != null && session != null) {
                                 try {
                                     tetris.domain.GameModel p1Model = session.playerOneModel();
                                     tetris.domain.GameModel p2Model = session.playerTwoModel();
-                                    hostedServer.broadcastDualSnapshots(p1Model.toSnapshot(1), p2Model.toSnapshot(2));
+                                    tetris.network.protocol.GameSnapshot s1 = p1Model.toSnapshot(1);
+                                    tetris.network.protocol.GameSnapshot s2 = p2Model.toSnapshot(2);
+                                    System.out.println("[Host][Listener] Broadcasting snapshots -> p1(currentId=" + s1.currentBlockId() + ",nextId=" + s1.nextBlockId() + ") p2(currentId=" + s2.currentBlockId() + ",nextId=" + s2.nextBlockId() + ")");
+                                    hostedServer.broadcastDualSnapshots(s1, s2);
                                 } catch (Exception ex) {
                                     System.err.println("[Host] Failed to broadcast snapshots after remote input: " + ex.getMessage());
                                 }

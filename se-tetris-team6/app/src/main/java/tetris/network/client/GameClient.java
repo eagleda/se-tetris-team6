@@ -134,6 +134,7 @@ public class GameClient {
     public void sendPlayerInput(PlayerInput input){
         if (!isConnected || clientHandler == null || input == null) return;
         GameMessage msg = new GameMessage(tetris.network.protocol.MessageType.PLAYER_INPUT, this.playerId == null ? "CLIENT" : this.playerId, input);
+        System.out.println("[Client] sendPlayerInput: playerId=" + this.playerId + " payload=" + input);
         clientHandler.sendMessage(msg);
     }
 

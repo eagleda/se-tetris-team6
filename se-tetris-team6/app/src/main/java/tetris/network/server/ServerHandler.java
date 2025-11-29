@@ -148,6 +148,7 @@ import java.util.concurrent.atomic.AtomicInteger; // 추가: 스레드 안전한
             case PLAYER_INPUT:
             case ATTACK_LINES:
                 // 클라이언트 입력을 호스트에게 전달
+                System.out.println("[ServerHandler] received " + message.getType() + " from clientId=" + clientId + " senderId=" + message.getSenderId() + " payload=" + message.getPayload());
                 server.notifyHostOfMessage(message);
                 break;
             default:
