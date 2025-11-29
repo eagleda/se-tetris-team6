@@ -401,7 +401,7 @@ public final class NetworkMultiPlayerController {
                     case PLAYER_INPUT: {
                         Object payload = message.getPayload();
                         if (payload instanceof tetris.network.protocol.PlayerInput pi) {
-                            System.out.println("[NetCtrl] onGameStateChange PLAYER_INPUT from sender='" + message.getSenderId() + "' payload=" + pi);
+                            System.out.println("[NetCtrl] onGameStateChange PLAYER_INPUT from sender='" + message.getSenderId() + "' seq=" + message.getSequenceNumber() + " payload=" + pi + " identity=" + System.identityHashCode(message));
                             applyRemotePlayerInput(getRemotePlayerId(), pi);
                         }
                         break;

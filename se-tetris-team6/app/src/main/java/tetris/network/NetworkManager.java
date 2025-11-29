@@ -133,6 +133,9 @@ public class NetworkManager implements INetworkThreadCallback {
                 localPlayerId,
                 input
             );
+            try {
+                System.out.println("[NetworkManager] sendPlayerInput: localPlayerId=" + localPlayerId + " payload=" + input + " seq=" + message.getSequenceNumber() + " identity=" + System.identityHashCode(message));
+            } catch (Exception ignore) {}
             networkThread.sendMessage(message);
         }
     }
