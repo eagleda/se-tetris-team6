@@ -177,10 +177,19 @@ public final class NetworkedMultiplayerHandler implements MultiplayerHandler {
         return new tetris.domain.GameModel.MultiplayerHook() {
             @Override
             public void onPieceLocked(tetris.multiplayer.model.LockedPieceSnapshot snapshot, int[] clearedRows, int boardWidth) {
-                // 이 Hook은 서버(P1)에서만 호출되므로, 로컬 플레이어의 onLocalPieceLocked를 호출합니다.
-                // P1이 P1 모델에서 라인을 지우면 P1의 공격으로, P1이 P2 모델에서 라인을 지우면 P2의 공격으로 처리됩니다.
-                // 하지만 P2 모델은 P1의 키 입력을 받지 않으므로, P2 모델의 Hook은 P2의 입력이 서버에 반영된 후 P1의 update()에서만 호출됩니다.
-                controller.onLocalPieceLocked(snapshot, clearedRows);
+                // Hook의 playerId 매개변수를 사용하여 정확한 플레이어의 공격으로 등록합니다.
+                // P1 모델의 Hook이 호출되면 playerId=1로 공격 등록 (상대방 P2 버퍼에 추가)
+                // P2 모델의 Hook이 호출되면 playerId=2로 공격 등록 (상대방 P1 버퍼에 추가)
+                GameModel model = game.modelOf(playerId);
+                game.onPieceLocked(playerId, snapshot, clearedRows, boardWidth);
+                
+                // 로컬 플레이어만 네트워크로 이벤트 전송
+                if (playerId == localPlayerId) {
+                    controller.sendPieceLockedEvent(snapshot, clearedRows);
+                    if (clearedRows.length > 0) {
+                        controller.sendGameState(model);
+                    }
+                }
             }
 
             @Override
