@@ -440,7 +440,7 @@ public class GameController implements tetris.network.client.GameStateListener {
                 public void sendPieceLockedEvent(tetris.multiplayer.model.LockedPieceSnapshot snapshot, int[] clearedYs) {
                     sendNetworkPieceLocked(snapshot, clearedYs);
                 }
-                
+
                 @Override
                 public void sendGameState(tetris.domain.GameModel gameState) {
                     // 호스트가 주기적으로 게임 상태 스냅샷을 브로드캐스트
@@ -449,12 +449,82 @@ public class GameController implements tetris.network.client.GameStateListener {
                         networkServer.broadcastGameStateSnapshot(snapshot);
                     }
                 }
-                
+
                 @Override
                 public void sendGameOverEvent() {
                     sendGameEndCallback.run();
                 }
             });
+
+            // If a network client was already attached, forward incoming messages to
+            // the session's NetworkMultiPlayerController so network logic lives in
+            // the multiplayer controller rather than UI/Frame.
+            if (networkClient != null && session != null) {
+                final LocalMultiplayerSession sess = session;
+                networkClient.setGameStateListener(new tetris.network.client.GameStateListener() {
+                    @Override
+                    public void onOpponentBoardUpdate(tetris.network.protocol.GameMessage message) {
+                        // board-level messages are handled via snapshots; keep no-op here
+                    }
+
+                    @Override
+                    public void onGameStateSnapshot(tetris.network.protocol.GameSnapshot snapshot) {
+                        int remotePlayerId = sess.isPlayerOneLocal() ? 2 : 1;
+                        if (sess.networkController() != null) {
+                            sess.networkController().applyRemoteSnapshot(remotePlayerId, snapshot);
+                        }
+                    }
+
+                    @Override
+                    public void onGameStateChange(tetris.network.protocol.GameMessage message) {
+                        if (sess.networkController() == null) return;
+                        switch (message.getType()) {
+                            case PLAYER_INPUT: {
+                                Object payload = message.getPayload();
+                                if (payload instanceof tetris.network.protocol.PlayerInput pi) {
+                                    int remotePlayerId = sess.isPlayerOneLocal() ? 2 : 1;
+                                    sess.networkController().applyRemotePlayerInput(remotePlayerId, pi);
+                                }
+                                break;
+                            }
+                            case ATTACK_LINES: {
+                                Object payload = message.getPayload();
+                                if (payload instanceof tetris.network.protocol.AttackLine[] lines) {
+                                    int remotePlayerId = sess.isPlayerOneLocal() ? 2 : 1;
+                                    sess.networkController().applyRemoteAttackLines(remotePlayerId, lines);
+                                }
+                                break;
+                            }
+                            case GAME_END: {
+                                // Mark loser based on winnerId in payload (same logic as prior UI handling)
+                                Object payloadObj = message.getPayload();
+                                Integer winnerId = null;
+                                if (payloadObj instanceof java.util.Map) {
+                                    Object winnerIdObj = ((java.util.Map<?, ?>) payloadObj).get("winnerId");
+                                    if (winnerIdObj instanceof Number) winnerId = ((Number) winnerIdObj).intValue();
+                                }
+                                if (winnerId != null) {
+                                    int loserId = (winnerId == 1) ? 2 : 1;
+                                    sess.game().markLoser(loserId);
+                                } else {
+                                    int opponentId = sess.isPlayerOneLocal() ? 2 : 1;
+                                    sess.game().markLoser(opponentId);
+                                }
+                                // Ensure local UI shows result
+                                tetris.domain.GameModel localModel = sess.isPlayerOneLocal() ? sess.playerOneModel() : sess.playerTwoModel();
+                                tetris.domain.GameModel opponentModel = sess.isPlayerOneLocal() ? sess.playerTwoModel() : sess.playerOneModel();
+                                if (localModel.getCurrentState() != tetris.domain.model.GameState.GAME_OVER) {
+                                    localModel.changeState(tetris.domain.model.GameState.GAME_OVER);
+                                    opponentModel.changeState(tetris.domain.model.GameState.GAME_OVER);
+                                    gameModel.showMultiplayerResult(sess.game().getWinnerId() == null ? -1 : sess.game().getWinnerId());
+                                }
+                                break;
+                            }
+                            default: break;
+                        }
+                    }
+                });
+            }
         }
         
         System.out.println("[GameController] Enabling local multiplayer in GameModel");
@@ -579,8 +649,67 @@ public class GameController implements tetris.network.client.GameStateListener {
      */
     public void setNetworkClient(tetris.network.client.GameClient client) {
         this.networkClient = client;
-        if (client != null) {
-            client.setGameStateListener(this);
+        if (client == null) return;
+
+        // If a local multiplayer session already exists, register a listener
+        // that forwards incoming network messages to the session's
+        // NetworkMultiPlayerController. This ensures we don't miss messages
+        // when the client is attached after the session is created.
+        final LocalMultiplayerSession sess = this.localSession;
+        if (sess != null && sess.networkController() != null) {
+            client.setGameStateListener(new tetris.network.client.GameStateListener() {
+                @Override
+                public void onOpponentBoardUpdate(tetris.network.protocol.GameMessage message) {
+                    // board update messages are handled via snapshots; no-op here
+                }
+
+                @Override
+                public void onGameStateSnapshot(tetris.network.protocol.GameSnapshot snapshot) {
+                    int remotePlayerId = sess.isPlayerOneLocal() ? 2 : 1;
+                    sess.networkController().applyRemoteSnapshot(remotePlayerId, snapshot);
+                }
+
+                @Override
+                public void onGameStateChange(tetris.network.protocol.GameMessage message) {
+                    if (sess.networkController() == null) return;
+                    switch (message.getType()) {
+                        case PLAYER_INPUT: {
+                            Object payload = message.getPayload();
+                            if (payload instanceof tetris.network.protocol.PlayerInput pi) {
+                                int remotePlayerId = sess.isPlayerOneLocal() ? 2 : 1;
+                                sess.networkController().applyRemotePlayerInput(remotePlayerId, pi);
+                            }
+                            break;
+                        }
+                        case ATTACK_LINES: {
+                            Object payload = message.getPayload();
+                            if (payload instanceof tetris.network.protocol.AttackLine[] lines) {
+                                int remotePlayerId = sess.isPlayerOneLocal() ? 2 : 1;
+                                sess.networkController().applyRemoteAttackLines(remotePlayerId, lines);
+                            }
+                            break;
+                        }
+                        case GAME_END: {
+                            Object payloadObj = message.getPayload();
+                            Integer winnerId = null;
+                            if (payloadObj instanceof java.util.Map) {
+                                Object winnerIdObj = ((java.util.Map<?, ?>) payloadObj).get("winnerId");
+                                if (winnerIdObj instanceof Number) winnerId = ((Number) winnerIdObj).intValue();
+                            }
+                            if (winnerId != null) {
+                                int loserId = (winnerId == 1) ? 2 : 1;
+                                sess.game().markLoser(loserId);
+                            } else {
+                                int opponentId = sess.isPlayerOneLocal() ? 2 : 1;
+                                sess.game().markLoser(opponentId);
+                            }
+                            break;
+                        }
+                        default:
+                            break;
+                    }
+                }
+            });
         }
     }
 

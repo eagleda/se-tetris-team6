@@ -212,4 +212,45 @@ public final class NetworkMultiPlayerController {
         void sendGameState(GameModel gameState);
         void sendGameOverEvent();
     }
+
+    /**
+     * Apply a remote player's direct input to the corresponding GameModel.
+     * This is used by the networking layer when a PLAYER_INPUT message arrives.
+     */
+    public void applyRemotePlayerInput(int playerId, tetris.network.protocol.PlayerInput input) {
+        if (input == null) return;
+        GameModel model = game.modelOf(playerId);
+        if (model == null) return;
+        switch (input.inputType()) {
+            case MOVE_LEFT -> model.moveBlockLeft();
+            case MOVE_RIGHT -> model.moveBlockRight();
+            case SOFT_DROP -> model.moveBlockDown();
+            case ROTATE -> model.rotateBlockClockwise();
+            case ROTATE_CCW -> model.rotateBlockCounterClockwise();
+            case HARD_DROP -> model.hardDropBlock();
+            case HOLD -> model.holdCurrentBlock();
+            default -> {}
+        }
+    }
+
+    /**
+     * Apply attack lines received from the network to the given player's model.
+     * The GameModel currently exposes `applyAttackLines` that accepts network protocol lines.
+     */
+    public void applyRemoteAttackLines(int playerId, tetris.network.protocol.AttackLine[] lines) {
+        if (lines == null || lines.length == 0) return;
+        GameModel model = game.modelOf(playerId);
+        if (model == null) return;
+        model.applyAttackLines(lines);
+    }
+
+    /**
+     * Apply an authoritative snapshot received from the network to a remote player's model.
+     */
+    public void applyRemoteSnapshot(int playerId, tetris.network.protocol.GameSnapshot snapshot) {
+        if (snapshot == null) return;
+        GameModel model = game.modelOf(playerId);
+        if (model == null) return;
+        model.applySnapshot(snapshot);
+    }
 }
