@@ -56,26 +56,49 @@ public final class NetworkedMultiplayerHandler implements MultiplayerHandler {
             return;
         }
         
-        // 네트워크 모드에서는 로컬 플레이어만 update
-        // 상대방은 네트워크 스냅샷으로만 업데이트됨
-        GameModel localModel = game.modelOf(localPlayerId);
-        if (localModel != null) {
-            localModel.update();
-        }
-        
-        // Check if local player's game over
-        if (localModel.getCurrentState() == GameState.GAME_OVER) {
-            // Mark that we've handled game end to prevent re-processing
-            gameEndHandled = true;
+        // 서버 권한 방식: 서버(P1)만 게임 로직 실행
+        if (localPlayerId == 1) {
+            // 서버: 두 플레이어 모두 update
+            GameModel player1Model = game.modelOf(1);
+            GameModel player2Model = game.modelOf(2);
             
-            game.markLoser(localPlayerId);
-            model.changeState(GameState.GAME_OVER);
-            model.showMultiplayerResult(game.getWinnerId() == null ? -1 : game.getWinnerId());
+            if (player1Model != null) {
+                player1Model.update();
+            }
+            if (player2Model != null) {
+                player2Model.update();
+            }
             
-            // Send GAME_END message to opponent (only once)
-            if (!gameEndSent && sendGameEndCallback != null) {
-                sendGameEndCallback.run();
-                gameEndSent = true;
+            // Check if any player's game over
+            boolean p1GameOver = player1Model != null && player1Model.getCurrentState() == GameState.GAME_OVER;
+            boolean p2GameOver = player2Model != null && player2Model.getCurrentState() == GameState.GAME_OVER;
+            
+            if (p1GameOver || p2GameOver) {
+                gameEndHandled = true;
+                
+                if (p1GameOver) {
+                    game.markLoser(1);
+                } else {
+                    game.markLoser(2);
+                }
+                
+                model.changeState(GameState.GAME_OVER);
+                model.showMultiplayerResult(game.getWinnerId() == null ? -1 : game.getWinnerId());
+                
+                if (!gameEndSent && sendGameEndCallback != null) {
+                    sendGameEndCallback.run();
+                    gameEndSent = true;
+                }
+            }
+        } else {
+            // 클라이언트(P2): 아무것도 하지 않음
+            // 서버로부터 받은 스냅샷으로만 화면 업데이트
+            // 게임 종료 확인만 수행
+            GameModel localModel = game.modelOf(localPlayerId);
+            if (localModel != null && localModel.getCurrentState() == GameState.GAME_OVER) {
+                gameEndHandled = true;
+                model.changeState(GameState.GAME_OVER);
+                model.showMultiplayerResult(game.getWinnerId() == null ? -1 : game.getWinnerId());
             }
         }
     }
@@ -87,11 +110,19 @@ public final class NetworkedMultiplayerHandler implements MultiplayerHandler {
 
     @Override
     public void dispatchToPlayer(int playerId, Consumer<GameModel> action) {
-        if (playerId != localPlayerId) {
-            // ignore attempts to dispatch to remote player
-            return;
+        if (localPlayerId == 1) {
+            // 서버: 모든 플레이어에게 dispatch 가능
+            GameModel targetModel = game.modelOf(playerId);
+            if (targetModel != null && action != null) {
+                action.accept(targetModel);
+            }
+        } else {
+            // 클라이언트: 로컬 플레이어에게만 dispatch (but 실제로는 키 입력만 서버로 전송)
+            if (playerId != localPlayerId) {
+                return;
+            }
+            controller.withLocalPlayer(action);
         }
-        controller.withLocalPlayer(action);
     }
 
     @Override

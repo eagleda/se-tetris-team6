@@ -76,33 +76,56 @@ public final class NetworkMultiPlayerController {
     }
 
     /**
-     * 네트워크 게임에서는 로컬 플레이어만 업데이트
-     * 원격 플레이어 상태는 네트워크를 통해 동기화
-     * 
-     * 모든 플레이어가 매 틱마다 자신의 게임 상태 스냅샷을 상대방에게 전송합니다.
+     * 서버 권한 방식: 서버(P1)만 게임 로직 실행
+     * - 서버: 두 플레이어 모두 update하고 두 플레이어의 스냅샷 전송
+     * - 클라이언트: update 안 함, 키 입력만 서버에 전송
      */
     public void tick() {
-        GameModel localModel = game.modelOf(localPlayerId);
-        localModel.update();
-        
-        // 모든 플레이어가 매 틱마다 자신의 게임 상태 스냅샷 전송
-        if (networkHandler != null) {
-            if (localModel.getCurrentState() == tetris.domain.model.GameState.PLAYING) {
-                networkHandler.sendGameState(localModel);
+        if (localPlayerId == 1) {
+            // 서버: 두 플레이어 모두 update
+            GameModel player1Model = game.modelOf(1);
+            GameModel player2Model = game.modelOf(2);
+            
+            if (player1Model != null) {
+                player1Model.update();
             }
+            if (player2Model != null) {
+                player2Model.update();
+            }
+            
+            // 서버는 두 플레이어의 게임 상태 스냅샷 모두 전송
+            if (networkHandler != null) {
+                if (player1Model != null && player1Model.getCurrentState() == tetris.domain.model.GameState.PLAYING) {
+                    networkHandler.sendGameState(player1Model);
+                }
+                if (player2Model != null && player2Model.getCurrentState() == tetris.domain.model.GameState.PLAYING) {
+                    networkHandler.sendGameState(player2Model);
+                }
+            }
+        } else {
+            // 클라이언트: 아무것도 하지 않음
+            // 서버로부터 받은 스냅샷으로만 화면 업데이트
         }
     }
 
     /**
-     * 로컬 플레이어 입력 처리 후 즉시 스냅샷 전송
+     * 서버: 입력 처리 후 즉시 스냅샷 전송
+     * 클라이언트: 입력은 이미 서버로 전송됨, 추가 동작 없음
      */
     public void onLocalInput() {
-        if (networkHandler != null) {
-            GameModel localModel = game.modelOf(localPlayerId);
-            if (localModel.getCurrentState() == tetris.domain.model.GameState.PLAYING) {
-                networkHandler.sendGameState(localModel);
+        if (localPlayerId == 1 && networkHandler != null) {
+            // 서버: 입력 처리 후 즉시 스냅샷 전송
+            GameModel player1Model = game.modelOf(1);
+            GameModel player2Model = game.modelOf(2);
+            
+            if (player1Model != null && player1Model.getCurrentState() == tetris.domain.model.GameState.PLAYING) {
+                networkHandler.sendGameState(player1Model);
+            }
+            if (player2Model != null && player2Model.getCurrentState() == tetris.domain.model.GameState.PLAYING) {
+                networkHandler.sendGameState(player2Model);
             }
         }
+        // 클라이언트는 아무것도 하지 않음 (키 입력은 이미 전송됨)
     }
 
     /**
