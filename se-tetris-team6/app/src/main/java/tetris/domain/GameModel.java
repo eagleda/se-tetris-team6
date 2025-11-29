@@ -46,6 +46,7 @@ import tetris.domain.score.ScoreRuleEngine;
 import tetris.multiplayer.model.Cell;
 import tetris.multiplayer.model.LockedPieceSnapshot;
 import tetris.multiplayer.session.LocalMultiplayerSession;
+import tetris.multiplayer.session.NetworkMultiplayerSession;
 
 /**
  * 게임 핵심 도메인 모델.
@@ -134,6 +135,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
     private final Map<GameState, GameHandler> handlers = new EnumMap<>(GameState.class);
     private GameHandler defaultPlayHandler;
     private LocalMultiplayerSession activeLocalSession;
+    private NetworkMultiplayerSession activeNetworkSession;
     private GameMode currentMode = GameMode.STANDARD;
     private GameMode lastMode = GameMode.STANDARD;
     private final ItemManager itemManager = new ItemManager();
@@ -588,6 +590,10 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
             // 로컬 멀티가 활성화되어 있다면 각 플레이어 모델을 동일한 모드로 재가동한다.
             activeLocalSession.restartPlayers(selected);
             handlers.put(GameState.PLAYING, activeLocalSession.handler());
+        } else if (activeNetworkSession != null) {
+            // 네트워크 멀티가 활성화되어 있다면 각 플레이어 모델을 동일한 모드로 재가동한다.
+            activeNetworkSession.restartPlayers(selected);
+            handlers.put(GameState.PLAYING, activeNetworkSession.handler());
         } else if (defaultPlayHandler != null) {
             handlers.put(GameState.PLAYING, defaultPlayHandler);
         }
@@ -926,7 +932,20 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         if (session == null) {
             return;
         }
+        clearMultiplayerSessions();
         this.activeLocalSession = session;
+        handlers.put(GameState.PLAYING, session.handler());
+    }
+
+    /**
+     * 네트워크 멀티 세션을 상태 머신에 연결한다.
+     */
+    public void enableNetworkMultiplayer(NetworkMultiplayerSession session) {
+        if (session == null) {
+            return;
+        }
+        clearMultiplayerSessions();
+        this.activeNetworkSession = session;
         handlers.put(GameState.PLAYING, session.handler());
     }
 
@@ -934,22 +953,36 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
      * 메뉴 복귀 / 싱글 모드 전환 등으로 더 이상 세션이 필요 없을 때 정리한다.
      */
     public void clearLocalMultiplayerSession() {
-        if (activeLocalSession == null) {
-            return;
+        clearMultiplayerSessions();
+    }
+
+    /**
+     * 모든 멀티플레이 세션을 정리한다.
+     */
+    private void clearMultiplayerSessions() {
+        if (activeLocalSession != null) {
+            activeLocalSession.shutdown();
+            activeLocalSession = null;
         }
-        activeLocalSession.shutdown();
+        if (activeNetworkSession != null) {
+            activeNetworkSession.shutdown();
+            activeNetworkSession = null;
+        }
         if (defaultPlayHandler != null) {
             handlers.put(GameState.PLAYING, defaultPlayHandler);
         }
-        activeLocalSession = null;
     }
 
     public boolean isLocalMultiplayerActive() {
-        return activeLocalSession != null;
+        return activeLocalSession != null || activeNetworkSession != null;
     }
 
     public Optional<LocalMultiplayerSession> getActiveLocalMultiplayerSession() {
         return Optional.ofNullable(activeLocalSession);
+    }
+
+    public Optional<NetworkMultiplayerSession> getActiveNetworkMultiplayerSession() {
+        return Optional.ofNullable(activeNetworkSession);
     }
 
     /** 네트워크 전송용 스냅샷 생성 */

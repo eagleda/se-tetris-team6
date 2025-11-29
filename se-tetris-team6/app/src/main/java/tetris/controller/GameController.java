@@ -13,6 +13,7 @@ import tetris.domain.setting.Setting;
 import tetris.multiplayer.handler.MultiplayerHandler;
 import tetris.multiplayer.session.LocalMultiplayerSession;
 import tetris.multiplayer.session.LocalMultiplayerSessionFactory;
+import tetris.multiplayer.session.NetworkMultiplayerSession;
 // 이제부터 모델의 좌우 움직임이 안 되는 이유를 해결합니다.
 
 /**
@@ -34,6 +35,7 @@ public class GameController implements tetris.network.client.GameStateListener {
     // 키 바인딩 맵
     private Map<String, Integer> keyBindings;
     private LocalMultiplayerSession localSession;
+    private NetworkMultiplayerSession networkSession;
     private Timer localMultiplayerTimer;
     private tetris.network.client.GameClient networkClient; // 네트워크 클라이언트 참조
     private tetris.network.server.GameServer networkServer; // 네트워크 서버 참조 (호스트용)
@@ -396,7 +398,7 @@ public class GameController implements tetris.network.client.GameStateListener {
      * @param mode game mode
      * @param localIsPlayerOne true if this process controls player 1
      */
-    public LocalMultiplayerSession startNetworkedMultiplayerGame(GameMode mode, boolean localIsPlayerOne) {
+    public NetworkMultiplayerSession startNetworkedMultiplayerGame(GameMode mode, boolean localIsPlayerOne) {
         System.out.println("[GameController] Starting networked multiplayer - localIsPlayerOne=" + localIsPlayerOne);
         deactivateLocalMultiplayer();
         
@@ -427,8 +429,8 @@ public class GameController implements tetris.network.client.GameStateListener {
         };
         
         System.out.println("[GameController] Creating networked session");
-        LocalMultiplayerSession session = LocalMultiplayerSessionFactory.createNetworkedSession(mode, localIsPlayerOne, sendGameEndCallback);
-        localSession = session;
+        NetworkMultiplayerSession session = LocalMultiplayerSessionFactory.createNetworkedSession(mode, localIsPlayerOne, sendGameEndCallback);
+        networkSession = session;
         System.out.println("[GameController] Session created - " + (session != null ? "SUCCESS" : "FAILED"));
         
         // Set up network event handler
@@ -460,7 +462,7 @@ public class GameController implements tetris.network.client.GameStateListener {
             // the session's NetworkMultiPlayerController so network logic lives in
             // the multiplayer controller rather than UI/Frame.
             if (networkClient != null && session != null) {
-                final LocalMultiplayerSession sess = session;
+                final NetworkMultiplayerSession sess = session;
                 networkClient.setGameStateListener(new tetris.network.client.GameStateListener() {
                     @Override
                     public void onOpponentBoardUpdate(tetris.network.protocol.GameMessage message) {
@@ -527,8 +529,8 @@ public class GameController implements tetris.network.client.GameStateListener {
             }
         }
         
-        System.out.println("[GameController] Enabling local multiplayer in GameModel");
-        gameModel.enableLocalMultiplayer(session);
+        System.out.println("[GameController] Enabling network multiplayer in GameModel");
+        gameModel.enableNetworkMultiplayer(session);
         System.out.println("[GameController] Starting local multiplayer tick");
         startLocalMultiplayerTick();
         pauseKeyPressed = false;
@@ -542,7 +544,7 @@ public class GameController implements tetris.network.client.GameStateListener {
     /**
      * RNG 시드를 지정하여 네트워크 멀티플레이를 시작합니다.
      */
-    public LocalMultiplayerSession startNetworkedMultiplayerGame(GameMode mode, boolean localIsPlayerOne, long seed) {
+    public NetworkMultiplayerSession startNetworkedMultiplayerGame(GameMode mode, boolean localIsPlayerOne, long seed) {
         deactivateLocalMultiplayer();
 
         Runnable sendGameEndCallback = () -> {
@@ -568,8 +570,8 @@ public class GameController implements tetris.network.client.GameStateListener {
         };
 
         System.out.println("[GameController] Creating networked session with seed=" + seed);
-        LocalMultiplayerSession session = LocalMultiplayerSessionFactory.createNetworkedSession(mode, localIsPlayerOne, sendGameEndCallback, seed);
-        localSession = session;
+        NetworkMultiplayerSession session = LocalMultiplayerSessionFactory.createNetworkedSession(mode, localIsPlayerOne, sendGameEndCallback, seed);
+        networkSession = session;
 
         tetris.multiplayer.controller.NetworkMultiPlayerController networkController = session.networkController();
         System.out.println("[GameController] NetworkController - " + (networkController != null ? "FOUND" : "NULL"));
@@ -596,8 +598,8 @@ public class GameController implements tetris.network.client.GameStateListener {
             });
         }
 
-        System.out.println("[GameController] Enabling local multiplayer in GameModel");
-        gameModel.enableLocalMultiplayer(session);
+        System.out.println("[GameController] Enabling network multiplayer in GameModel (seed)");
+        gameModel.enableNetworkMultiplayer(session);
         System.out.println("[GameController] Starting local multiplayer tick");
         startLocalMultiplayerTick();
         pauseKeyPressed = false;
@@ -651,11 +653,11 @@ public class GameController implements tetris.network.client.GameStateListener {
         this.networkClient = client;
         if (client == null) return;
 
-        // If a local multiplayer session already exists, register a listener
+        // If a network multiplayer session already exists, register a listener
         // that forwards incoming network messages to the session's
         // NetworkMultiPlayerController. This ensures we don't miss messages
         // when the client is attached after the session is created.
-        final LocalMultiplayerSession sess = this.localSession;
+        final NetworkMultiplayerSession sess = this.networkSession;
         if (sess != null && sess.networkController() != null) {
             client.setGameStateListener(new tetris.network.client.GameStateListener() {
                 @Override
@@ -841,8 +843,8 @@ public class GameController implements tetris.network.client.GameStateListener {
      * 호스트가 키 입력 후 즉시 스냅샷을 브로드캐스트하도록 통지합니다.
      */
     private void notifyNetworkControllerInput() {
-        if (localSession != null && localSession.networkController() != null) {
-            localSession.networkController().onLocalInput();
+        if (networkSession != null && networkSession.networkController() != null) {
+            networkSession.networkController().onLocalInput();
         }
     }
 
