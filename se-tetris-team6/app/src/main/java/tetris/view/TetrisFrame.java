@@ -277,9 +277,9 @@ public class TetrisFrame extends JFrame {
                                             gameController.startNetworkedMultiplayerGame(gameMode, true);
                                             // 호스트는 서버를 통해 클라이언트 메시지를 받음
                                             TetrisFrame.this.setupHostNetworkListener();
-                                            System.out.println("[UI][SERVER] Binding multi panel to session");
-                                            TetrisFrame.this.bindMultiPanelToCurrentSession();
-                                            System.out.println("[UI][SERVER] Displaying multiGameLayout");
+                                            System.out.println("[UI][SERVER] Binding online panel to session");
+                                            TetrisFrame.this.bindOnlinePanelToCurrentSession();
+                                            System.out.println("[UI][SERVER] Displaying onlineMultiGameLayout");
                                             TetrisFrame.this.displayPanel(onlineMultiGameLayout);
                                         });
                                         break;

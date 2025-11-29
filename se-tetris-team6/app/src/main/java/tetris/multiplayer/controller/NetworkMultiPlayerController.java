@@ -54,6 +54,11 @@ public final class NetworkMultiPlayerController {
         // 네트워크로 이벤트 전송
         if (networkHandler != null) {
             networkHandler.sendPieceLockedEvent(snapshot, clearedYs);
+            
+            // 라인이 클리어되었으면 즉시 게임 상태 동기화 (공격 대기열 포함)
+            if (localPlayerId == 1 && clearedYs.length > 0) {
+                networkHandler.sendGameState(model);
+            }
         }
     }
 
@@ -74,14 +79,26 @@ public final class NetworkMultiPlayerController {
      * 네트워크 게임에서는 로컬 플레이어만 업데이트
      * 원격 플레이어 상태는 네트워크를 통해 동기화
      * 
-     * 호스트인 경우 주기적으로 게임 상태 스냅샷을 브로드캐스트합니다.
+     * 매 틱마다 호스트가 게임 상태 스냅샷을 브로드캐스트합니다.
      */
     public void tick() {
         GameModel localModel = game.modelOf(localPlayerId);
         localModel.update();
         
-        // 호스트(Player 1)인 경우 게임 상태 스냅샷 전송
+        // 호스트(Player 1)인 경우 매 틱마다 게임 상태 스냅샷 전송
         if (networkHandler != null && localPlayerId == 1) {
+            if (localModel.getCurrentState() == tetris.domain.model.GameState.PLAYING) {
+                networkHandler.sendGameState(localModel);
+            }
+        }
+    }
+
+    /**
+     * 로컬 플레이어 입력 처리 후 호스트가 즉시 스냅샷 브로드캐스트
+     */
+    public void onLocalInput() {
+        if (networkHandler != null && localPlayerId == 1) {
+            GameModel localModel = game.modelOf(localPlayerId);
             if (localModel.getCurrentState() == tetris.domain.model.GameState.PLAYING) {
                 networkHandler.sendGameState(localModel);
             }
@@ -103,6 +120,12 @@ public final class NetworkMultiPlayerController {
         }
         GameModel model = game.modelOf(playerId);
         applyAttackLines(model, lines);
+        
+        // 공격 라인이 주입되었으므로 호스트는 즉시 상태 동기화
+        if (networkHandler != null && playerId == localPlayerId && localPlayerId == 1) {
+            networkHandler.sendGameState(model);
+        }
+        
         if (!canSpawnNextPiece(model)) {
             game.markLoser(playerId);
             

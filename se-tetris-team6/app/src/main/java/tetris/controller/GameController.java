@@ -614,6 +614,7 @@ public class GameController {
                 handler.dispatchToPlayer(1, GameModel::moveBlockLeft);
                 if (isNetworked) {
                     sendNetworkInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.MOVE_LEFT));
+                    notifyNetworkControllerInput();
                 }
                 return true;
             }
@@ -624,6 +625,7 @@ public class GameController {
                 handler.dispatchToPlayer(1, GameModel::moveBlockRight);
                 if (isNetworked) {
                     sendNetworkInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.MOVE_RIGHT));
+                    notifyNetworkControllerInput();
                 }
                 return true;
             }
@@ -634,6 +636,7 @@ public class GameController {
                 handler.dispatchToPlayer(1, GameModel::moveBlockDown);
                 if (isNetworked) {
                     sendNetworkInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.SOFT_DROP));
+                    notifyNetworkControllerInput();
                 }
                 return true;
             }
@@ -644,6 +647,7 @@ public class GameController {
                 handler.dispatchToPlayer(1, GameModel::rotateBlockClockwise);
                 if (isNetworked) {
                     sendNetworkInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.ROTATE));
+                    notifyNetworkControllerInput();
                 }
                 return true;
             }
@@ -654,6 +658,7 @@ public class GameController {
                 handler.dispatchToPlayer(1, GameModel::hardDropBlock);
                 if (isNetworked) {
                     sendNetworkInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.HARD_DROP));
+                    notifyNetworkControllerInput();
                 }
                 return true;
             }
@@ -666,6 +671,7 @@ public class GameController {
                 handler.dispatchToPlayer(2, GameModel::moveBlockLeft);
                 if (isNetworked) {
                     sendNetworkInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.MOVE_LEFT));
+                    notifyNetworkControllerInput();
                 }
                 return true;
             }
@@ -676,6 +682,7 @@ public class GameController {
                 handler.dispatchToPlayer(2, GameModel::moveBlockRight);
                 if (isNetworked) {
                     sendNetworkInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.MOVE_RIGHT));
+                    notifyNetworkControllerInput();
                 }
                 return true;
             }
@@ -686,6 +693,7 @@ public class GameController {
                 handler.dispatchToPlayer(2, GameModel::moveBlockDown);
                 if (isNetworked) {
                     sendNetworkInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.SOFT_DROP));
+                    notifyNetworkControllerInput();
                 }
                 return true;
             }
@@ -696,6 +704,7 @@ public class GameController {
                 handler.dispatchToPlayer(2, GameModel::rotateBlockClockwise);
                 if (isNetworked) {
                     sendNetworkInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.ROTATE));
+                    notifyNetworkControllerInput();
                 }
                 return true;
             }
@@ -706,12 +715,22 @@ public class GameController {
                 handler.dispatchToPlayer(2, GameModel::hardDropBlock);
                 if (isNetworked) {
                     sendNetworkInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.HARD_DROP));
+                    notifyNetworkControllerInput();
                 }
                 return true;
             }
             return false;
         }
         return false;
+    }
+
+    /**
+     * 호스트가 키 입력 후 즉시 스냅샷을 브로드캐스트하도록 통지합니다.
+     */
+    private void notifyNetworkControllerInput() {
+        if (localSession != null && localSession.networkController() != null) {
+            localSession.networkController().onLocalInput();
+        }
     }
 
     /**
