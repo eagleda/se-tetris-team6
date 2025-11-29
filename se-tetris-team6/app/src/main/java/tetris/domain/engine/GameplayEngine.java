@@ -324,7 +324,7 @@ public class GameplayEngine implements GameClock.Listener {
             System.out.printf("[LOG][Engine] rotateBlockClockwise() attempt: kind=%s pos=(%d,%d) rotBefore=%d canPlace=%b%n",
                     beforeShape.kind(), activeBlock.getX(), activeBlock.getY(), beforeRot, can);
             if (can) {
-                activeBlock.setShape(rotated);
+                activeBlock.rotateCW();
                 if (events != null) { // 이벤트 호출
                     events.onBlockRotated(activeBlock, 1);
                 }
@@ -343,8 +343,13 @@ public class GameplayEngine implements GameClock.Listener {
         if (activeBlock == null) return;
         BlockShape rotated = activeBlock.getShape().rotatedCW().rotatedCW().rotatedCW();
         if (board.canPlace(rotated, activeBlock.getX(), activeBlock.getY())) {
-            activeBlock.setShape(rotated);
-            events.onBlockRotated(activeBlock, 3); // 반시계방향 = 시계방향 3회
+            activeBlock.rotateCCW();
+            if (events != null) {
+                events.onBlockRotated(activeBlock, 3); // 반시계방향 = 시계방향 3회
+            }
+            System.out.printf("[LOG][Engine] rotateBlockCounterClockwise() success: newRot=%d%n", activeBlock.getRotation());
+        } else {
+            System.out.println("[LOG][Engine] rotateBlockCounterClockwise() blocked: rotation not applied due to collision or out-of-bounds");
         }
         uiBridge.refreshBoard();
     }
