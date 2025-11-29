@@ -121,23 +121,27 @@ public class NetworkMultiGameLayout extends JPanel {
             return;
         }
         
-        // 세션에서 로컬 플레이어 ID 확인
+        // Determine left/right by asking the session's handler for which player is local.
         MultiplayerHandler handler = session.handler();
-        int localPlayerId = 1; // 기본값
+        int localPlayerId = 0;
         if (handler instanceof tetris.multiplayer.handler.NetworkedMultiplayerHandler) {
             localPlayerId = ((tetris.multiplayer.handler.NetworkedMultiplayerHandler) handler).getLocalPlayerId();
         }
-        
-        System.out.println("[NetworkMultiGameLayout] LocalPlayerId=" + localPlayerId);
-        
-        // Determine left/right models (playerOne -> left, playerTwo -> right)
-        GameModel leftModel = session.playerOneModel();
-        GameModel rightModel = session.playerTwoModel();
 
-        System.out.println("[NetworkMultiGameLayout] Binding - P1=" + leftModel + ", P2=" + rightModel);
+        int leftPlayerId = 1;
+        int rightPlayerId = 2;
+        if (localPlayerId == 2) {
+            leftPlayerId = 2;
+            rightPlayerId = 1;
+        }
 
-        // Replace left/right panels with Local/Remote variants depending on which player is local
-        if (localPlayerId == 1) {
+        System.out.println("[NetworkMultiGameLayout] Determined localPlayerId=" + localPlayerId + ", leftId=" + leftPlayerId + ", rightId=" + rightPlayerId);
+
+        GameModel leftModel = (leftPlayerId == 1) ? session.playerOneModel() : session.playerTwoModel();
+        GameModel rightModel = (rightPlayerId == 1) ? session.playerOneModel() : session.playerTwoModel();
+
+        // Replace panels appropriately: left panel shows local, right panel remote
+        if (leftPlayerId == localPlayerId) {
             replaceLeftWithLocal();
             replaceRightWithRemote();
         } else {
@@ -145,12 +149,14 @@ public class NetworkMultiGameLayout extends JPanel {
             replaceRightWithLocal();
         }
 
-        // Bind models: left->playerOne, right->playerTwo
+        // Bind models according to left/right decided above
         bindPlayerModels(leftModel, rightModel);
-        
-        // 각 패널이 해당 플레이어의 공격 패턴(구멍 위치 포함)을 바로 읽어오도록 공급자를 연결합니다.
-        attackQueuePanel_1.bindAttackLinesSupplier(() -> session.handler().getPendingAttackLines(1));
-        attackQueuePanel_2.bindAttackLinesSupplier(() -> session.handler().getPendingAttackLines(2));
+
+        // Bind attack queues to the correct player IDs for left/right panels
+        final int lp = leftPlayerId;
+        final int rp = rightPlayerId;
+        attackQueuePanel_1.bindAttackLinesSupplier(() -> session.handler().getPendingAttackLines(lp));
+        attackQueuePanel_2.bindAttackLinesSupplier(() -> session.handler().getPendingAttackLines(rp));
         System.out.println("[NetworkMultiGameLayout] Session binding complete, repainting");
         String out = tetris.view.PvPGameRenderer.render(session.playerOneModel(), session.playerTwoModel(), true, true, "상태 메시지");
         System.out.println(out);
