@@ -130,27 +130,36 @@ public class NetworkMultiGameLayout extends JPanel {
         
         System.out.println("[NetworkMultiGameLayout] LocalPlayerId=" + localPlayerId);
         
-        // Determine left/right models (playerOne -> left, playerTwo -> right)
-        GameModel leftModel = session.playerOneModel();
-        GameModel rightModel = session.playerTwoModel();
-
-        System.out.println("[NetworkMultiGameLayout] Binding - P1=" + leftModel + ", P2=" + rightModel);
-
-        // Replace left/right panels with Local/Remote variants depending on which player is local
+        // 🔧 FIX: 로컬 플레이어는 항상 왼쪽, 원격 플레이어는 항상 오른쪽에 표시
+        // localPlayerId에 따라 모델 바인딩도 함께 교체
+        GameModel localModel;
+        GameModel remoteModel;
+        
         if (localPlayerId == 1) {
+            localModel = session.playerOneModel();   // P1 = 로컬
+            remoteModel = session.playerTwoModel();  // P2 = 원격
             replaceLeftWithLocal();
             replaceRightWithRemote();
         } else {
-            replaceLeftWithRemote();
-            replaceRightWithLocal();
+            localModel = session.playerTwoModel();   // P2 = 로컬
+            remoteModel = session.playerOneModel();  // P1 = 원격
+            replaceLeftWithLocal();   // P2를 왼쪽에
+            replaceRightWithRemote(); // P1을 오른쪽에
         }
 
-        // Bind models: left->playerOne, right->playerTwo
-        bindPlayerModels(leftModel, rightModel);
+        System.out.println("[NetworkMultiGameLayout] Binding - Local(left)=" + localModel + ", Remote(right)=" + remoteModel);
+
+        // 왼쪽=로컬, 오른쪽=원격으로 바인딩
+        bindPlayerModels(localModel, remoteModel);
         
-        // 각 패널이 해당 플레이어의 공격 패턴(구멍 위치 포함)을 바로 읽어오도록 공급자를 연결합니다.
-        attackQueuePanel_1.bindAttackLinesSupplier(() -> session.handler().getPendingAttackLines(1));
-        attackQueuePanel_2.bindAttackLinesSupplier(() -> session.handler().getPendingAttackLines(2));
+        // 🔧 FIX: 공격 대기열도 로컬/원격 플레이어 ID에 맞춰 바인딩
+        if (localPlayerId == 1) {
+            attackQueuePanel_1.bindAttackLinesSupplier(() -> session.handler().getPendingAttackLines(1)); // 왼쪽=P1
+            attackQueuePanel_2.bindAttackLinesSupplier(() -> session.handler().getPendingAttackLines(2)); // 오른쪽=P2
+        } else {
+            attackQueuePanel_1.bindAttackLinesSupplier(() -> session.handler().getPendingAttackLines(2)); // 왼쪽=P2
+            attackQueuePanel_2.bindAttackLinesSupplier(() -> session.handler().getPendingAttackLines(1)); // 오른쪽=P1
+        }
         System.out.println("[NetworkMultiGameLayout] Session binding complete, repainting");
         String out = tetris.view.PvPGameRenderer.render(session.playerOneModel(), session.playerTwoModel(), true, true, "상태 메시지");
         System.out.println(out);
