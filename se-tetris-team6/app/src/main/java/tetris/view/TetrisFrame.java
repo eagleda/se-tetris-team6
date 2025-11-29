@@ -29,6 +29,7 @@ import tetris.domain.leaderboard.LeaderboardResult;
 import tetris.domain.model.GameState;
 import tetris.domain.setting.Setting;
 import tetris.multiplayer.session.LocalMultiplayerSession;
+import tetris.multiplayer.session.NetworkMultiplayerSession;
 import tetris.network.client.GameClient;
 import tetris.view.GameComponent.SingleGameLayout;
 import tetris.view.GameComponent.GameOverPanel;
@@ -67,7 +68,7 @@ public class TetrisFrame extends JFrame {
     private GameModel.UiBridge localP1UiBridge;
     private GameModel.UiBridge localP2UiBridge;
     // 온라인(네트워크) 세션용 브리지 상태
-    private LocalMultiplayerSession boundOnlineSession;
+    private NetworkMultiplayerSession boundOnlineSession;
     private GameModel.UiBridge onlineP1UiBridge;
     private GameModel.UiBridge onlineP2UiBridge;
     // Optional in-process server when user chooses to host a game
@@ -961,9 +962,9 @@ public class TetrisFrame extends JFrame {
     private void bindOnlinePanelToCurrentSession() {
         if (onlineMultiGameLayout == null)
             return;
-        LocalMultiplayerSession session = gameModel.getActiveLocalMultiplayerSession().orElse(null);
+        NetworkMultiplayerSession session = gameModel.getActiveNetworkMultiplayerSession().orElse(null);
         if (session == null) {
-            System.out.println("[UI][WARN] No active session found for online layout; skipping binding");
+            System.out.println("[UI][WARN] No active network session found for online layout; skipping binding");
             return;
         }
         // Ensure UI bridges are attached so GameModel.refreshBoard() calls repaint
@@ -982,7 +983,7 @@ public class TetrisFrame extends JFrame {
     }
 
     private void ensureOnlineSessionUiBridges() {
-        LocalMultiplayerSession session = gameModel.getActiveLocalMultiplayerSession().orElse(null);
+        NetworkMultiplayerSession session = gameModel.getActiveNetworkMultiplayerSession().orElse(null);
         System.out.println("[UI] ensureOnlineSessionUiBridges - session=" + (session != null ? "ACTIVE" : "NULL"));
         if (session == null) {
             clearOnlineSessionUiBridges();
@@ -991,7 +992,7 @@ public class TetrisFrame extends JFrame {
         }
     }
 
-    private void bindOnlineSessionUiBridges(LocalMultiplayerSession session) {
+    private void bindOnlineSessionUiBridges(NetworkMultiplayerSession session) {
         clearOnlineSessionUiBridges();
         boundOnlineSession = session;
         onlineP1UiBridge = createOnlineUiBridge();

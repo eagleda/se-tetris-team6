@@ -9,7 +9,7 @@ import javax.swing.JPanel;
 import javax.swing.Timer;
 
 import tetris.domain.GameModel;
-import tetris.multiplayer.session.LocalMultiplayerSession;
+import tetris.multiplayer.session.NetworkMultiplayerSession;
 import tetris.multiplayer.handler.MultiplayerHandler;
 
 /**
@@ -115,7 +115,7 @@ public class NetworkMultiGameLayout extends JPanel {
      * - 호스트는 자신(P1)의 게임 상태를 매 틱마다 브로드캐스트
      * - 클라이언트는 받은 호스트 상태를 P1 화면에 표시
      */
-    public void bindOnlineMultiplayerSession(LocalMultiplayerSession session) {
+    public void bindOnlineMultiplayerSession(NetworkMultiplayerSession session) {
         System.out.println("[NetworkMultiGameLayout] bindOnlineMultiplayerSession called - session=" + (session != null ? "ACTIVE" : "NULL"));
         if (session == null) {
             return;
