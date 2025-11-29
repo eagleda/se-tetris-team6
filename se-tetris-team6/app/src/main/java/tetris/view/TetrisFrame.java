@@ -45,7 +45,8 @@ public class TetrisFrame extends JFrame {
     // 모든 패널과 모델/컨트롤러를 인스턴스 변수로 변경 (static 제거)
     protected MainPanel mainPanel;
     protected SingleGameLayout singleGameLayout;
-    protected MultiGameLayout multiGameLayout;
+    protected MultiGameLayout localMultiGameLayout;
+    protected MultiGameLayout onlineMultiGameLayout;
     protected SettingPanel settingPanel;
     protected ScoreboardPanel scoreboardPanel;
     protected PausePanel pausePanel;
@@ -83,7 +84,8 @@ public class TetrisFrame extends JFrame {
         setupPausePanel();
         setupGameOverPanel();
         setupSingleGameLayout();
-        setupMultiGameLayout();
+        setupLocalMultiGameLayout();
+        setupOnlineMultiGameLayout();
 
         gameModel.bindUiBridge(new GameModel.UiBridge() {
             @Override
@@ -102,8 +104,10 @@ public class TetrisFrame extends JFrame {
                     ensureLocalSessionUiBridges();
                     if (singleGameLayout != null)
                         singleGameLayout.repaint();
-                    if (multiGameLayout != null)
-                        multiGameLayout.repaint();
+                    if (localMultiGameLayout != null)
+                        localMultiGameLayout.repaint();
+                    if (onlineMultiGameLayout != null)
+                        onlineMultiGameLayout.repaint();
                 });
             }
 
@@ -276,7 +280,7 @@ public class TetrisFrame extends JFrame {
                                             System.out.println("[UI][SERVER] Binding multi panel to session");
                                             TetrisFrame.this.bindMultiPanelToCurrentSession();
                                             System.out.println("[UI][SERVER] Displaying multiGameLayout");
-                                            TetrisFrame.this.displayPanel(multiGameLayout);
+                                            TetrisFrame.this.displayPanel(onlineMultiGameLayout);
                                         });
                                         break;
                                     }
@@ -367,7 +371,7 @@ public class TetrisFrame extends JFrame {
                 GameMode selectedMode = TetrisFrame.this.resolveMenuMode(mode);
                 gameController.startLocalMultiplayerGame(selectedMode);
                 TetrisFrame.this.bindMultiPanelToCurrentSession();
-                displayPanel(multiGameLayout);
+                displayPanel(localMultiGameLayout);
             }
 
             @Override
@@ -401,7 +405,7 @@ public class TetrisFrame extends JFrame {
                     try { port = Integer.parseInt(parts[1]); } catch (NumberFormatException ignore) {}
                 }
 
-                displayPanel(multiGameLayout);
+                    displayPanel(onlineMultiGameLayout);
 
                 // Create client and connect with handshake latch
                 final java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(1);
@@ -431,7 +435,7 @@ public class TetrisFrame extends JFrame {
                         if (session == null) return;
                         // For board updates we simply trigger a repaint (detailed state sync handled elsewhere)
                         ensureLocalSessionUiBridges();
-                        if (multiGameLayout != null) multiGameLayout.repaint();
+                        if (onlineMultiGameLayout != null) onlineMultiGameLayout.repaint();
                     }
 
                     @Override
@@ -454,8 +458,8 @@ public class TetrisFrame extends JFrame {
                                         default -> {}
                                     }
                                     // Repaint to show opponent's updated state
-                                    if (multiGameLayout != null) {
-                                        multiGameLayout.repaint();
+                                    if (onlineMultiGameLayout != null) {
+                                        onlineMultiGameLayout.repaint();
                                     }
                                 }
                                 break;
@@ -466,8 +470,8 @@ public class TetrisFrame extends JFrame {
                                     opponent.applyAttackLines(networkLines);
                                     
                                     // Repaint to show attack lines
-                                    if (multiGameLayout != null) {
-                                        multiGameLayout.repaint();
+                                    if (onlineMultiGameLayout != null) {
+                                        onlineMultiGameLayout.repaint();
                                     }
                                 }
                                 break;
@@ -509,8 +513,8 @@ public class TetrisFrame extends JFrame {
                                         gameModel.showMultiplayerResult(sess.game().getWinnerId() == null ? -1 : sess.game().getWinnerId());
                                         
                                         // Force repaint to show final state
-                                        if (multiGameLayout != null) {
-                                            multiGameLayout.repaint();
+                                        if (onlineMultiGameLayout != null) {
+                                            onlineMultiGameLayout.repaint();
                                         }
                                     }
                                 }
@@ -563,9 +567,9 @@ public class TetrisFrame extends JFrame {
                                     gameController.setNetworkClient(client); // 네트워크 클라이언트 연결
                                     gameController.startNetworkedMultiplayerGame(gameMode, localIsPlayerOne);
                                     System.out.println("[UI][CLIENT] Binding multi panel to session");
-                                    bindMultiPanelToCurrentSession();
-                                    System.out.println("[UI][CLIENT] Displaying multiGameLayout");
-                                    displayPanel(multiGameLayout);
+                                    bindOnlinePanelToCurrentSession();
+                                    System.out.println("[UI][CLIENT] Displaying onlineMultiGameLayout");
+                                    displayPanel(onlineMultiGameLayout);
                                 });
                                 break;
                             }
@@ -606,11 +610,17 @@ public class TetrisFrame extends JFrame {
         layeredPane.add(singleGameLayout, JLayeredPane.DEFAULT_LAYER);
     }
 
-    private void setupMultiGameLayout() {
-        multiGameLayout = new MultiGameLayout();
-        multiGameLayout.setVisible(false);
+    private void setupLocalMultiGameLayout() {
+        localMultiGameLayout = new MultiGameLayout();
+        localMultiGameLayout.setVisible(false);
         bindMultiPanelToCurrentSession();
-        layeredPane.add(multiGameLayout, JLayeredPane.DEFAULT_LAYER);
+        layeredPane.add(localMultiGameLayout, JLayeredPane.DEFAULT_LAYER);
+    }
+
+    private void setupOnlineMultiGameLayout() {
+        onlineMultiGameLayout = new MultiGameLayout();
+        onlineMultiGameLayout.setVisible(false);
+        layeredPane.add(onlineMultiGameLayout, JLayeredPane.DEFAULT_LAYER);
     }
 
     private void setupSettingPanel() {
@@ -659,9 +669,9 @@ public class TetrisFrame extends JFrame {
             @Override
             public void onOpponentBoardUpdate(tetris.network.protocol.GameMessage message) {
                 LocalMultiplayerSession session = gameModel.getActiveLocalMultiplayerSession().orElse(null);
-                if (session == null) return;
-                ensureLocalSessionUiBridges();
-                if (multiGameLayout != null) multiGameLayout.repaint();
+                        if (session == null) return;
+                        ensureLocalSessionUiBridges();
+                        if (onlineMultiGameLayout != null) onlineMultiGameLayout.repaint();
             }
 
             @Override
@@ -685,8 +695,8 @@ public class TetrisFrame extends JFrame {
                                 default -> {}
                             }
                             // Repaint to show opponent's updated state
-                            if (multiGameLayout != null) {
-                                multiGameLayout.repaint();
+                            if (onlineMultiGameLayout != null) {
+                                onlineMultiGameLayout.repaint();
                             }
                         }
                         break;
@@ -696,10 +706,10 @@ public class TetrisFrame extends JFrame {
                             // Apply network attack lines directly to opponent
                             opponent.applyAttackLines(networkLines);
                             
-                            // Repaint to show attack lines
-                            if (multiGameLayout != null) {
-                                multiGameLayout.repaint();
-                            }
+                                    // Repaint to show attack lines
+                                    if (onlineMultiGameLayout != null) {
+                                        onlineMultiGameLayout.repaint();
+                                    }
                         }
                         break;
                     case GAME_END:
@@ -737,10 +747,10 @@ public class TetrisFrame extends JFrame {
                                 // Show result and update display
                                 gameModel.showMultiplayerResult(sess.game().getWinnerId() == null ? -1 : sess.game().getWinnerId());
                                 
-                                // Force repaint to show final state
-                                if (multiGameLayout != null) {
-                                    multiGameLayout.repaint();
-                                }
+                                        // Force repaint to show final state
+                                        if (onlineMultiGameLayout != null) {
+                                            onlineMultiGameLayout.repaint();
+                                        }
                             }
                         }
                         break;
@@ -814,8 +824,10 @@ public class TetrisFrame extends JFrame {
                 System.out.printf("[UI][WARN] scoreboard load failed: %s%n", ex.getMessage());
             }
         }
-        if (panel == multiGameLayout) {
+        if (panel == localMultiGameLayout) {
             bindMultiPanelToCurrentSession();
+        } else if (panel == onlineMultiGameLayout) {
+            bindOnlinePanelToCurrentSession();
         }
         // if (prevPanel != null)
         // prevPanel.setVisible(false);
@@ -1008,16 +1020,33 @@ public class TetrisFrame extends JFrame {
      * 세션이 없으면 기본 GameModel을 공유하고, 있으면 세션 내 플레이어 모델을 그린다.
      */
     private void bindMultiPanelToCurrentSession() {
-        if (multiGameLayout == null)
+        if (localMultiGameLayout == null)
             return;
         ensureLocalSessionUiBridges();
         if (boundLocalSession != null) {
             System.out.println("[UI] Binding MultiGameLayout to LocalMultiplayerSession");
-            multiGameLayout.bindLocalMultiplayerSession(boundLocalSession);
+            localMultiGameLayout.bindLocalMultiplayerSession(boundLocalSession);
         } else {
             System.out.println("[UI][WARN] No active session found, binding single GameModel to both panels");
-            multiGameLayout.bindGameModel(gameModel);
+            localMultiGameLayout.bindGameModel(gameModel);
         }
+    }
+
+    /**
+     * 온라인 멀티용 패널 바인딩: 좌측은 로컬 플레이어, 우측은 상대 플레이어 모델.
+     */
+    private void bindOnlinePanelToCurrentSession() {
+        if (onlineMultiGameLayout == null)
+            return;
+        LocalMultiplayerSession session = gameModel.getActiveLocalMultiplayerSession().orElse(null);
+        if (session == null) {
+            System.out.println("[UI][WARN] No active session found for online layout; binding single model");
+            onlineMultiGameLayout.bindGameModel(gameModel);
+            return;
+        }
+        GameModel self = session.isPlayerOneLocal() ? session.playerOneModel() : session.playerTwoModel();
+        GameModel opp = session.isPlayerOneLocal() ? session.playerTwoModel() : session.playerOneModel();
+        onlineMultiGameLayout.bindOnlineMultiplayer(self, opp);
     }
 
     private GameMode resolveMenuMode(String mode) {
@@ -1082,9 +1111,9 @@ public class TetrisFrame extends JFrame {
     private GameModel.UiBridge createLocalUiBridge() {
         return new GameModel.UiBridge() {
             private void requestMultiRepaint() {
-                if (multiGameLayout == null)
+                if (localMultiGameLayout == null)
                     return;
-                SwingUtilities.invokeLater(() -> multiGameLayout.repaint());
+                SwingUtilities.invokeLater(() -> localMultiGameLayout.repaint());
             }
 
             @Override
