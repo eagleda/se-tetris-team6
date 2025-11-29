@@ -195,6 +195,12 @@ public class GameServer {
         broadcastMessage(msg);
     }
 
+    /** 서버 권한 모드: 두 플레이어 스냅샷을 모두 전송 */
+    public void broadcastDualSnapshots(tetris.network.protocol.GameSnapshot p1, tetris.network.protocol.GameSnapshot p2) {
+        broadcastGameStateSnapshot(p1);
+        broadcastGameStateSnapshot(p2);
+    }
+
     // 게임 시작 - 모든 클라이언트가 준비되었을 때
     public void startGame(){
         /* Step 4 구현 예정 */ }

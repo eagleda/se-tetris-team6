@@ -82,24 +82,16 @@ public final class NetworkMultiPlayerController {
      */
     public void tick() {
         if (localPlayerId == 1) {
-            // 서버: 두 플레이어 모두 update
-            GameModel player1Model = game.modelOf(1);
-            GameModel player2Model = game.modelOf(2);
-            
-            if (player1Model != null) {
-                player1Model.update();
-            }
-            if (player2Model != null) {
-                player2Model.update();
-            }
-            
-            // 서버는 두 플레이어의 게임 상태 스냅샷 모두 전송
+            GameModel p1 = game.modelOf(1);
+            GameModel p2 = game.modelOf(2);
+            if (p1 != null) p1.update();
+            if (p2 != null) p2.update();
             if (networkHandler != null) {
-                if (player1Model != null && player1Model.getCurrentState() == tetris.domain.model.GameState.PLAYING) {
-                    networkHandler.sendGameState(player1Model);
+                if (p1 != null && p1.getCurrentState() == tetris.domain.model.GameState.PLAYING) {
+                    networkHandler.sendGameState(p1);
                 }
-                if (player2Model != null && player2Model.getCurrentState() == tetris.domain.model.GameState.PLAYING) {
-                    networkHandler.sendGameState(player2Model);
+                if (p2 != null && p2.getCurrentState() == tetris.domain.model.GameState.PLAYING) {
+                    networkHandler.sendGameState(p2);
                 }
             }
         } else {
@@ -114,16 +106,10 @@ public final class NetworkMultiPlayerController {
      */
     public void onLocalInput() {
         if (localPlayerId == 1 && networkHandler != null) {
-            // 서버: 입력 처리 후 즉시 스냅샷 전송
-            GameModel player1Model = game.modelOf(1);
-            GameModel player2Model = game.modelOf(2);
-            
-            if (player1Model != null && player1Model.getCurrentState() == tetris.domain.model.GameState.PLAYING) {
-                networkHandler.sendGameState(player1Model);
-            }
-            if (player2Model != null && player2Model.getCurrentState() == tetris.domain.model.GameState.PLAYING) {
-                networkHandler.sendGameState(player2Model);
-            }
+            GameModel p1 = game.modelOf(1);
+            GameModel p2 = game.modelOf(2);
+            if (p1 != null && p1.getCurrentState() == tetris.domain.model.GameState.PLAYING) networkHandler.sendGameState(p1);
+            if (p2 != null && p2.getCurrentState() == tetris.domain.model.GameState.PLAYING) networkHandler.sendGameState(p2);
         }
         // 클라이언트는 아무것도 하지 않음 (키 입력은 이미 전송됨)
     }

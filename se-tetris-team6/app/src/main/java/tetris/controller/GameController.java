@@ -37,6 +37,7 @@ public class GameController implements tetris.network.client.GameStateListener {
     private LocalMultiplayerSession localSession;
     private NetworkMultiplayerSession networkSession;
     private Timer localMultiplayerTimer;
+    private Timer networkMultiplayerTimer;
     private tetris.network.client.GameClient networkClient; // 네트워크 클라이언트 참조
     private tetris.network.server.GameServer networkServer; // 네트워크 서버 참조 (호스트용)
 
@@ -453,7 +454,8 @@ public class GameController implements tetris.network.client.GameStateListener {
                 public void sendGameState(tetris.domain.GameModel gameState) {
                     // 호스트가 주기적으로 게임 상태 스냅샷을 브로드캐스트
                     if (networkServer != null && gameState != null) {
-                        tetris.network.protocol.GameSnapshot snapshot = gameState.toSnapshot();
+                        int pid = session.isPlayerOneLocal() ? 1 : 2; // 서버에서 호출 시 로컬은 player1
+                        tetris.network.protocol.GameSnapshot snapshot = gameState.toSnapshot(pid);
                         networkServer.broadcastGameStateSnapshot(snapshot);
                     }
                 }
@@ -477,9 +479,10 @@ public class GameController implements tetris.network.client.GameStateListener {
 
                     @Override
                     public void onGameStateSnapshot(tetris.network.protocol.GameSnapshot snapshot) {
-                        int remotePlayerId = sess.isPlayerOneLocal() ? 2 : 1;
+                        if (snapshot == null) return;
+                        int pid = snapshot.playerId();
                         if (sess.networkController() != null) {
-                            sess.networkController().applyRemoteSnapshot(remotePlayerId, snapshot);
+                            sess.networkController().applyRemoteSnapshot(pid, snapshot);
                         }
                     }
 
@@ -537,8 +540,8 @@ public class GameController implements tetris.network.client.GameStateListener {
         
         System.out.println("[GameController] Enabling network multiplayer in GameModel");
         gameModel.enableNetworkMultiplayer(session);
-        System.out.println("[GameController] Starting local multiplayer tick");
-        startLocalMultiplayerTick();
+        System.out.println("[GameController] Starting authoritative network multiplayer tick");
+        startNetworkMultiplayerTick();
         pauseKeyPressed = false;
         lastKeyPressTime.clear();
         System.out.println("[GameController] Starting game with mode: " + mode);
@@ -592,7 +595,8 @@ public class GameController implements tetris.network.client.GameStateListener {
                 public void sendGameState(tetris.domain.GameModel gameState) {
                     // 클라이언트도 자신의 게임 상태 스냅샷을 서버에 전송
                     if (networkClient != null && gameState != null) {
-                        tetris.network.protocol.GameSnapshot snapshot = gameState.toSnapshot();
+                        int pid = session.isPlayerOneLocal() ? 1 : 2;
+                        tetris.network.protocol.GameSnapshot snapshot = gameState.toSnapshot(pid);
                         networkClient.sendGameStateSnapshot(snapshot);
                     }
                 }
@@ -606,8 +610,8 @@ public class GameController implements tetris.network.client.GameStateListener {
 
         System.out.println("[GameController] Enabling network multiplayer in GameModel (seed)");
         gameModel.enableNetworkMultiplayer(session);
-        System.out.println("[GameController] Starting local multiplayer tick");
-        startLocalMultiplayerTick();
+        System.out.println("[GameController] Starting authoritative network multiplayer tick");
+        startNetworkMultiplayerTick();
         pauseKeyPressed = false;
         lastKeyPressTime.clear();
         System.out.println("[GameController] Starting game with mode: " + mode);
@@ -673,8 +677,8 @@ public class GameController implements tetris.network.client.GameStateListener {
 
                 @Override
                 public void onGameStateSnapshot(tetris.network.protocol.GameSnapshot snapshot) {
-                    int remotePlayerId = sess.isPlayerOneLocal() ? 2 : 1;
-                    sess.networkController().applyRemoteSnapshot(remotePlayerId, snapshot);
+                    if (snapshot == null) return;
+                    sess.networkController().applyRemoteSnapshot(snapshot.playerId(), snapshot);
                 }
 
                 @Override
@@ -915,6 +919,27 @@ public class GameController implements tetris.network.client.GameStateListener {
         stopLocalMultiplayerTick();
         gameModel.clearLocalMultiplayerSession();
         localSession = null;
+    }
+
+    private void stopNetworkMultiplayerTick() {
+        if (networkMultiplayerTimer != null) {
+            networkMultiplayerTimer.stop();
+            networkMultiplayerTimer = null;
+        }
+    }
+
+    private void startNetworkMultiplayerTick() {
+        stopNetworkMultiplayerTick();
+        if (networkSession == null) return;
+        networkMultiplayerTimer = new Timer(16, e -> {
+            if (networkSession == null) { stopNetworkMultiplayerTick(); return; }
+            MultiplayerHandler handler = networkSession.handler();
+            if (handler == null) return;
+            // 서버만 로직 실행 (localPlayerId==1) - handler.update 내부 분기
+            handler.update(gameModel);
+        });
+        networkMultiplayerTimer.setRepeats(true);
+        networkMultiplayerTimer.start();
     }
 
     /**

@@ -986,7 +986,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
     }
 
     /** 네트워크 전송용 스냅샷 생성 */
-    public tetris.network.protocol.GameSnapshot toSnapshot() {
+    public tetris.network.protocol.GameSnapshot toSnapshot(int playerId) {
         int[][] copy = board.gridView(); // 이미 깊은 복사 반환
         // 현재/다음 블록 타입 식별자 계산
         Block active = gameplayEngine != null ? gameplayEngine.getActiveBlock() : null;
@@ -1013,7 +1013,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         }
         int elapsed = (int) (getElapsedMillis() / 1000L);
         int pending = pendingGarbageLines;
-        return new tetris.network.protocol.GameSnapshot(copy, currentId, nextId, pts, elapsed, pending, blockX, blockY, blockRotation);
+        return new tetris.network.protocol.GameSnapshot(playerId, copy, currentId, nextId, pts, elapsed, pending, blockX, blockY, blockRotation);
     }
 
     /** 스냅샷을 적용 (클라이언트 렌더링 전용) */

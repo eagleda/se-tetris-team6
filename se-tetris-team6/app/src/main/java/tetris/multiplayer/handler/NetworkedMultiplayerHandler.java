@@ -141,13 +141,25 @@ public final class NetworkedMultiplayerHandler implements MultiplayerHandler {
     }
 
     private void registerHookForLocal() {
-        int pid = localPlayerId;
-        game.player(pid).getModel().addMultiplayerHook(createHook(pid));
+        // 서버(플레이어1)인 경우 두 플레이어 모두 Hook 등록하여
+        // 공격 대기열 처리와 beforeNextSpawn 로직을 동일하게 적용한다.
+        if (localPlayerId == 1) {
+            game.player(1).getModel().addMultiplayerHook(createHook(1));
+            game.player(2).getModel().addMultiplayerHook(createHook(2));
+        } else {
+            int pid = localPlayerId;
+            game.player(pid).getModel().addMultiplayerHook(createHook(pid));
+        }
     }
 
     private void unregisterHookForLocal() {
-        int pid = localPlayerId;
-        try { game.player(pid).getModel().removeMultiplayerHook(createHook(pid)); } catch (Exception ignore) {}
+        if (localPlayerId == 1) {
+            try { game.player(1).getModel().removeMultiplayerHook(createHook(1)); } catch (Exception ignore) {}
+            try { game.player(2).getModel().removeMultiplayerHook(createHook(2)); } catch (Exception ignore) {}
+        } else {
+            int pid = localPlayerId;
+            try { game.player(pid).getModel().removeMultiplayerHook(createHook(pid)); } catch (Exception ignore) {}
+        }
     }
 
     private tetris.domain.GameModel.MultiplayerHook createHook(int playerId) {

@@ -8,6 +8,7 @@ import java.io.Serializable;
 public final class GameSnapshot implements Serializable {
     private static final long serialVersionUID = 1L;
 
+    private final int playerId;       // 스냅샷 대상 플레이어 (1 또는 2)
     private final int[][] board;      // [y][x] 셀 값(0=빈칸, >0=블록 id)
     private final int currentBlockId; // 현재 블록 유형 id
     private final int nextBlockId;    // 다음 블록 유형 id
@@ -18,7 +19,8 @@ public final class GameSnapshot implements Serializable {
     private final int blockY;         // 현재 블록 Y 위치
     private final int blockRotation;  // 현재 블록 회전 상태 (0-3)
 
-    public GameSnapshot(int[][] board,
+    public GameSnapshot(int playerId,
+                        int[][] board,
                         int currentBlockId,
                         int nextBlockId,
                         int score,
@@ -27,6 +29,7 @@ public final class GameSnapshot implements Serializable {
                         int blockX,
                         int blockY,
                         int blockRotation) {
+        this.playerId = playerId;
         this.board = board;
         this.currentBlockId = currentBlockId;
         this.nextBlockId = nextBlockId;
@@ -38,6 +41,7 @@ public final class GameSnapshot implements Serializable {
         this.blockRotation = blockRotation;
     }
 
+    public int playerId() { return playerId; }
     public int[][] board() { return board; }
     public int currentBlockId() { return currentBlockId; }
     public int nextBlockId() { return nextBlockId; }
