@@ -9,7 +9,7 @@ import javax.swing.JPanel;
 import javax.swing.Timer;
 
 import tetris.domain.GameModel;
-import tetris.multiplayer.session.NetworkMultiplayerSession;
+import tetris.multiplayer.session.LocalMultiplayerSession;
 import tetris.multiplayer.handler.MultiplayerHandler;
 
 /**
@@ -115,7 +115,7 @@ public class NetworkMultiGameLayout extends JPanel {
      * - 호스트는 자신(P1)의 게임 상태를 매 틱마다 브로드캐스트
      * - 클라이언트는 받은 호스트 상태를 P1 화면에 표시
      */
-    public void bindOnlineMultiplayerSession(NetworkMultiplayerSession session) {
+    public void bindOnlineMultiplayerSession(LocalMultiplayerSession session) {
         System.out.println("[NetworkMultiGameLayout] bindOnlineMultiplayerSession called - session=" + (session != null ? "ACTIVE" : "NULL"));
         if (session == null) {
             return;
@@ -130,14 +130,23 @@ public class NetworkMultiGameLayout extends JPanel {
         
         System.out.println("[NetworkMultiGameLayout] LocalPlayerId=" + localPlayerId);
         
-        // 화면 배치: 항상 좌측 P1, 우측 P2
-        // 호스트(P1): 좌측=자신, 우측=상대
-        // 클라이언트(P2): 좌측=상대(호스트), 우측=자신
-        GameModel p1Model = session.playerOneModel();
-        GameModel p2Model = session.playerTwoModel();
-        
-        System.out.println("[NetworkMultiGameLayout] Binding - P1=" + p1Model + ", P2=" + p2Model);
-        bindPlayerModels(p1Model, p2Model);
+        // Determine left/right models (playerOne -> left, playerTwo -> right)
+        GameModel leftModel = session.playerOneModel();
+        GameModel rightModel = session.playerTwoModel();
+
+        System.out.println("[NetworkMultiGameLayout] Binding - P1=" + leftModel + ", P2=" + rightModel);
+
+        // Replace left/right panels with Local/Remote variants depending on which player is local
+        if (localPlayerId == 1) {
+            replaceLeftWithLocal();
+            replaceRightWithRemote();
+        } else {
+            replaceLeftWithRemote();
+            replaceRightWithLocal();
+        }
+
+        // Bind models: left->playerOne, right->playerTwo
+        bindPlayerModels(leftModel, rightModel);
         
         // 각 패널이 해당 플레이어의 공격 패턴(구멍 위치 포함)을 바로 읽어오도록 공급자를 연결합니다.
         attackQueuePanel_1.bindAttackLinesSupplier(() -> session.handler().getPendingAttackLines(1));
@@ -204,5 +213,48 @@ public class NetworkMultiGameLayout extends JPanel {
 
         comp.setVisible(true);
         this.add(comp, gbc);
+    }
+
+    // Helper methods to replace panels at runtime with Local/Remote variants
+    private void replaceLeftWithLocal() {
+        try {
+            this.remove(gamePanel_1);
+        } catch (Exception ignore) {}
+        gamePanel_1 = new LocalPlayerPanel();
+        // left region coordinates: 0,0,6,11
+        addToRegion(gamePanel_1, 0, 0, 6, 11, GridBagConstraints.BOTH, GridBagConstraints.CENTER);
+        revalidate();
+        repaint();
+    }
+
+    private void replaceLeftWithRemote() {
+        try {
+            this.remove(gamePanel_1);
+        } catch (Exception ignore) {}
+        gamePanel_1 = new RemotePlayerPanel();
+        addToRegion(gamePanel_1, 0, 0, 6, 11, GridBagConstraints.BOTH, GridBagConstraints.CENTER);
+        revalidate();
+        repaint();
+    }
+
+    private void replaceRightWithLocal() {
+        try {
+            this.remove(gamePanel_2);
+        } catch (Exception ignore) {}
+        gamePanel_2 = new LocalPlayerPanel();
+        // right region coordinates: 11,0,6,11
+        addToRegion(gamePanel_2, 11, 0, 6, 11, GridBagConstraints.BOTH, GridBagConstraints.CENTER);
+        revalidate();
+        repaint();
+    }
+
+    private void replaceRightWithRemote() {
+        try {
+            this.remove(gamePanel_2);
+        } catch (Exception ignore) {}
+        gamePanel_2 = new RemotePlayerPanel();
+        addToRegion(gamePanel_2, 11, 0, 6, 11, GridBagConstraints.BOTH, GridBagConstraints.CENTER);
+        revalidate();
+        repaint();
     }
 }
