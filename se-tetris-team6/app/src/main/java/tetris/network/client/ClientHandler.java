@@ -107,10 +107,17 @@ public class ClientHandler implements Runnable {
     public void sendMessage(GameMessage message) {
         try {
             if (outputStream != null) {
-                outputStream.writeObject(message);
-                // 💡 핵심 수정: 버퍼링된 데이터를 즉시 전송합니다.
-                outputStream.flush(); 
-                System.out.println("ClientHandler sent message: " + message.getType());
+                synchronized (outputStream) {
+                    outputStream.writeObject(message);
+                    // 💡 핵심 수정: 버퍼링된 데이터를 즉시 전송합니다.
+                    outputStream.flush(); 
+                }
+                try {
+                    int seq = message == null ? -1 : message.getSequenceNumber();
+                    System.out.println("ClientHandler sent message: " + message.getType() + " seq=" + seq + " identity=" + System.identityHashCode(message));
+                } catch (Exception ignore) {
+                    System.out.println("ClientHandler sent message: " + message.getType());
+                }
             }
         } catch (IOException e) {
             System.err.println("Error sending message from client: " + e.getMessage());

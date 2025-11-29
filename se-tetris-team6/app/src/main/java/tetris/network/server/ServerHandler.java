@@ -64,6 +64,11 @@ import java.util.concurrent.atomic.AtomicInteger; // 추가: 스레드 안전한
             while (isConnected) {
                 // 클라이언트로부터 메시지 수신 대기
                 GameMessage message = (GameMessage) inputStream.readObject();
+                // Log the raw read for tracing duplicates (identity + seq)
+                try {
+                    int seq = message == null ? -1 : message.getSequenceNumber();
+                    System.out.println("[ServerHandler.run] readObject: identity=" + System.identityHashCode(message) + ", type=" + (message == null ? "null" : message.getType()) + ", seq=" + seq + ", thread=" + Thread.currentThread().getName());
+                } catch (Exception ignore) {}
                 handleMessage(message); // 메시지 처리 로직 (Step 3에서 상세 구현)
             }
         } catch (EOFException e) {
@@ -151,12 +156,13 @@ import java.util.concurrent.atomic.AtomicInteger; // 추가: 스레드 안전한
             case ATTACK_LINES:
                 // 클라이언트 입력을 호스트에게 전달 (중복 시퀀스 필터링)
                 int seq = message.getSequenceNumber();
-                if (seq == lastProcessedSequence) {
-                    System.out.println("[ServerHandler] duplicate message ignored seq=" + seq + " from clientId=" + clientId);
+                // stronger dedup: ignore any message with seq <= lastProcessedSequence
+                if (seq <= lastProcessedSequence) {
+                    System.out.println("[ServerHandler] duplicate/old message ignored seq=" + seq + " lastProcessed=" + lastProcessedSequence + " from clientId=" + clientId + " identity=" + System.identityHashCode(message));
                     break;
                 }
+                System.out.println("[ServerHandler] received " + message.getType() + " from clientId=" + clientId + " senderId=" + message.getSenderId() + " payload=" + message.getPayload() + " seq=" + seq + " identity=" + System.identityHashCode(message));
                 lastProcessedSequence = seq;
-                System.out.println("[ServerHandler] received " + message.getType() + " from clientId=" + clientId + " senderId=" + message.getSenderId() + " payload=" + message.getPayload() + " seq=" + seq);
                 server.notifyHostOfMessage(message);
                 break;
             default:
