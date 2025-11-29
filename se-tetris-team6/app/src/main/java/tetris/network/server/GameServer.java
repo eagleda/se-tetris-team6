@@ -169,6 +169,7 @@ public class GameServer {
      * Notify the host of a message from a client.
      */
     public void notifyHostOfMessage(GameMessage message) {
+        System.out.println("[GameServer] notifyHostOfMessage: type=" + (message == null ? "null" : message.getType()) + ", senderId=" + (message == null ? "null" : message.getSenderId()) + ", payload=" + (message == null ? "null" : message.getPayload()));
         if (gameStateListener != null) {
             gameStateListener.onGameStateChange(message);
         }
@@ -187,6 +188,9 @@ public class GameServer {
      */
     public void broadcastGameStateSnapshot(tetris.network.protocol.GameSnapshot snapshot) {
         if (snapshot == null) return;
+        try {
+            System.out.println("[GameServer] Broadcasting snapshot -> player=" + snapshot.playerId() + ", currentId=" + snapshot.currentBlockId() + ", nextId=" + snapshot.nextBlockId() + ", pending=" + snapshot.pendingGarbage());
+        } catch (Exception ignore) {}
         GameMessage msg = new GameMessage(
             tetris.network.protocol.MessageType.GAME_STATE,
             "SERVER",

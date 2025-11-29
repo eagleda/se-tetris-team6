@@ -1034,6 +1034,9 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
      */
     private void applySnapshotImpl(tetris.network.protocol.GameSnapshot snapshot) {
         if (snapshot == null) return;
+        try {
+            System.out.println("[GameModel] Applying snapshot -> player=" + snapshot.playerId() + ", currentId=" + snapshot.currentBlockId() + ", nextId=" + snapshot.nextBlockId() + ", pending=" + snapshot.pendingGarbage());
+        } catch (Exception ignore) {}
         
         // 보드 상태 적용
         int[][] b = snapshot.board();
@@ -1088,6 +1091,9 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         // 가비지 라인 업데이트
         this.pendingGarbageLines = snapshot.pendingGarbage();
         if (uiBridge != null) uiBridge.refreshBoard();
+        try {
+            System.out.println("[GameModel] Snapshot applied -> player=" + snapshot.playerId() + ", pending=" + this.pendingGarbageLines);
+        } catch (Exception ignore) {}
     }
 
     public void stepGameplay() {
@@ -1230,7 +1236,22 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
             }
         }
         recordPlayerInput();
-        gameplayEngine.rotateBlockClockwise();
+        try {
+            tetris.domain.model.Block active = gameplayEngine.getActiveBlock();
+            int beforeRot = active != null ? active.getRotation() : -1;
+            System.out.printf("[LOG][GameModel] rotateBlockClockwise() requested - beforeRot=%d thread=%s%n",
+                    beforeRot, Thread.currentThread().getName());
+            gameplayEngine.rotateBlockClockwise();
+            tetris.domain.model.Block after = gameplayEngine.getActiveBlock();
+            int afterRot = after != null ? after.getRotation() : -1;
+            if (beforeRot == afterRot) {
+                System.out.printf("[LOG][GameModel] rotateBlockClockwise() result: NO_CHANGE (before=%d after=%d)%n", beforeRot, afterRot);
+            } else {
+                System.out.printf("[LOG][GameModel] rotateBlockClockwise() result: APPLIED (before=%d after=%d)%n", beforeRot, afterRot);
+            }
+        } catch (Exception ex) {
+            System.out.println("[LOG][GameModel] rotateBlockClockwise() exception: " + ex);
+        }
     }
 
     public void rotateBlockCounterClockwise() {

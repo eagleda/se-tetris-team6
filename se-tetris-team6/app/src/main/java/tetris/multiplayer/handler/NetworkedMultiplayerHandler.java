@@ -68,6 +68,17 @@ public final class NetworkedMultiplayerHandler implements MultiplayerHandler {
             if (player2Model != null) {
                 player2Model.update();
             }
+            // 매 틱마다 두 플레이어의 스냅샷을 브로드캐스트하여 클라이언트 UI를 실시간 동기화
+            try {
+                if (player1Model != null && player1Model.getCurrentState() == GameState.PLAYING) {
+                    controller.sendGameState(player1Model);
+                }
+                if (player2Model != null && player2Model.getCurrentState() == GameState.PLAYING) {
+                    controller.sendGameState(player2Model);
+                }
+            } catch (Exception e) {
+                System.err.println("[NetworkedMultiplayerHandler] Failed to broadcast tick snapshots: " + e.getMessage());
+            }
             
             // Check if any player's game over
             boolean p1GameOver = player1Model != null && player1Model.getCurrentState() == GameState.GAME_OVER;
@@ -89,6 +100,7 @@ public final class NetworkedMultiplayerHandler implements MultiplayerHandler {
                     sendGameEndCallback.run();
                     gameEndSent = true;
                 }
+                return; // 게임 종료 시 이후 브로드캐스트 생략
             }
         } else {
             // 클라이언트(P2): 아무것도 하지 않음

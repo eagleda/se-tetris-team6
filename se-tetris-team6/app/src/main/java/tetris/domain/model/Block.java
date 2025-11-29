@@ -72,6 +72,14 @@ public final class Block implements BlockLike {
         rotation = (rotation + 1) % 4;
     }
 
+    /**
+     * 시계 반대 방향 회전 (CCW). 기존 rotateCW 3회와 동일하지만 rotation 필드를 즉시 반영.
+     */
+    public void rotateCCW() {
+        shape = shape.rotatedCW().rotatedCW().rotatedCW();
+        rotation = (rotation + 3) % 4;
+    }
+
     public Block copy() {
         Block copied = new Block(shape, x, y);
         copied.rotation = this.rotation;

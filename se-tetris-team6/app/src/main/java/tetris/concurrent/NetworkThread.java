@@ -149,7 +149,11 @@ public class NetworkThread implements Runnable {
                     // 실제 소켓 outputStream.writeObject(message) 호출
                     outputStream.writeObject(message);
                     outputStream.flush();
-                    System.out.println("NetThread SENT: " + message.getType());
+                    try {
+                        System.out.println("[NetworkThread] SENT: type=" + message.getType() + " seq=" + message.getSequenceNumber() + " identity=" + System.identityHashCode(message));
+                    } catch (Exception ignore) {
+                        System.out.println("[NetworkThread] SENT: type=" + message.getType());
+                    }
                 }
             } catch (IOException e) {
                 // 전송 실패 시 연결 끊김 처리
@@ -213,6 +217,9 @@ public class NetworkThread implements Runnable {
                 while (isRunning.get() && isConnected.get()) {
                     // 블로킹 호출: 메시지가 올 때까지 대기
                     GameMessage message = (GameMessage) inputStream.readObject();
+                    try {
+                        System.out.println("[NetworkThread] READ: type=" + message.getType() + " seq=" + message.getSequenceNumber() + " identity=" + System.identityHashCode(message));
+                    } catch (Exception ignore) {}
                     messagesReceived++;
                     
                     // 메시지 타입에 따라 큐에 분배

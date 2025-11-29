@@ -242,8 +242,9 @@ public class GameplayEngine implements GameClock.Listener {
         if (rotateCW) {
             BlockShape rotated = activeBlock.getShape().rotatedCW();
             if (board.canPlace(rotated, activeBlock.getX(), activeBlock.getY())) {
-                activeBlock.setShape(rotated);
-                if (events != null) { // 이벤트 호출
+                // rotation 필드까지 반영되는 메서드 사용
+                activeBlock.rotateCW();
+                if (events != null) {
                     events.onBlockRotated(activeBlock, 1);
                 }
             }
@@ -252,8 +253,9 @@ public class GameplayEngine implements GameClock.Listener {
         if (rotateCCW) {
             BlockShape rotated = activeBlock.getShape().rotatedCW().rotatedCW().rotatedCW();
             if (board.canPlace(rotated, activeBlock.getX(), activeBlock.getY())) {
-                activeBlock.setShape(rotated);
-                if (events != null) { //이벤트 호출
+                // 새로 추가된 CCW 회전 사용 (rotation 갱신 포함)
+                activeBlock.rotateCCW();
+                if (events != null) {
                     events.onBlockRotated(activeBlock, 3);
                 }
             }
@@ -314,20 +316,40 @@ public class GameplayEngine implements GameClock.Listener {
 
     public void rotateBlockClockwise() {
         if (activeBlock == null) return;
-        BlockShape rotated = activeBlock.getShape().rotatedCW();
-        if (board.canPlace(rotated, activeBlock.getX(), activeBlock.getY())) {
-            activeBlock.setShape(rotated);
-            events.onBlockRotated(activeBlock, 1); // 시계방향 1회
+        try {
+            BlockShape beforeShape = activeBlock.getShape();
+            int beforeRot = activeBlock.getRotation();
+            BlockShape rotated = beforeShape.rotatedCW();
+            boolean can = board.canPlace(rotated, activeBlock.getX(), activeBlock.getY());
+            System.out.printf("[LOG][Engine] rotateBlockClockwise() attempt: kind=%s pos=(%d,%d) rotBefore=%d canPlace=%b%n",
+                    beforeShape.kind(), activeBlock.getX(), activeBlock.getY(), beforeRot, can);
+            if (can) {
+                activeBlock.rotateCW();
+                if (events != null) { // 이벤트 호출
+                    events.onBlockRotated(activeBlock, 1);
+                }
+                System.out.printf("[LOG][Engine] rotateBlockClockwise() success: newRot=%d%n", activeBlock.getRotation());
+            } else {
+                System.out.println("[LOG][Engine] rotateBlockClockwise() blocked: rotation not applied due to collision or out-of-bounds");
+            }
+        } catch (Exception ex) {
+            System.out.println("[LOG][Engine] rotateBlockClockwise() exception: " + ex);
+        } finally {
+            uiBridge.refreshBoard();
         }
-        uiBridge.refreshBoard();
     }
 
     public void rotateBlockCounterClockwise() {
         if (activeBlock == null) return;
         BlockShape rotated = activeBlock.getShape().rotatedCW().rotatedCW().rotatedCW();
         if (board.canPlace(rotated, activeBlock.getX(), activeBlock.getY())) {
-            activeBlock.setShape(rotated);
-            events.onBlockRotated(activeBlock, 3); // 반시계방향 = 시계방향 3회
+            activeBlock.rotateCCW();
+            if (events != null) {
+                events.onBlockRotated(activeBlock, 3); // 반시계방향 = 시계방향 3회
+            }
+            System.out.printf("[LOG][Engine] rotateBlockCounterClockwise() success: newRot=%d%n", activeBlock.getRotation());
+        } else {
+            System.out.println("[LOG][Engine] rotateBlockCounterClockwise() blocked: rotation not applied due to collision or out-of-bounds");
         }
         uiBridge.refreshBoard();
     }

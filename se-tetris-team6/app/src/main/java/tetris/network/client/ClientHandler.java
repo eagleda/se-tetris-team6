@@ -27,6 +27,8 @@ public class ClientHandler implements Runnable {
     private long lastPingTime;                 // 마지막 핑 전송 시간
     private long currentLatency;               // 현재 지연시간
     private boolean waitingForPong;            // 퐁 응답 대기 중
+    // 마지막으로 적용한 스냅샷 시퀀스 (playerId 1..2)
+    private final int[] lastAppliedSnapshotSeq = new int[] {-1, -1, -1};
 
     private CountDownLatch handshakeLatch;
 
@@ -105,10 +107,17 @@ public class ClientHandler implements Runnable {
     public void sendMessage(GameMessage message) {
         try {
             if (outputStream != null) {
-                outputStream.writeObject(message);
-                // 💡 핵심 수정: 버퍼링된 데이터를 즉시 전송합니다.
-                outputStream.flush(); 
-                System.out.println("ClientHandler sent message: " + message.getType());
+                synchronized (outputStream) {
+                    outputStream.writeObject(message);
+                    // 💡 핵심 수정: 버퍼링된 데이터를 즉시 전송합니다.
+                    outputStream.flush(); 
+                }
+                try {
+                    int seq = message == null ? -1 : message.getSequenceNumber();
+                    System.out.println("ClientHandler sent message: " + message.getType() + " seq=" + seq + " identity=" + System.identityHashCode(message));
+                } catch (Exception ignore) {
+                    System.out.println("ClientHandler sent message: " + message.getType());
+                }
             }
         } catch (IOException e) {
             System.err.println("Error sending message from client: " + e.getMessage());
@@ -188,6 +197,17 @@ public class ClientHandler implements Runnable {
         Object payload = message.getPayload();
         if (payload instanceof tetris.network.protocol.GameSnapshot) {
             tetris.network.protocol.GameSnapshot snapshot = (tetris.network.protocol.GameSnapshot) payload;
+            int playerId = snapshot.playerId();
+            int seq = message.getSequenceNumber();
+            // Ignore older or duplicate snapshots for the same player
+            if (playerId >= 1 && playerId <= 2) {
+                int last = lastAppliedSnapshotSeq[playerId];
+                if (seq <= last) {
+                    System.out.println("[ClientHandler] Ignoring old/duplicate snapshot for player=" + playerId + " seq=" + seq + " last=" + last);
+                    return;
+                }
+                lastAppliedSnapshotSeq[playerId] = seq;
+            }
             if (client.getGameStateListener() != null) {
                 javax.swing.SwingUtilities.invokeLater(() -> client.getGameStateListener().onGameStateSnapshot(snapshot));
             } else {

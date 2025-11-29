@@ -20,6 +20,9 @@ public final class NetworkMultiPlayerController {
     private final MultiPlayerGame game;
     private final int localPlayerId;
     private NetworkEventHandler networkHandler;
+    // optional transport attached to this controller for direct sending
+    private tetris.network.client.GameClient transportClient;
+    private tetris.network.server.GameServer transportServer;
 
     public NetworkMultiPlayerController(MultiPlayerGame game, int localPlayerId) {
         this.game = Objects.requireNonNull(game, "game");
@@ -28,6 +31,16 @@ public final class NetworkMultiPlayerController {
 
     public void setNetworkHandler(NetworkEventHandler handler) {
         this.networkHandler = handler;
+    }
+
+    /**
+     * Attach network transport objects so this controller can directly send messages.
+     * Passing a non-null client will also register the incoming listener automatically.
+     */
+    public void attachTransport(tetris.network.client.GameClient client, tetris.network.server.GameServer server) {
+        this.transportClient = client;
+        this.transportServer = server;
+        if (client != null) attachClient(client);
     }
 
     /**
@@ -51,14 +64,11 @@ public final class NetworkMultiPlayerController {
         int boardWidth = determineBoardWidth(model);
         game.onPieceLocked(localPlayerId, snapshot, clearedYs, boardWidth);
         
-        // 네트워크로 이벤트 전송
-        if (networkHandler != null) {
-            networkHandler.sendPieceLockedEvent(snapshot, clearedYs);
-            
-            // 라인이 클리어되었으면 즉시 게임 상태 동기화 (공격 대기열 포함)
-            if (clearedYs.length > 0) {
-                networkHandler.sendGameState(model);
-            }
+        // 네트워크로 이벤트 전송 (transport가 있으면 직접 전송)
+        sendPieceLockedEvent(snapshot, clearedYs);
+        // 라인이 클리어되었으면 즉시 게임 상태 동기화 (공격 대기열 포함)
+        if (clearedYs.length > 0) {
+            sendGameState(model);
         }
     }
 
@@ -131,16 +141,16 @@ public final class NetworkMultiPlayerController {
         applyAttackLines(model, lines);
         
         // 공격 라인이 주입되었으므로 모든 플레이어가 즉시 상태 동기화
-        if (networkHandler != null && playerId == localPlayerId) {
-            networkHandler.sendGameState(model);
+        if (playerId == localPlayerId) {
+            sendGameState(model);
         }
         
         if (!canSpawnNextPiece(model)) {
             game.markLoser(playerId);
             
             // 게임 종료 이벤트 네트워크 전송
-            if (networkHandler != null && playerId == localPlayerId) {
-                networkHandler.sendGameOverEvent();
+            if (playerId == localPlayerId) {
+                sendGameOverEvent();
             }
         }
     }
@@ -256,11 +266,106 @@ public final class NetworkMultiPlayerController {
     /**
      * Apply an authoritative snapshot received from the network to a remote player's model.
      */
-    public void applyRemoteSnapshot(int playerId, tetris.network.protocol.GameSnapshot snapshot) {
+    /**
+     * Apply an authoritative snapshot received from the network to the correct player's model.
+     * Previously this always mapped every snapshot to getRemotePlayerId(), causing the client
+     * to overwrite only the host board and never update its own board. We now respect the
+     * snapshot's embedded playerId so both P1 and P2 snapshots update their respective models.
+     */
+    public void applyRemoteSnapshot(tetris.network.protocol.GameSnapshot snapshot) {
         if (snapshot == null) return;
-        GameModel model = game.modelOf(playerId);
+        int targetPlayerId = snapshot.playerId();
+        GameModel model = game.modelOf(targetPlayerId);
         if (model == null) return;
         model.applySnapshot(snapshot);
+    }
+
+    /* ----------------- Transport (sending) helpers ----------------- */
+    public void sendPlayerInput(tetris.network.protocol.PlayerInput input) {
+        if (input == null) return;
+        try {
+            System.out.println("[NetCtrl] sendPlayerInput: " + input + " (localPlayerId=" + localPlayerId + ")");
+            if (transportClient != null) {
+                transportClient.sendPlayerInput(input);
+                return;
+            }
+            if (transportServer != null) {
+                transportServer.sendHostMessage(new tetris.network.protocol.GameMessage(
+                    tetris.network.protocol.MessageType.PLAYER_INPUT,
+                    "Player-" + localPlayerId,
+                    input
+                ));
+            }
+        } catch (Exception e) {
+            System.err.println("Failed to send player input: " + e.getMessage());
+        }
+    }
+
+    public void sendPieceLockedEvent(LockedPieceSnapshot snapshot, int[] clearedYs) {
+        try {
+            tetris.network.protocol.AttackLine[] attackLines = null;
+            if (clearedYs != null && clearedYs.length > 0) {
+                attackLines = new tetris.network.protocol.AttackLine[clearedYs.length];
+                for (int i = 0; i < clearedYs.length; i++) attackLines[i] = new tetris.network.protocol.AttackLine(1);
+            }
+
+            if (attackLines != null && attackLines.length > 0) {
+                tetris.network.protocol.GameMessage message = new tetris.network.protocol.GameMessage(
+                    tetris.network.protocol.MessageType.ATTACK_LINES,
+                    "Player-" + localPlayerId,
+                    attackLines
+                );
+                if (transportClient != null) transportClient.sendMessage(message);
+                else if (transportServer != null) transportServer.sendHostMessage(message);
+            }
+        } catch (Exception e) {
+            System.err.println("Failed to send piece locked event: " + e.getMessage());
+        }
+    }
+
+    public void sendGameState(GameModel model) {
+        if (model == null) return;
+        try {
+            int pid = determinePlayerIdForModel(model);
+            tetris.network.protocol.GameSnapshot snapshot = model.toSnapshot(pid);
+            System.out.println("[NetCtrl] sendGameState: sending snapshot for playerId=" + pid + ", model=" + model);
+            if (transportClient != null) {
+                transportClient.sendGameStateSnapshot(snapshot);
+            } else if (transportServer != null) {
+                transportServer.broadcastGameStateSnapshot(snapshot);
+            }
+        } catch (Exception e) {
+            System.err.println("Failed to send game state: " + e.getMessage());
+        }
+    }
+
+    private int determinePlayerIdForModel(GameModel model) {
+        if (model == null) return localPlayerId;
+        try {
+            GameModel p1 = game.modelOf(1);
+            GameModel p2 = game.modelOf(2);
+            if (model == p1) return 1;
+            if (model == p2) return 2;
+        } catch (Exception ignore) {}
+        return localPlayerId; // fallback
+    }
+
+    public void sendGameOverEvent() {
+        try {
+            java.util.Map<String, Object> data = new java.util.HashMap<>();
+            // prefer explicit winner from game if available
+            Integer winner = game.getWinnerId();
+            if (winner != null) data.put("winnerId", winner);
+            tetris.network.protocol.GameMessage message = new tetris.network.protocol.GameMessage(
+                tetris.network.protocol.MessageType.GAME_END,
+                transportClient != null ? "CLIENT" : "SERVER",
+                data
+            );
+            if (transportClient != null) transportClient.sendMessage(message);
+            else if (transportServer != null) transportServer.sendHostMessage(message);
+        } catch (Exception e) {
+            System.err.println("Failed to send GAME_END message: " + e.getMessage());
+        }
     }
 
     /**
@@ -277,7 +382,16 @@ public final class NetworkMultiPlayerController {
 
             @Override
             public void onGameStateSnapshot(tetris.network.protocol.GameSnapshot snapshot) {
-                applyRemoteSnapshot(getRemotePlayerId(), snapshot);
+                if (snapshot == null) return;
+                // Debug log
+                System.out.println("[NetCtrl] onGameStateSnapshot received: playerId=" + snapshot.playerId() + ", currentThread=" + Thread.currentThread().getName());
+                // Apply snapshot to the actual player indicated inside the snapshot (authoritative id)
+                Runnable apply = () -> applyRemoteSnapshot(snapshot);
+                if (!javax.swing.SwingUtilities.isEventDispatchThread()) {
+                    javax.swing.SwingUtilities.invokeLater(apply);
+                } else {
+                    apply.run();
+                }
             }
 
             @Override
@@ -285,39 +399,47 @@ public final class NetworkMultiPlayerController {
                 if (message == null) return;
                 switch (message.getType()) {
                     case PLAYER_INPUT: {
+                        // 클라이언트는 입력 메시지를 직접 적용하지 않고, 서버가 브로드캐스트한 스냅샷에만 의존
                         Object payload = message.getPayload();
                         if (payload instanceof tetris.network.protocol.PlayerInput pi) {
-                            applyRemotePlayerInput(getRemotePlayerId(), pi);
+                            System.out.println("[NetCtrl][CLIENT] Received PLAYER_INPUT from '" + message.getSenderId() + "' (ignored, waiting for snapshot): " + pi);
                         }
                         break;
                     }
                     case ATTACK_LINES: {
+                        // 공격 라인도 서버 스냅샷에 반영되어 오므로 직접 적용하지 않음
                         Object payload = message.getPayload();
-                        if (payload instanceof tetris.network.protocol.AttackLine[] lines) {
-                            applyRemoteAttackLines(getRemotePlayerId(), lines);
-                        }
+                        int count = (payload instanceof tetris.network.protocol.AttackLine[] lines) ? (lines == null ? 0 : lines.length) : 0;
+                        System.out.println("[NetCtrl][CLIENT] Received ATTACK_LINES from '" + message.getSenderId() + "' count=" + count + " (ignored, waiting for snapshot)");
                         break;
                     }
                     case GAME_END: {
-                        Object payloadObj = message.getPayload();
-                        Integer winnerId = null;
-                        if (payloadObj instanceof java.util.Map) {
-                            Object winnerIdObj = ((java.util.Map<?, ?>) payloadObj).get("winnerId");
-                            if (winnerIdObj instanceof Number) winnerId = ((Number) winnerIdObj).intValue();
-                        }
-                        if (winnerId != null) {
-                            int loserId = (winnerId == 1) ? 2 : 1;
-                            game.markLoser(loserId);
-                        } else {
-                            game.markLoser(getRemotePlayerId());
-                        }
+                        Runnable handle = () -> {
+                            Object payloadObj = message.getPayload();
+                            Integer winnerId = null;
+                            if (payloadObj instanceof java.util.Map) {
+                                Object winnerIdObj = ((java.util.Map<?, ?>) payloadObj).get("winnerId");
+                                if (winnerIdObj instanceof Number) winnerId = ((Number) winnerIdObj).intValue();
+                            }
+                            if (winnerId != null) {
+                                int loserId = (winnerId == 1) ? 2 : 1;
+                                game.markLoser(loserId);
+                            } else {
+                                game.markLoser(getRemotePlayerId());
+                            }
 
-                        // Ensure both models transition to GAME_OVER so UI can react
-                        GameModel localModel = game.modelOf(localPlayerId);
-                        GameModel opponentModel = game.modelOf(getRemotePlayerId());
-                        if (localModel != null && opponentModel != null) {
-                            localModel.changeState(tetris.domain.model.GameState.GAME_OVER);
-                            opponentModel.changeState(tetris.domain.model.GameState.GAME_OVER);
+                            // Ensure both models transition to GAME_OVER so UI can react
+                            GameModel localModel = game.modelOf(localPlayerId);
+                            GameModel opponentModel = game.modelOf(getRemotePlayerId());
+                            if (localModel != null && opponentModel != null) {
+                                localModel.changeState(tetris.domain.model.GameState.GAME_OVER);
+                                opponentModel.changeState(tetris.domain.model.GameState.GAME_OVER);
+                            }
+                        };
+                        if (!javax.swing.SwingUtilities.isEventDispatchThread()) {
+                            javax.swing.SwingUtilities.invokeLater(handle);
+                        } else {
+                            handle.run();
                         }
                         break;
                     }

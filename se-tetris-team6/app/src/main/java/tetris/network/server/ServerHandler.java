@@ -46,6 +46,8 @@ import java.util.concurrent.atomic.AtomicInteger; // 추가: 스레드 안전한
     private String clientId;                   // 클라이언트 고유 ID
     private boolean isConnected;               // 연결 상태
     private long lastPingTime;                 // 마지막 핑 시간
+    // 최근으로 처리한 시퀀스 번호(중복 방지)
+    private int lastProcessedSequence = -1;
 
     // === 서버 참조 ===
     private GameServer server;                 // 부모 서버 참조
@@ -62,6 +64,11 @@ import java.util.concurrent.atomic.AtomicInteger; // 추가: 스레드 안전한
             while (isConnected) {
                 // 클라이언트로부터 메시지 수신 대기
                 GameMessage message = (GameMessage) inputStream.readObject();
+                // Log the raw read for tracing duplicates (identity + seq)
+                try {
+                    int seq = message == null ? -1 : message.getSequenceNumber();
+                    System.out.println("[ServerHandler.run] readObject: identity=" + System.identityHashCode(message) + ", type=" + (message == null ? "null" : message.getType()) + ", seq=" + seq + ", thread=" + Thread.currentThread().getName());
+                } catch (Exception ignore) {}
                 handleMessage(message); // 메시지 처리 로직 (Step 3에서 상세 구현)
             }
         } catch (EOFException e) {
@@ -77,9 +84,10 @@ import java.util.concurrent.atomic.AtomicInteger; // 추가: 스레드 안전한
     public void sendMessage(GameMessage message) {
         try {
             if (outputStream != null) {
-            outputStream.writeObject(message);
-            // 💡 핵심 수정: 버퍼링된 데이터를 즉시 전송합니다.
-            outputStream.flush(); 
+            synchronized (outputStream) {
+                outputStream.writeObject(message);
+                outputStream.flush();
+            }
             System.out.println("ServerHandler sent message: " + message.getType());
             }
         } catch (IOException e) {
@@ -147,7 +155,15 @@ import java.util.concurrent.atomic.AtomicInteger; // 추가: 스레드 안전한
                 break;
             case PLAYER_INPUT:
             case ATTACK_LINES:
-                // 클라이언트 입력을 호스트에게 전달
+                // 클라이언트 입력을 호스트에게 전달 (중복 시퀀스 필터링)
+                int seq = message.getSequenceNumber();
+                // stronger dedup: ignore any message with seq <= lastProcessedSequence
+                if (seq <= lastProcessedSequence) {
+                    System.out.println("[ServerHandler] duplicate/old message ignored seq=" + seq + " lastProcessed=" + lastProcessedSequence + " from clientId=" + clientId + " identity=" + System.identityHashCode(message));
+                    break;
+                }
+                System.out.println("[ServerHandler] received " + message.getType() + " from clientId=" + clientId + " senderId=" + message.getSenderId() + " payload=" + message.getPayload() + " seq=" + seq + " identity=" + System.identityHashCode(message));
+                lastProcessedSequence = seq;
                 server.notifyHostOfMessage(message);
                 break;
             default:

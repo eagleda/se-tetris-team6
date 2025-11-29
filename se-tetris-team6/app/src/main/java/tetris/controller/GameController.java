@@ -444,33 +444,8 @@ public class GameController {
         tetris.multiplayer.controller.NetworkMultiPlayerController networkController = session.networkController();
         System.out.println("[GameController] NetworkController - " + (networkController != null ? "FOUND" : "NULL"));
         if (networkController != null) {
-            networkController.setNetworkHandler(new tetris.multiplayer.controller.NetworkMultiPlayerController.NetworkEventHandler() {
-                @Override
-                public void sendPieceLockedEvent(tetris.multiplayer.model.LockedPieceSnapshot snapshot, int[] clearedYs) {
-                    sendNetworkPieceLocked(snapshot, clearedYs);
-                }
-
-                @Override
-                public void sendGameState(tetris.domain.GameModel gameState) {
-                    // 호스트가 주기적으로 게임 상태 스냅샷을 브로드캐스트
-                    if (networkServer != null && gameState != null) {
-                        int pid = session.isPlayerOneLocal() ? 1 : 2; // 서버에서 호출 시 로컬은 player1
-                        tetris.network.protocol.GameSnapshot snapshot = gameState.toSnapshot(pid);
-                        networkServer.broadcastGameStateSnapshot(snapshot);
-                    }
-                }
-
-                @Override
-                public void sendGameOverEvent() {
-                    sendGameEndCallback.run();
-                }
-            });
-
-            // If a network client was already attached, delegate incoming
-            // message handling to the session's NetworkMultiPlayerController.
-            if (networkClient != null && session != null && session.networkController() != null) {
-                session.networkController().attachClient(networkClient);
-            }
+            // attach available transport so controller can send messages directly
+            networkController.attachTransport(networkClient, networkServer);
         }
         
         System.out.println("[GameController] Enabling network multiplayer in GameModel");
@@ -520,27 +495,7 @@ public class GameController {
         tetris.multiplayer.controller.NetworkMultiPlayerController networkController = session.networkController();
         System.out.println("[GameController] NetworkController - " + (networkController != null ? "FOUND" : "NULL"));
         if (networkController != null) {
-            networkController.setNetworkHandler(new tetris.multiplayer.controller.NetworkMultiPlayerController.NetworkEventHandler() {
-                @Override
-                public void sendPieceLockedEvent(tetris.multiplayer.model.LockedPieceSnapshot snapshot, int[] clearedYs) {
-                    sendNetworkPieceLocked(snapshot, clearedYs);
-                }
-
-                @Override
-                public void sendGameState(tetris.domain.GameModel gameState) {
-                    // 클라이언트도 자신의 게임 상태 스냅샷을 서버에 전송
-                    if (networkClient != null && gameState != null) {
-                        int pid = session.isPlayerOneLocal() ? 1 : 2;
-                        tetris.network.protocol.GameSnapshot snapshot = gameState.toSnapshot(pid);
-                        networkClient.sendGameStateSnapshot(snapshot);
-                    }
-                }
-
-                @Override
-                public void sendGameOverEvent() {
-                    sendGameEndCallback.run();
-                }
-            });
+            networkController.attachTransport(networkClient, networkServer);
         }
 
         System.out.println("[GameController] Enabling network multiplayer in GameModel (seed)");
@@ -558,38 +513,8 @@ public class GameController {
     /**
      * Send piece locked event over network
      */
-    private void sendNetworkPieceLocked(tetris.multiplayer.model.LockedPieceSnapshot snapshot, int[] clearedYs) {
-        try {
-            tetris.network.protocol.AttackLine[] attackLines = null;
-            if (clearedYs != null && clearedYs.length > 0) {
-                // Convert cleared lines to attack lines
-                attackLines = new tetris.network.protocol.AttackLine[clearedYs.length];
-                for (int i = 0; i < clearedYs.length; i++) {
-                    attackLines[i] = new tetris.network.protocol.AttackLine(1);
-                }
-            }
-            
-            if (attackLines != null && attackLines.length > 0) {
-                if (networkClient != null) {
-                    tetris.network.protocol.GameMessage message = new tetris.network.protocol.GameMessage(
-                        tetris.network.protocol.MessageType.ATTACK_LINES,
-                        "CLIENT",
-                        attackLines
-                    );
-                    networkClient.sendMessage(message);
-                } else if (networkServer != null) {
-                    tetris.network.protocol.GameMessage message = new tetris.network.protocol.GameMessage(
-                        tetris.network.protocol.MessageType.ATTACK_LINES,
-                        "SERVER",
-                        attackLines
-                    );
-                    networkServer.sendHostMessage(message);
-                }
-            }
-        } catch (Exception e) {
-            System.err.println("Failed to send piece locked event: " + e.getMessage());
-        }
-    }
+    // network sending moved to NetworkMultiPlayerController
+
 
     /**
      * Set the network client for sending input to the opponent.
@@ -597,10 +522,10 @@ public class GameController {
     public void setNetworkClient(tetris.network.client.GameClient client) {
         this.networkClient = client;
         if (client == null) return;
-        // Delegate incoming message handling to session controller if present
+        // Attach transport to session controller if present
         final NetworkMultiplayerSession sess = this.networkSession;
         if (sess != null && sess.networkController() != null) {
-            sess.networkController().attachClient(client);
+            sess.networkController().attachTransport(client, this.networkServer);
         }
     }
 
@@ -609,6 +534,10 @@ public class GameController {
      */
     public void setNetworkServer(tetris.network.server.GameServer server) {
         this.networkServer = server;
+        final NetworkMultiplayerSession sess = this.networkSession;
+        if (sess != null && sess.networkController() != null) {
+            sess.networkController().attachTransport(this.networkClient, server);
+        }
     }
 
     /**
@@ -708,7 +637,11 @@ public class GameController {
             if (isServer) {
                 handler.dispatchToPlayer(localPlayerId, GameModel::moveBlockLeft);
             }
-            sendNetworkInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.MOVE_LEFT));
+            if (networkSession != null && networkSession.networkController() != null) {
+                networkSession.networkController().sendPlayerInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.MOVE_LEFT));
+            } else {
+                sendNetworkInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.MOVE_LEFT));
+            }
             notifyNetworkControllerInput();
             return true;
         }
@@ -716,7 +649,11 @@ public class GameController {
             if (isServer) {
                 handler.dispatchToPlayer(localPlayerId, GameModel::moveBlockRight);
             }
-            sendNetworkInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.MOVE_RIGHT));
+            if (networkSession != null && networkSession.networkController() != null) {
+                networkSession.networkController().sendPlayerInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.MOVE_RIGHT));
+            } else {
+                sendNetworkInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.MOVE_RIGHT));
+            }
             notifyNetworkControllerInput();
             return true;
         }
@@ -724,7 +661,11 @@ public class GameController {
             if (isServer) {
                 handler.dispatchToPlayer(localPlayerId, GameModel::moveBlockDown);
             }
-            sendNetworkInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.SOFT_DROP));
+            if (networkSession != null && networkSession.networkController() != null) {
+                networkSession.networkController().sendPlayerInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.SOFT_DROP));
+            } else {
+                sendNetworkInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.SOFT_DROP));
+            }
             notifyNetworkControllerInput();
             return true;
         }
@@ -732,7 +673,11 @@ public class GameController {
             if (isServer) {
                 handler.dispatchToPlayer(localPlayerId, GameModel::rotateBlockClockwise);
             }
-            sendNetworkInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.ROTATE));
+            if (networkSession != null && networkSession.networkController() != null) {
+                networkSession.networkController().sendPlayerInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.ROTATE));
+            } else {
+                sendNetworkInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.ROTATE));
+            }
             notifyNetworkControllerInput();
             return true;
         }
@@ -740,7 +685,11 @@ public class GameController {
             if (isServer) {
                 handler.dispatchToPlayer(localPlayerId, GameModel::rotateBlockCounterClockwise);
             }
-            sendNetworkInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.ROTATE));
+            if (networkSession != null && networkSession.networkController() != null) {
+                networkSession.networkController().sendPlayerInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.ROTATE));
+            } else {
+                sendNetworkInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.ROTATE));
+            }
             notifyNetworkControllerInput();
             return true;
         }
@@ -748,7 +697,11 @@ public class GameController {
             if (isServer) {
                 handler.dispatchToPlayer(localPlayerId, GameModel::hardDropBlock);
             }
-            sendNetworkInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.HARD_DROP));
+            if (networkSession != null && networkSession.networkController() != null) {
+                networkSession.networkController().sendPlayerInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.HARD_DROP));
+            } else {
+                sendNetworkInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.HARD_DROP));
+            }
             notifyNetworkControllerInput();
             return true;
         }
@@ -756,7 +709,11 @@ public class GameController {
             if (isServer) {
                 handler.dispatchToPlayer(localPlayerId, GameModel::holdCurrentBlock);
             }
-            sendNetworkInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.HOLD));
+            if (networkSession != null && networkSession.networkController() != null) {
+                networkSession.networkController().sendPlayerInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.HOLD));
+            } else {
+                sendNetworkInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.HOLD));
+            }
             notifyNetworkControllerInput();
             return true;
         }
