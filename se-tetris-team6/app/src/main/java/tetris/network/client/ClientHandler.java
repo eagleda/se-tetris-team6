@@ -82,6 +82,9 @@ public class ClientHandler implements Runnable {
                     javax.swing.SwingUtilities.invokeLater(() -> client.getGameStateListener().onOpponentBoardUpdate(message));
                 }
                 break;
+            case GAME_STATE:
+                handleGameState(message);
+                break;
             case PONG:
                 handlePong(message);
                 break;
@@ -176,6 +179,22 @@ public class ClientHandler implements Runnable {
             javax.swing.SwingUtilities.invokeLater(() -> client.getGameStateListener().onGameStateChange(message));
         } else {
             System.out.println("Incoming attack received but no GameStateListener registered: " + message);
+        }
+    }
+
+    // 게임 상태 스냅샷 처리 - 호스트의 권위 있는 게임 상태를 수신
+    private void handleGameState(GameMessage message) {
+        // 페이로드로 GameSnapshot 객체가 전달됨
+        Object payload = message.getPayload();
+        if (payload instanceof tetris.network.protocol.GameSnapshot) {
+            tetris.network.protocol.GameSnapshot snapshot = (tetris.network.protocol.GameSnapshot) payload;
+            if (client.getGameStateListener() != null) {
+                javax.swing.SwingUtilities.invokeLater(() -> client.getGameStateListener().onGameStateSnapshot(snapshot));
+            } else {
+                System.out.println("GameState snapshot received but no listener registered.");
+            }
+        } else {
+            System.out.println("GAME_STATE payload is not a GameSnapshot: " + payload);
         }
     }
 

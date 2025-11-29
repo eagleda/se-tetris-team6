@@ -181,6 +181,20 @@ public class GameServer {
         broadcastMessage(message);
     }
 
+    /**
+     * Broadcast a game state snapshot to all connected clients.
+     * 호스트가 주기적으로 호출하여 권위 있는 게임 상태를 전송합니다.
+     */
+    public void broadcastGameStateSnapshot(tetris.network.protocol.GameSnapshot snapshot) {
+        if (snapshot == null) return;
+        GameMessage msg = new GameMessage(
+            tetris.network.protocol.MessageType.GAME_STATE,
+            "SERVER",
+            snapshot
+        );
+        broadcastMessage(msg);
+    }
+
     // 게임 시작 - 모든 클라이언트가 준비되었을 때
     public void startGame(){
         /* Step 4 구현 예정 */ }

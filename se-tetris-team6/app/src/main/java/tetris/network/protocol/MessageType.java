@@ -29,6 +29,7 @@ public enum MessageType {
     ATTACK_LINES,         // 양방향: 공격 줄 전송
     SCORE_UPDATE,         // 양방향: 점수 업데이트
     PLAYER_READY,         // 양측 준비 완료 신호
+    GAME_STATE,           // 서버 → 클라이언트: 전체 게임 상태 스냅샷 (호스트 권위)
 
     // === 네트워크 상태 ===
     PING,                 // 지연시간 측정용 핑

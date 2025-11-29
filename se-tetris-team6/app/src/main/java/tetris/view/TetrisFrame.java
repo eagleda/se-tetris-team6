@@ -68,6 +68,8 @@ public class TetrisFrame extends JFrame {
     private GameModel.UiBridge localP2UiBridge;
     // Optional in-process server when user chooses to host a game
     private GameServer hostedServer;
+    // 호스트가 게임 상태를 주기적으로 브로드캐스트하기 위한 타이머
+    private javax.swing.Timer hostSnapshotBroadcastTimer;
 
     public TetrisFrame(GameModel gameModel) {
         super(FRAME_TITLE);
@@ -281,6 +283,8 @@ public class TetrisFrame extends JFrame {
                                             TetrisFrame.this.bindMultiPanelToCurrentSession();
                                             System.out.println("[UI][SERVER] Displaying multiGameLayout");
                                             TetrisFrame.this.displayPanel(onlineMultiGameLayout);
+                                            // 호스트 스냅샷 브로드캐스트 타이머 시작
+                                            TetrisFrame.this.startHostSnapshotBroadcast();
                                         });
                                         break;
                                     }
@@ -436,6 +440,19 @@ public class TetrisFrame extends JFrame {
                         // For board updates we simply trigger a repaint (detailed state sync handled elsewhere)
                         ensureLocalSessionUiBridges();
                         if (onlineMultiGameLayout != null) onlineMultiGameLayout.repaint();
+                    }
+
+                    @Override
+                    public void onGameStateSnapshot(tetris.network.protocol.GameSnapshot snapshot) {
+                        // 호스트로부터 권위 있는 스냅샷 수신: 상대 모델에 적용
+                        LocalMultiplayerSession session = gameModel.getActiveLocalMultiplayerSession().orElse(null);
+                        if (session == null) return;
+                        tetris.domain.GameModel opponent = session.isPlayerOneLocal() ? session.playerTwoModel() : session.playerOneModel();
+                        opponent.applySnapshot(snapshot);
+                        // 화면 갱신
+                        if (onlineMultiGameLayout != null) {
+                            onlineMultiGameLayout.repaint();
+                        }
                     }
 
                     @Override
@@ -677,6 +694,12 @@ public class TetrisFrame extends JFrame {
                         if (session == null) return;
                         ensureLocalSessionUiBridges();
                         if (onlineMultiGameLayout != null) onlineMultiGameLayout.repaint();
+            }
+
+            @Override
+            public void onGameStateSnapshot(tetris.network.protocol.GameSnapshot snapshot) {
+                // 호스트는 스냅샷을 수신하지 않음 (자신이 송신함), 하지만 인터페이스 구현 필요
+                System.out.println("[TetrisFrame] Host received snapshot (unexpected, ignoring).");
             }
 
             @Override
@@ -1151,5 +1174,39 @@ public class TetrisFrame extends JFrame {
                 // 로컬 뷰는 메인 UI 오버레이를 사용하므로 무시
             }
         };
+    }
+
+    /**
+     * 호스트가 주기적으로 자신의 게임 상태 스냅샷을 클라이언트들에게 브로드캐스트합니다.
+     * 약 100ms마다 호스트의 GameModel을 스냅샷하여 전송합니다.
+     */
+    private void startHostSnapshotBroadcast() {
+        if (hostedServer == null) return;
+        stopHostSnapshotBroadcast(); // 기존 타이머 정리
+        hostSnapshotBroadcastTimer = new javax.swing.Timer(100, e -> {
+            LocalMultiplayerSession session = gameModel.getActiveLocalMultiplayerSession().orElse(null);
+            if (session == null) {
+                stopHostSnapshotBroadcast();
+                return;
+            }
+            // 호스트는 Player-1이므로 playerOneModel이 호스트 모델
+            tetris.domain.GameModel hostModel = session.playerOneModel();
+            if (hostModel.getCurrentState() == tetris.domain.model.GameState.PLAYING) {
+                tetris.network.protocol.GameSnapshot snapshot = hostModel.toSnapshot();
+                hostedServer.broadcastGameStateSnapshot(snapshot);
+            }
+        });
+        hostSnapshotBroadcastTimer.start();
+        System.out.println("[TetrisFrame] Host snapshot broadcast timer started.");
+    }
+
+    /**
+     * 호스트 스냅샷 브로드캐스트 타이머 중지
+     */
+    private void stopHostSnapshotBroadcast() {
+        if (hostSnapshotBroadcastTimer != null && hostSnapshotBroadcastTimer.isRunning()) {
+            hostSnapshotBroadcastTimer.stop();
+            System.out.println("[TetrisFrame] Host snapshot broadcast timer stopped.");
+        }
     }
 }

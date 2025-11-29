@@ -952,6 +952,48 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         return Optional.ofNullable(activeLocalSession);
     }
 
+    /** 네트워크 전송용 스냅샷 생성 */
+    public tetris.network.protocol.GameSnapshot toSnapshot() {
+        int[][] copy = board.gridView(); // 이미 깊은 복사 반환
+        // 현재/다음 블록 타입 식별자 계산
+        Block active = gameplayEngine != null ? gameplayEngine.getActiveBlock() : null;
+        int currentId = 0;
+        if (active != null && active.getShape() != null && active.getShape().kind() != null) {
+            currentId = active.getShape().kind().ordinal() + 1; // 1..7 등
+        }
+        BlockKind nextKind = getNextBlockKind();
+        int nextId = nextKind != null ? (nextKind.ordinal() + 1) : 0;
+        int pts = 0;
+        try {
+            tetris.domain.score.Score sc = scoreRepository != null ? scoreRepository.load() : null;
+            pts = sc != null ? sc.getPoints() : 0;
+        } catch (Exception ignore) {
+            pts = 0;
+        }
+        int elapsed = (int) (getElapsedMillis() / 1000L);
+        int pending = pendingGarbageLines;
+        return new tetris.network.protocol.GameSnapshot(copy, currentId, nextId, pts, elapsed, pending);
+    }
+
+    /** 스냅샷을 적용 (클라이언트 렌더링 전용) */
+    public void applySnapshot(tetris.network.protocol.GameSnapshot snapshot) {
+        if (snapshot == null) return;
+        int[][] b = snapshot.board();
+        if (b != null) {
+            int h = Math.min(Board.H, b.length);
+            int w = Math.min(Board.W, b[0].length);
+            for (int y = 0; y < h; y++) {
+                for (int x = 0; x < w; x++) {
+                    board.setCell(x, y, b[y][x]);
+                }
+            }
+        }
+        // 현재/다음 블록은 타입 id만 반영(실제 블록 객체 생성은 렌더링 엔진에 위임 가능)
+        // 점수/타이머/가비지는 UI 패널에서 표시만 갱신 (필드 보존)
+        this.pendingGarbageLines = snapshot.pendingGarbage();
+        if (uiBridge != null) uiBridge.refreshBoard();
+    }
+
     public void stepGameplay() {
         gameplayEngine.stepGameplay();
     }
