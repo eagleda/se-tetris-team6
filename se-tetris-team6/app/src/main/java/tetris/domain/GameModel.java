@@ -1236,7 +1236,22 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
             }
         }
         recordPlayerInput();
-        gameplayEngine.rotateBlockClockwise();
+        try {
+            tetris.domain.model.Block active = gameplayEngine.getActiveBlock();
+            int beforeRot = active != null ? active.getRotation() : -1;
+            System.out.printf("[LOG][GameModel] rotateBlockClockwise() requested - beforeRot=%d thread=%s%n",
+                    beforeRot, Thread.currentThread().getName());
+            gameplayEngine.rotateBlockClockwise();
+            tetris.domain.model.Block after = gameplayEngine.getActiveBlock();
+            int afterRot = after != null ? after.getRotation() : -1;
+            if (beforeRot == afterRot) {
+                System.out.printf("[LOG][GameModel] rotateBlockClockwise() result: NO_CHANGE (before=%d after=%d)%n", beforeRot, afterRot);
+            } else {
+                System.out.printf("[LOG][GameModel] rotateBlockClockwise() result: APPLIED (before=%d after=%d)%n", beforeRot, afterRot);
+            }
+        } catch (Exception ex) {
+            System.out.println("[LOG][GameModel] rotateBlockClockwise() exception: " + ex);
+        }
     }
 
     public void rotateBlockCounterClockwise() {
