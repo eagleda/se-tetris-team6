@@ -152,6 +152,8 @@ public class NetworkMultiGameLayout extends JPanel {
         attackQueuePanel_1.bindAttackLinesSupplier(() -> session.handler().getPendingAttackLines(1));
         attackQueuePanel_2.bindAttackLinesSupplier(() -> session.handler().getPendingAttackLines(2));
         System.out.println("[NetworkMultiGameLayout] Session binding complete, repainting");
+        String out = tetris.view.PvPGameRenderer.render(session.playerOneModel(), session.playerTwoModel(), true, true, "상태 메시지");
+        System.out.println(out);
         repaint();
     }
 
