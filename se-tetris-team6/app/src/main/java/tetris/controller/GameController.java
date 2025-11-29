@@ -20,7 +20,7 @@ import tetris.multiplayer.session.NetworkMultiplayerSession;
  * Controller 역할을 수행하는 클래스.
  * View(GamePanel)와 Model(추후 생성할 GameModel)을 연결합니다.
  */
-public class GameController implements tetris.network.client.GameStateListener {
+public class GameController {
 
     private final GameModel gameModel; // Model 참조
 
@@ -466,75 +466,10 @@ public class GameController implements tetris.network.client.GameStateListener {
                 }
             });
 
-            // If a network client was already attached, forward incoming messages to
-            // the session's NetworkMultiPlayerController so network logic lives in
-            // the multiplayer controller rather than UI/Frame.
-            if (networkClient != null && session != null) {
-                final NetworkMultiplayerSession sess = session;
-                networkClient.setGameStateListener(new tetris.network.client.GameStateListener() {
-                    @Override
-                    public void onOpponentBoardUpdate(tetris.network.protocol.GameMessage message) {
-                        // board-level messages are handled via snapshots; keep no-op here
-                    }
-
-                    @Override
-                    public void onGameStateSnapshot(tetris.network.protocol.GameSnapshot snapshot) {
-                        if (snapshot == null) return;
-                        int pid = snapshot.playerId();
-                        if (sess.networkController() != null) {
-                            sess.networkController().applyRemoteSnapshot(pid, snapshot);
-                        }
-                    }
-
-                    @Override
-                    public void onGameStateChange(tetris.network.protocol.GameMessage message) {
-                        if (sess.networkController() == null) return;
-                        switch (message.getType()) {
-                            case PLAYER_INPUT: {
-                                Object payload = message.getPayload();
-                                if (payload instanceof tetris.network.protocol.PlayerInput pi) {
-                                    int remotePlayerId = sess.isPlayerOneLocal() ? 2 : 1;
-                                    sess.networkController().applyRemotePlayerInput(remotePlayerId, pi);
-                                }
-                                break;
-                            }
-                            case ATTACK_LINES: {
-                                Object payload = message.getPayload();
-                                if (payload instanceof tetris.network.protocol.AttackLine[] lines) {
-                                    int remotePlayerId = sess.isPlayerOneLocal() ? 2 : 1;
-                                    sess.networkController().applyRemoteAttackLines(remotePlayerId, lines);
-                                }
-                                break;
-                            }
-                            case GAME_END: {
-                                // Mark loser based on winnerId in payload (same logic as prior UI handling)
-                                Object payloadObj = message.getPayload();
-                                Integer winnerId = null;
-                                if (payloadObj instanceof java.util.Map) {
-                                    Object winnerIdObj = ((java.util.Map<?, ?>) payloadObj).get("winnerId");
-                                    if (winnerIdObj instanceof Number) winnerId = ((Number) winnerIdObj).intValue();
-                                }
-                                if (winnerId != null) {
-                                    int loserId = (winnerId == 1) ? 2 : 1;
-                                    sess.game().markLoser(loserId);
-                                } else {
-                                    int opponentId = sess.isPlayerOneLocal() ? 2 : 1;
-                                    sess.game().markLoser(opponentId);
-                                }
-                                // Ensure local UI shows result
-                                tetris.domain.GameModel localModel = sess.isPlayerOneLocal() ? sess.playerOneModel() : sess.playerTwoModel();
-                                tetris.domain.GameModel opponentModel = sess.isPlayerOneLocal() ? sess.playerTwoModel() : sess.playerOneModel();
-                                if (localModel.getCurrentState() != tetris.domain.model.GameState.GAME_OVER) {
-                                    localModel.changeState(tetris.domain.model.GameState.GAME_OVER);
-                                    opponentModel.changeState(tetris.domain.model.GameState.GAME_OVER);
-                                    gameModel.showMultiplayerResult(sess.game().getWinnerId() == null ? -1 : sess.game().getWinnerId());
-                                }
-                                break;
-                            }
-                            default: break;
-                        }
-                    }
-                });
+            // If a network client was already attached, delegate incoming
+            // message handling to the session's NetworkMultiPlayerController.
+            if (networkClient != null && session != null && session.networkController() != null) {
+                session.networkController().attachClient(networkClient);
             }
         }
         
@@ -662,66 +597,10 @@ public class GameController implements tetris.network.client.GameStateListener {
     public void setNetworkClient(tetris.network.client.GameClient client) {
         this.networkClient = client;
         if (client == null) return;
-
-        // If a network multiplayer session already exists, register a listener
-        // that forwards incoming network messages to the session's
-        // NetworkMultiPlayerController. This ensures we don't miss messages
-        // when the client is attached after the session is created.
+        // Delegate incoming message handling to session controller if present
         final NetworkMultiplayerSession sess = this.networkSession;
         if (sess != null && sess.networkController() != null) {
-            client.setGameStateListener(new tetris.network.client.GameStateListener() {
-                @Override
-                public void onOpponentBoardUpdate(tetris.network.protocol.GameMessage message) {
-                    // board update messages are handled via snapshots; no-op here
-                }
-
-                @Override
-                public void onGameStateSnapshot(tetris.network.protocol.GameSnapshot snapshot) {
-                    if (snapshot == null) return;
-                    sess.networkController().applyRemoteSnapshot(snapshot.playerId(), snapshot);
-                }
-
-                @Override
-                public void onGameStateChange(tetris.network.protocol.GameMessage message) {
-                    if (sess.networkController() == null) return;
-                    switch (message.getType()) {
-                        case PLAYER_INPUT: {
-                            Object payload = message.getPayload();
-                            if (payload instanceof tetris.network.protocol.PlayerInput pi) {
-                                int remotePlayerId = sess.isPlayerOneLocal() ? 2 : 1;
-                                sess.networkController().applyRemotePlayerInput(remotePlayerId, pi);
-                            }
-                            break;
-                        }
-                        case ATTACK_LINES: {
-                            Object payload = message.getPayload();
-                            if (payload instanceof tetris.network.protocol.AttackLine[] lines) {
-                                int remotePlayerId = sess.isPlayerOneLocal() ? 2 : 1;
-                                sess.networkController().applyRemoteAttackLines(remotePlayerId, lines);
-                            }
-                            break;
-                        }
-                        case GAME_END: {
-                            Object payloadObj = message.getPayload();
-                            Integer winnerId = null;
-                            if (payloadObj instanceof java.util.Map) {
-                                Object winnerIdObj = ((java.util.Map<?, ?>) payloadObj).get("winnerId");
-                                if (winnerIdObj instanceof Number) winnerId = ((Number) winnerIdObj).intValue();
-                            }
-                            if (winnerId != null) {
-                                int loserId = (winnerId == 1) ? 2 : 1;
-                                sess.game().markLoser(loserId);
-                            } else {
-                                int opponentId = sess.isPlayerOneLocal() ? 2 : 1;
-                                sess.game().markLoser(opponentId);
-                            }
-                            break;
-                        }
-                        default:
-                            break;
-                    }
-                }
-            });
+            sess.networkController().attachClient(client);
         }
     }
 
@@ -966,66 +845,6 @@ public class GameController implements tetris.network.client.GameStateListener {
         if (localMultiplayerTimer != null) {
             localMultiplayerTimer.stop();
             localMultiplayerTimer = null;
-        }
-    }
-
-    // ===== GameStateListener 구현 =====
-
-    @Override
-    public void onOpponentBoardUpdate(tetris.network.protocol.GameMessage message) {
-        // 기존 메시지 기반 업데이트는 스냅샷으로 대체됨
-    }
-
-    @Override
-    public void onGameStateChange(tetris.network.protocol.GameMessage message) {
-        // 게임 상태 변경 처리
-    }
-
-    @Override
-    public void onGameStateSnapshot(tetris.network.protocol.GameSnapshot snapshot) {
-        // EDT에서 실행 중인지 확인하고, 아니면 EDT로 전달
-        if (!javax.swing.SwingUtilities.isEventDispatchThread()) {
-            javax.swing.SwingUtilities.invokeLater(() -> applySnapshotToOpponent(snapshot));
-        } else {
-            applySnapshotToOpponent(snapshot);
-        }
-    }
-
-    /**
-     * 상대방 모델에 스냅샷을 적용합니다.
-     * 모든 플레이어가 상대방의 스냅샷을 받아 화면에 표시합니다.
-     */
-    private void applySnapshotToOpponent(tetris.network.protocol.GameSnapshot snapshot) {
-        if (snapshot == null || localSession == null) {
-            return;
-        }
-
-        try {
-            MultiplayerHandler handler = localSession.handler();
-            if (handler instanceof tetris.multiplayer.handler.NetworkedMultiplayerHandler) {
-                tetris.multiplayer.handler.NetworkedMultiplayerHandler netHandler = 
-                    (tetris.multiplayer.handler.NetworkedMultiplayerHandler) handler;
-                int localPlayerId = netHandler.getLocalPlayerId();
-                
-                // 모든 플레이어가 상대방의 스냅샷을 받아 적용
-                GameModel opponentModel;
-                if (localPlayerId == 1) {
-                    // 호스트(P1): 클라이언트(P2)의 스냅샷을 P2 모델에 적용
-                    opponentModel = localSession.playerTwoModel();
-                    System.out.println("[Host] Applying client snapshot to P2 display");
-                } else {
-                    // 클라이언트(P2): 호스트(P1)의 스냅샷을 P1 모델에 적용
-                    opponentModel = localSession.playerOneModel();
-                    System.out.println("[Client] Applying host snapshot to P1 display");
-                }
-                
-                if (opponentModel != null) {
-                    opponentModel.applySnapshot(snapshot);
-                }
-            }
-        } catch (Exception e) {
-            System.err.println("[GameController] Error applying snapshot: " + e.getMessage());
-            e.printStackTrace();
         }
     }
 }

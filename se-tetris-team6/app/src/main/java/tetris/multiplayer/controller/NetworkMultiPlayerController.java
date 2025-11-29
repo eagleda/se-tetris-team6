@@ -262,4 +262,69 @@ public final class NetworkMultiPlayerController {
         if (model == null) return;
         model.applySnapshot(snapshot);
     }
+
+    /**
+     * Attach a network client so that incoming network messages are
+     * forwarded into this controller (snapshots, inputs, attack lines, game end).
+     */
+    public void attachClient(tetris.network.client.GameClient client) {
+        if (client == null) return;
+        client.setGameStateListener(new tetris.network.client.GameStateListener() {
+            @Override
+            public void onOpponentBoardUpdate(tetris.network.protocol.GameMessage message) {
+                // no-op; we use snapshots and higher-level messages
+            }
+
+            @Override
+            public void onGameStateSnapshot(tetris.network.protocol.GameSnapshot snapshot) {
+                applyRemoteSnapshot(getRemotePlayerId(), snapshot);
+            }
+
+            @Override
+            public void onGameStateChange(tetris.network.protocol.GameMessage message) {
+                if (message == null) return;
+                switch (message.getType()) {
+                    case PLAYER_INPUT: {
+                        Object payload = message.getPayload();
+                        if (payload instanceof tetris.network.protocol.PlayerInput pi) {
+                            applyRemotePlayerInput(getRemotePlayerId(), pi);
+                        }
+                        break;
+                    }
+                    case ATTACK_LINES: {
+                        Object payload = message.getPayload();
+                        if (payload instanceof tetris.network.protocol.AttackLine[] lines) {
+                            applyRemoteAttackLines(getRemotePlayerId(), lines);
+                        }
+                        break;
+                    }
+                    case GAME_END: {
+                        Object payloadObj = message.getPayload();
+                        Integer winnerId = null;
+                        if (payloadObj instanceof java.util.Map) {
+                            Object winnerIdObj = ((java.util.Map<?, ?>) payloadObj).get("winnerId");
+                            if (winnerIdObj instanceof Number) winnerId = ((Number) winnerIdObj).intValue();
+                        }
+                        if (winnerId != null) {
+                            int loserId = (winnerId == 1) ? 2 : 1;
+                            game.markLoser(loserId);
+                        } else {
+                            game.markLoser(getRemotePlayerId());
+                        }
+
+                        // Ensure both models transition to GAME_OVER so UI can react
+                        GameModel localModel = game.modelOf(localPlayerId);
+                        GameModel opponentModel = game.modelOf(getRemotePlayerId());
+                        if (localModel != null && opponentModel != null) {
+                            localModel.changeState(tetris.domain.model.GameState.GAME_OVER);
+                            opponentModel.changeState(tetris.domain.model.GameState.GAME_OVER);
+                        }
+                        break;
+                    }
+                    default:
+                        break;
+                }
+            }
+        });
+    }
 }
