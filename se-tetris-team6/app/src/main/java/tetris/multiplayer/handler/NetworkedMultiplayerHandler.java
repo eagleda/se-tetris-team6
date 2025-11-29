@@ -159,8 +159,8 @@ public final class NetworkedMultiplayerHandler implements MultiplayerHandler {
             game.player(1).getModel().addMultiplayerHook(createHook(1));
             game.player(2).getModel().addMultiplayerHook(createHook(2));
         } else {
-            int pid = localPlayerId;
-            game.player(pid).getModel().addMultiplayerHook(createHook(pid));
+            // 클라이언트(P2)는 서버 권한 모델이므로 로컬 모델에 공격 로직 Hook을 등록하지 않습니다.
+            // 모든 공격 처리 및 적용은 서버가 수행하고 스냅샷을 통해 동기화됩니다.
         }
     }
 
@@ -169,8 +169,7 @@ public final class NetworkedMultiplayerHandler implements MultiplayerHandler {
             try { game.player(1).getModel().removeMultiplayerHook(createHook(1)); } catch (Exception ignore) {}
             try { game.player(2).getModel().removeMultiplayerHook(createHook(2)); } catch (Exception ignore) {}
         } else {
-            int pid = localPlayerId;
-            try { game.player(pid).getModel().removeMultiplayerHook(createHook(pid)); } catch (Exception ignore) {}
+            // 클라이언트(P2)는 Hook을 등록하지 않았으므로 해제할 필요가 없습니다.
         }
     }
 
@@ -178,11 +177,15 @@ public final class NetworkedMultiplayerHandler implements MultiplayerHandler {
         return new tetris.domain.GameModel.MultiplayerHook() {
             @Override
             public void onPieceLocked(tetris.multiplayer.model.LockedPieceSnapshot snapshot, int[] clearedRows, int boardWidth) {
+                // 이 Hook은 서버(P1)에서만 호출되므로, 로컬 플레이어의 onLocalPieceLocked를 호출합니다.
+                // P1이 P1 모델에서 라인을 지우면 P1의 공격으로, P1이 P2 모델에서 라인을 지우면 P2의 공격으로 처리됩니다.
+                // 하지만 P2 모델은 P1의 키 입력을 받지 않으므로, P2 모델의 Hook은 P2의 입력이 서버에 반영된 후 P1의 update()에서만 호출됩니다.
                 controller.onLocalPieceLocked(snapshot, clearedRows);
             }
 
             @Override
             public void beforeNextSpawn() {
+                // 서버(P1)에서 P1 또는 P2의 공격 대기열을 처리합니다.
                 controller.injectAttackBeforeNextSpawn(playerId);
             }
         };
