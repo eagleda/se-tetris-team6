@@ -284,6 +284,7 @@ public final class NetworkMultiPlayerController {
     public void sendPlayerInput(tetris.network.protocol.PlayerInput input) {
         if (input == null) return;
         try {
+            System.out.println("[NetCtrl] sendPlayerInput: " + input + " (localPlayerId=" + localPlayerId + ")");
             if (transportClient != null) {
                 transportClient.sendPlayerInput(input);
                 return;
@@ -325,8 +326,9 @@ public final class NetworkMultiPlayerController {
     public void sendGameState(GameModel model) {
         if (model == null) return;
         try {
-            int pid = localPlayerId;
+            int pid = determinePlayerIdForModel(model);
             tetris.network.protocol.GameSnapshot snapshot = model.toSnapshot(pid);
+            System.out.println("[NetCtrl] sendGameState: sending snapshot for playerId=" + pid + ", model=" + model);
             if (transportClient != null) {
                 transportClient.sendGameStateSnapshot(snapshot);
             } else if (transportServer != null) {
@@ -335,6 +337,17 @@ public final class NetworkMultiPlayerController {
         } catch (Exception e) {
             System.err.println("Failed to send game state: " + e.getMessage());
         }
+    }
+
+    private int determinePlayerIdForModel(GameModel model) {
+        if (model == null) return localPlayerId;
+        try {
+            GameModel p1 = game.modelOf(1);
+            GameModel p2 = game.modelOf(2);
+            if (model == p1) return 1;
+            if (model == p2) return 2;
+        } catch (Exception ignore) {}
+        return localPlayerId; // fallback
     }
 
     public void sendGameOverEvent() {
@@ -370,6 +383,8 @@ public final class NetworkMultiPlayerController {
             @Override
             public void onGameStateSnapshot(tetris.network.protocol.GameSnapshot snapshot) {
                 if (snapshot == null) return;
+                // Debug log
+                System.out.println("[NetCtrl] onGameStateSnapshot received: playerId=" + snapshot.playerId() + ", currentThread=" + Thread.currentThread().getName());
                 // Apply snapshot to the actual player indicated inside the snapshot (authoritative id)
                 Runnable apply = () -> applyRemoteSnapshot(snapshot);
                 if (!javax.swing.SwingUtilities.isEventDispatchThread()) {
@@ -386,6 +401,7 @@ public final class NetworkMultiPlayerController {
                     case PLAYER_INPUT: {
                         Object payload = message.getPayload();
                         if (payload instanceof tetris.network.protocol.PlayerInput pi) {
+                            System.out.println("[NetCtrl] onGameStateChange PLAYER_INPUT from sender='" + message.getSenderId() + "' payload=" + pi);
                             applyRemotePlayerInput(getRemotePlayerId(), pi);
                         }
                         break;
@@ -393,6 +409,7 @@ public final class NetworkMultiPlayerController {
                     case ATTACK_LINES: {
                         Object payload = message.getPayload();
                         if (payload instanceof tetris.network.protocol.AttackLine[] lines) {
+                            System.out.println("[NetCtrl] onGameStateChange ATTACK_LINES from sender='" + message.getSenderId() + "' linesCount=" + (lines == null ? 0 : lines.length));
                             applyRemoteAttackLines(getRemotePlayerId(), lines);
                         }
                         break;
