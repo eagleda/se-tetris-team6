@@ -136,6 +136,14 @@ public class NetworkManager implements INetworkThreadCallback {
             try {
                 System.out.println("[NetworkManager] sendPlayerInput: localPlayerId=" + localPlayerId + " payload=" + input + " seq=" + message.getSequenceNumber() + " identity=" + System.identityHashCode(message));
             } catch (Exception ignore) {}
+            // Optimistic local prediction: apply the input locally immediately so UI feels responsive
+            try {
+                if (localGameThread != null) {
+                    localGameThread.applyImmediateInput(input);
+                }
+            } catch (Exception ex) {
+                System.err.println("[NetworkManager] optimistic applyImmediateInput failed: " + ex.getMessage());
+            }
             networkThread.sendMessage(message);
         }
     }

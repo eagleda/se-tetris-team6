@@ -419,6 +419,31 @@ public class GameThread implements Runnable, GameplayEngine.GameplayEvents {
             inputQueue.offer(input);
         }
     }
+
+    /**
+     * Apply a player input immediately for optimistic client-side prediction.
+     * This method updates the InputState and runs a single gameplay step under
+     * the same lock used by the game loop so the local UI reflects the input
+     * without waiting for the next tick. Use with caution.
+     */
+    public void applyImmediateInput(PlayerInput input) {
+        if (input == null) return;
+        gameStateLock.writeLock().lock();
+        try {
+            convertPlayerInputToInputState(input);
+            // Run one step to reflect the change immediately
+            try {
+                gameModel.stepGameplay();
+                if (gameModel.getActiveBlock() == null) {
+                    gameModel.spawnIfNeeded();
+                }
+            } catch (Exception ex) {
+                System.err.println("[GameThread] applyImmediateInput: stepGameplay failed: " + ex.getMessage());
+            }
+        } finally {
+            gameStateLock.writeLock().unlock();
+        }
+    }
     
     public void pauseGame() {
         isPaused.set(true);

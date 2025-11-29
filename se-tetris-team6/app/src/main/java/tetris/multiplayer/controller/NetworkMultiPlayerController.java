@@ -292,7 +292,7 @@ public final class NetworkMultiPlayerController {
             if (transportServer != null) {
                 transportServer.sendHostMessage(new tetris.network.protocol.GameMessage(
                     tetris.network.protocol.MessageType.PLAYER_INPUT,
-                    "Player-1",
+                    "Player-" + localPlayerId,
                     input
                 ));
             }
@@ -312,7 +312,7 @@ public final class NetworkMultiPlayerController {
             if (attackLines != null && attackLines.length > 0) {
                 tetris.network.protocol.GameMessage message = new tetris.network.protocol.GameMessage(
                     tetris.network.protocol.MessageType.ATTACK_LINES,
-                    transportClient != null ? "CLIENT" : "SERVER",
+                    "Player-" + localPlayerId,
                     attackLines
                 );
                 if (transportClient != null) transportClient.sendMessage(message);
