@@ -1,0 +1,5 @@
+diff --git a/se-tetris-team6/app/src/main/java/tetris/view/GameComponent/NextBlockPanel.java b/se-tetris-team6/app/src/main/java/tetris/view/GameComponent/NextBlockPanel.java
+--- a/se-tetris-team6/app/src/main/java/tetris/view/GameComponent/NextBlockPanel.java
++++ b/se-tetris-team6/app/src/main/java/tetris/view/GameComponent/NextBlockPanel.java
+@@
++// TODO(5-2): Render next item metadata (icon, label, rarity).

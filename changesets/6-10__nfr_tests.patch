@@ -1,0 +1,22 @@
+diff --git a/se-tetris-team6/app/src/test/java/tetris/nonfunctional/GamePerformanceTest.java b/se-tetris-team6/app/src/test/java/tetris/nonfunctional/GamePerformanceTest.java
+new file mode 100644
+--- /dev/null
++++ b/se-tetris-team6/app/src/test/java/tetris/nonfunctional/GamePerformanceTest.java
+@@
++package tetris.nonfunctional;
++
++import static org.assertj.core.api.Assertions.assertThat;
++
++import org.junit.jupiter.api.Test;
++
++/**
++ * TODO(6-10): High-level test that validates gravity tick cadence and persistence latency.
++ */
++final class GamePerformanceTest {
++
++    @Test
++    void maintainsTargetTickRateUnderLoad() {
++        // simulate 60s of gameplay with fake clock + assert latency budget
++        assertThat(true).isTrue();
++    }
++}

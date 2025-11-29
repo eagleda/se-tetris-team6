@@ -1,0 +1,5 @@
+diff --git a/se-tetris-team6/app/src/main/java/tetris/view/SettingPanel.java b/se-tetris-team6/app/src/main/java/tetris/view/SettingPanel.java
+--- a/se-tetris-team6/app/src/main/java/tetris/view/SettingPanel.java
++++ b/se-tetris-team6/app/src/main/java/tetris/view/SettingPanel.java
+@@
++// TODO(4-2): Provide UI to remap keys and forward bindings to SettingService.

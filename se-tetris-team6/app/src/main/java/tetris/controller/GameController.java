@@ -1,5 +1,807 @@
 package tetris.controller;
 
+import java.awt.event.KeyEvent;
+import java.util.HashMap;
+import java.util.Map;
+import javax.swing.Timer;
+import tetris.domain.BlockGenerator;
+import tetris.domain.GameDifficulty;
+import tetris.domain.GameMode;
+import tetris.domain.GameModel;
+import tetris.domain.model.GameState;
+import tetris.domain.setting.Setting;
+import tetris.multiplayer.handler.MultiplayerHandler;
+import tetris.multiplayer.session.LocalMultiplayerSession;
+import tetris.multiplayer.session.LocalMultiplayerSessionFactory;
+import tetris.multiplayer.session.NetworkMultiplayerSession;
+// 이제부터 모델의 좌우 움직임이 안 되는 이유를 해결합니다.
+
+/**
+ * Controller 역할을 수행하는 클래스.
+ * View(GamePanel)와 Model(추후 생성할 GameModel)을 연결합니다.
+ */
 public class GameController {
+
+    private final GameModel gameModel; // Model 참조
+
+    // 키 반복 입력 제어를 위한 상태 추적
+    private Map<Integer, Long> lastKeyPressTime;
+    private static final long KEY_REPEAT_DELAY = 15; // 15ms
+    private static final long MOVEMENT_REPEAT_DELAY = 30; // 이동키는 조금 더 느리게
+
+    // 게임 일시정지 토글을 위한 상태
+    private boolean pauseKeyPressed = false;
+
+    // 키 바인딩 맵
+    private Map<String, Integer> keyBindings;
+    private LocalMultiplayerSession localSession;
+    private NetworkMultiplayerSession networkSession;
+    private Timer localMultiplayerTimer;
+    private Timer networkMultiplayerTimer;
+    private tetris.network.client.GameClient networkClient; // 네트워크 클라이언트 참조
+    private tetris.network.server.GameServer networkServer; // 네트워크 서버 참조 (호스트용)
+
+    // 생성자에서 View와 Model을 주입받습니다.
+    public GameController(GameModel gameModel) {
+        this.gameModel = gameModel;
+        this.lastKeyPressTime = new HashMap<>();
+        initializeDefaultKeyBindings();
+        applyDifficulty(GameDifficulty.NORMAL);
+    }
+
+    /**
+     * Apply updated key bindings at runtime. Only keys present in the map are updated.
+     * Map keys are action names (same as used throughout this class) -> KeyEvent codes.
+     */
+    public void applyKeyBindings(java.util.Map<String, Integer> updated) {
+        if (updated == null) return;
+        for (java.util.Map.Entry<String, Integer> e : updated.entrySet()) {
+            if (e.getValue() == null) continue;
+            keyBindings.put(e.getKey(), e.getValue());
+        }
+    }
+
+    public void applyDifficulty(GameDifficulty difficulty) {
+        BlockGenerator generator = gameModel.getBlockGenerator();
+        if (generator != null) {
+            generator.setDifficulty(difficulty == null ? GameDifficulty.NORMAL : difficulty);
+        }
+    }
+
+    public void applyColorBlindMode(boolean enabled) {
+        gameModel.setColorBlindMode(enabled);
+    }
+
+    /**
+     * 기본 키 바인딩 초기화
+     * 설정에서 변경 가능하도록 Map으로 관리
+     */
+    private void initializeDefaultKeyBindings() {
+        keyBindings = new HashMap<>();
+        Setting defaults = Setting.defaults();
+
+        // 게임 플레이 키 (싱글)
+        putDefaultBinding("MOVE_LEFT", defaults.getKeyBinding("MOVE_LEFT"), KeyEvent.VK_LEFT);
+        putDefaultBinding("MOVE_RIGHT", defaults.getKeyBinding("MOVE_RIGHT"), KeyEvent.VK_RIGHT);
+        putDefaultBinding("SOFT_DROP", defaults.getKeyBinding("SOFT_DROP"), KeyEvent.VK_DOWN);
+        putDefaultBinding("ROTATE_CW", defaults.getKeyBinding("ROTATE_CW"), KeyEvent.VK_UP);
+        putDefaultBinding("ROTATE_CCW", defaults.getKeyBinding("ROTATE_CCW"), KeyEvent.VK_Z);
+        putDefaultBinding("HARD_DROP", defaults.getKeyBinding("HARD_DROP"), KeyEvent.VK_SPACE);
+        putDefaultBinding("HOLD", defaults.getKeyBinding("HOLD"), KeyEvent.VK_C);
+
+        // 게임 제어 키
+        putDefaultBinding("PAUSE", defaults.getKeyBinding("PAUSE"), KeyEvent.VK_P);
+        putDefaultBinding("QUIT_GAME", defaults.getKeyBinding("QUIT_GAME"), KeyEvent.VK_Q);
+        putDefaultBinding("RESTART", defaults.getKeyBinding("RESTART"), KeyEvent.VK_R);
+
+        // 메뉴 네비게이션 키
+        putDefaultBinding("MENU_UP", defaults.getKeyBinding("MENU_UP"), KeyEvent.VK_UP);
+        putDefaultBinding("MENU_DOWN", defaults.getKeyBinding("MENU_DOWN"), KeyEvent.VK_DOWN);
+        putDefaultBinding("MENU_SELECT", defaults.getKeyBinding("MENU_SELECT"), KeyEvent.VK_ENTER);
+        putDefaultBinding("MENU_BACK", defaults.getKeyBinding("MENU_BACK"), KeyEvent.VK_ESCAPE);
+
+        // 설정 화면 키
+        putDefaultBinding("SETTINGS_RESET", defaults.getKeyBinding("SETTINGS_RESET"), KeyEvent.VK_DELETE);
+
+        // 로컬 멀티 (P1)
+        putDefaultBinding("P1_MOVE_LEFT", defaults.getKeyBinding("P1_MOVE_LEFT"), KeyEvent.VK_A);
+        putDefaultBinding("P1_MOVE_RIGHT", defaults.getKeyBinding("P1_MOVE_RIGHT"), KeyEvent.VK_D);
+        putDefaultBinding("P1_SOFT_DROP", defaults.getKeyBinding("P1_SOFT_DROP"), KeyEvent.VK_S);
+        putDefaultBinding("P1_ROTATE_CW", defaults.getKeyBinding("P1_ROTATE_CW"), KeyEvent.VK_W);
+        putDefaultBinding("P1_HARD_DROP", defaults.getKeyBinding("P1_HARD_DROP"), KeyEvent.VK_SPACE);
+
+        // 로컬 멀티 (P2)
+        putDefaultBinding("P2_MOVE_LEFT", defaults.getKeyBinding("P2_MOVE_LEFT"), KeyEvent.VK_LEFT);
+        putDefaultBinding("P2_MOVE_RIGHT", defaults.getKeyBinding("P2_MOVE_RIGHT"), KeyEvent.VK_RIGHT);
+        putDefaultBinding("P2_SOFT_DROP", defaults.getKeyBinding("P2_SOFT_DROP"), KeyEvent.VK_DOWN);
+        putDefaultBinding("P2_ROTATE_CW", defaults.getKeyBinding("P2_ROTATE_CW"), KeyEvent.VK_UP);
+        putDefaultBinding("P2_HARD_DROP", defaults.getKeyBinding("P2_HARD_DROP"), KeyEvent.VK_ENTER);
+    }
+
+    private void putDefaultBinding(String action, Integer configured, int fallback) {
+        keyBindings.put(action, configured != null ? configured : fallback);
+    }
+
+    /**
+     * 키보드 입력을 처리하는 메소드
+     * @param keyCode 키 코드
+     */
+    public void handleKeyPress(int keyCode) {
+        long currentTime = System.currentTimeMillis();
+
+        // 키 반복 입력 무시
+        if (shouldIgnoreKeyRepeat(keyCode, currentTime)) {
+            return;
+        }
+
+        GameState currentState = gameModel.getCurrentState();
+
+        switch (currentState) {
+            case PLAYING:
+                handleGamePlayInput(keyCode);
+                break;
+            case PAUSED:
+                handlePausedInput(keyCode);
+                break;
+            case GAME_OVER:
+                handleGameOverInput(keyCode);
+                break;
+            case SETTINGS:
+                handleSettingsInput(keyCode);
+                break;
+            case SCOREBOARD:
+                handleScoreboardInput(keyCode);
+                break;
+            case NAME_INPUT:
+                handleNameInputInput(keyCode);
+                break;
+            default:
+                // 기본 처리
+                break;
+        }
+
+        // 키 입력 시간 기록
+        lastKeyPressTime.put(keyCode, currentTime);
+    }
+
+    /**
+     * 게임 플레이 중 키 입력 처리
+     */
+    private void handleGamePlayInput(int keyCode) {
+        // 일시정지 키는 항상 우선 처리
+        if (keyCode == keyBindings.get("PAUSE")) {
+            if (!pauseKeyPressed) {
+                gameModel.pauseGame();
+                pauseKeyPressed = true;
+                System.out.println("Controller: 게임 일시정지");
+            }
+            return;
+        }
+
+        // 게임 종료 키
+        if (keyCode == keyBindings.get("QUIT_GAME")) {
+            deactivateLocalMultiplayer();
+            gameModel.quitToMenu();
+            System.out.println("Controller: 메뉴로 돌아가기");
+            return;
+        }
+
+        // 네트워크 멀티플레이어 입력 처리 (싱글 게임 키 바인딩 사용)
+        if (networkSession != null && routeNetworkMultiplayerInput(keyCode)) {
+            return;
+        }
+
+        // 로컬 멀티플레이어 입력 처리 (P1/P2 키 바인딩 사용)
+        if (localSession != null && routeLocalMultiplayerInput(keyCode)) {
+            return;
+        }
+
+        // 블록 조작 키들
+        if (keyCode == keyBindings.get("MOVE_LEFT")) {
+            gameModel.moveBlockLeft();
+            System.out.println("Controller: 블록 왼쪽 이동");
+        } else if (keyCode == keyBindings.get("MOVE_RIGHT")) {
+            gameModel.moveBlockRight();
+            System.out.println("Controller: 블록 오른쪽 이동");
+        } else if (keyCode == keyBindings.get("SOFT_DROP")) {
+            gameModel.moveBlockDown();
+            System.out.println("Controller: 블록 아래로 이동 (소프트 드롭)");
+        } else if (keyCode == keyBindings.get("ROTATE_CW")) {
+            gameModel.rotateBlockClockwise();
+            System.out.println("Controller: 블록 시계방향 회전");
+        } else if (keyCode == keyBindings.get("ROTATE_CCW")) {
+            gameModel.rotateBlockCounterClockwise();
+            System.out.println("Controller: 블록 반시계방향 회전");
+        } else if (keyCode == keyBindings.get("HARD_DROP")) {
+            gameModel.hardDropBlock();
+            System.out.println("Controller: 하드 드롭 (즉시 하강)");
+        } else if (keyCode == keyBindings.get("HOLD")) {
+            gameModel.holdCurrentBlock();
+            System.out.println("Controller: 블록 홀드");
+        } else if (keyCode == keyBindings.get("RESTART")) {
+            gameModel.restartGame();
+            pauseKeyPressed = false;
+            lastKeyPressTime.clear();
+            System.out.println("Controller: 게임 재시작");
+        }
+    }
+
+    /**
+     * 일시정지 상태에서의 키 입력 처리
+     */
+    private void handlePausedInput(int keyCode) {
+        if (keyCode == keyBindings.get("PAUSE")) {
+            if (!pauseKeyPressed) {
+                gameModel.resumeGame();
+                pauseKeyPressed = true;
+                System.out.println("Controller: 게임 재개");
+            }
+        } else if (keyCode == keyBindings.get("QUIT_GAME")) {
+            deactivateLocalMultiplayer();
+            gameModel.quitToMenu();
+            System.out.println("Controller: 메뉴로 돌아가기");
+        } else if (keyCode == keyBindings.get("RESTART")) {
+            gameModel.restartGame();
+            pauseKeyPressed = false;
+            lastKeyPressTime.clear();
+            System.out.println("Controller: 게임 재시작");
+        }
+    }
+
+    /**
+     * 게임 오버 화면에서의 키 입력 처리
+     */
+    private void handleGameOverInput(int keyCode) {
+        if (keyCode == keyBindings.get("MENU_SELECT") || keyCode == KeyEvent.VK_ENTER) {
+            gameModel.proceedFromGameOver();
+            System.out.println("Controller: 게임 오버 화면에서 진행");
+        } else if (keyCode == keyBindings.get("RESTART")) {
+            gameModel.restartGame();
+            System.out.println("Controller: 게임 재시작");
+        } else if (keyCode == keyBindings.get("QUIT_GAME")) {
+            deactivateLocalMultiplayer();
+            gameModel.quitToMenu();
+            System.out.println("Controller: 메뉴로 돌아가기");
+        }
+    }
+
+    /**
+     * 설정 화면에서의 키 입력 처리
+     */
+    private void handleSettingsInput(int keyCode) {
+        if (keyCode == keyBindings.get("MENU_UP")) {
+            gameModel.navigateSettingsUp();
+            System.out.println("Controller: 설정 메뉴 위로 이동");
+        } else if (keyCode == keyBindings.get("MENU_DOWN")) {
+            gameModel.navigateSettingsDown();
+            System.out.println("Controller: 설정 메뉴 아래로 이동");
+        } else if (keyCode == keyBindings.get("MENU_SELECT")) {
+            gameModel.selectCurrentSetting();
+            System.out.println("Controller: 설정 항목 선택/변경");
+        } else if (keyCode == keyBindings.get("MENU_BACK")) {
+            gameModel.exitSettings();
+            System.out.println("Controller: 설정 화면 나가기");
+        } else if (keyCode == keyBindings.get("SETTINGS_RESET")) {
+            gameModel.resetAllSettings();
+            System.out.println("Controller: 모든 설정 초기화");
+        }
+    }
+
+    /**
+     * 스코어보드에서의 키 입력 처리
+     */
+    private void handleScoreboardInput(int keyCode) {
+        if (keyCode == keyBindings.get("MENU_BACK") || keyCode == keyBindings.get("MENU_SELECT")) {
+            gameModel.exitScoreboard();
+            System.out.println("Controller: 스코어보드 나가기");
+        } else if (keyCode == keyBindings.get("MENU_UP")) {
+            gameModel.scrollScoreboardUp();
+            System.out.println("Controller: 스코어보드 위로 스크롤");
+        } else if (keyCode == keyBindings.get("MENU_DOWN")) {
+            gameModel.scrollScoreboardDown();
+            System.out.println("Controller: 스코어보드 아래로 스크롤");
+        }
+    }
+
+    /**
+     * 이름 입력 화면에서의 키 입력 처리
+     */
+    private void handleNameInputInput(int keyCode) {
+        if (keyCode == KeyEvent.VK_ENTER) {
+            gameModel.confirmNameInput();
+            System.out.println("Controller: 이름 입력 완료");
+        } else if (keyCode == KeyEvent.VK_BACK_SPACE) {
+            gameModel.deleteCharacterFromName();
+            System.out.println("Controller: 이름에서 문자 삭제");
+        } else if (keyCode == KeyEvent.VK_ESCAPE) {
+            gameModel.cancelNameInput();
+            System.out.println("Controller: 이름 입력 취소");
+        } else if (isValidNameCharacter(keyCode)) {
+            char character = (char) keyCode;
+            gameModel.addCharacterToName(character);
+            System.out.println("Controller: 이름에 문자 추가 - " + character);
+        }
+    }
+
+    /**
+     * 키 반복 입력을 무시할지 결정
+     */
+    private boolean shouldIgnoreKeyRepeat(int keyCode, long currentTime) {
+        if (!lastKeyPressTime.containsKey(keyCode)) {
+            return false;
+        }
+
+        long lastTime = lastKeyPressTime.get(keyCode);
+        long delay = getKeyRepeatDelay(keyCode);
+
+        return (currentTime - lastTime) < delay;
+    }
+
+    /**
+     * 키별 반복 입력 지연 시간 반환
+     */
+    private long getKeyRepeatDelay(int keyCode) {
+        // 이동 키들은 조금 더 느린 반복
+        if (keyCode == keyBindings.get("MOVE_LEFT") ||
+            keyCode == keyBindings.get("MOVE_RIGHT") ||
+            keyCode == keyBindings.get("SOFT_DROP")) {
+            return MOVEMENT_REPEAT_DELAY;
+        }
+
+        // 회전, 드롭 등은 기본 지연
+        return KEY_REPEAT_DELAY;
+    }
+
+    /**
+     * 이름 입력에 유효한 문자인지 확인
+     */
+    private boolean isValidNameCharacter(int keyCode) {
+        return (keyCode >= KeyEvent.VK_A && keyCode <= KeyEvent.VK_Z) ||
+               (keyCode >= KeyEvent.VK_0 && keyCode <= KeyEvent.VK_9) ||
+               keyCode == KeyEvent.VK_SPACE;
+    }
+
+    /**
+     * 게임 시작 메소드
+     */
+    public void startStandardGame() {
+        startGame(GameMode.STANDARD);
+    }
+
+    public void startItemGame() {
+        startGame(GameMode.ITEM);
+    }
+
+    public void startGame(GameMode mode) {
+        // 로컬 멀티 세션이 켜져 있었다면 먼저 정리하고 싱글 루프로 복귀한다.
+        deactivateLocalMultiplayer();
+        pauseKeyPressed = false;
+        lastKeyPressTime.clear();
+        gameModel.startGame(mode);
+    }
+
+    public void startGame() {
+        startStandardGame();
+    }
+
+    /**
+     * 로컬 멀티플레이를 시작하고 생성된 세션을 반환한다.
+     * - UI는 반환된 세션으로 각 패널을 바인딩한다.
+     */
+    public LocalMultiplayerSession startLocalMultiplayerGame(GameMode mode) {
+        deactivateLocalMultiplayer();
+        LocalMultiplayerSession session = LocalMultiplayerSessionFactory.create(mode);
+        localSession = session;
+        gameModel.enableLocalMultiplayer(session);
+        startLocalMultiplayerTick();
+        pauseKeyPressed = false;
+        lastKeyPressTime.clear();
+        gameModel.startGame(mode);
+        return session;
+    }
+
+    /**
+     * Start a networked multiplayer session where only one side is local.
+     * @param mode game mode
+     * @param localIsPlayerOne true if this process controls player 1
+     */
+    public NetworkMultiplayerSession startNetworkedMultiplayerGame(GameMode mode, boolean localIsPlayerOne) {
+        System.out.println("[GameController] Starting networked multiplayer - localIsPlayerOne=" + localIsPlayerOne);
+        deactivateLocalMultiplayer();
+        
+        // Create callback to send GAME_END message when local player loses
+        Runnable sendGameEndCallback = () -> {
+            try {
+                java.util.Map<String, Object> data = new java.util.HashMap<>();
+                data.put("winnerId", localIsPlayerOne ? 2 : 1); // Opponent is the winner
+                
+                if (networkClient != null) {
+                    tetris.network.protocol.GameMessage message = new tetris.network.protocol.GameMessage(
+                        tetris.network.protocol.MessageType.GAME_END, 
+                        "CLIENT", 
+                        data
+                    );
+                    networkClient.sendMessage(message);
+                } else if (networkServer != null) {
+                    tetris.network.protocol.GameMessage message = new tetris.network.protocol.GameMessage(
+                        tetris.network.protocol.MessageType.GAME_END, 
+                        "SERVER", 
+                        data
+                    );
+                    networkServer.sendHostMessage(message);
+                }
+            } catch (Exception e) {
+                System.err.println("Failed to send GAME_END message: " + e.getMessage());
+            }
+        };
+        
+        System.out.println("[GameController] Creating networked session");
+        NetworkMultiplayerSession session = LocalMultiplayerSessionFactory.createNetworkedSession(mode, localIsPlayerOne, sendGameEndCallback);
+        networkSession = session;
+        System.out.println("[GameController] Session created - " + (session != null ? "SUCCESS" : "FAILED"));
+        
+        // Set up network event handler
+        tetris.multiplayer.controller.NetworkMultiPlayerController networkController = session.networkController();
+        System.out.println("[GameController] NetworkController - " + (networkController != null ? "FOUND" : "NULL"));
+        if (networkController != null) {
+            // attach available transport so controller can send messages directly
+            networkController.attachTransport(networkClient, networkServer);
+        }
+        
+        System.out.println("[GameController] Enabling network multiplayer in GameModel");
+        gameModel.enableNetworkMultiplayer(session);
+        System.out.println("[GameController] Starting authoritative network multiplayer tick");
+        startNetworkMultiplayerTick();
+        pauseKeyPressed = false;
+        lastKeyPressTime.clear();
+        System.out.println("[GameController] Starting game with mode: " + mode);
+        gameModel.startGame(mode);
+        System.out.println("[GameController] Networked multiplayer setup complete");
+        return session;
+    }
+
+    /**
+     * RNG 시드를 지정하여 네트워크 멀티플레이를 시작합니다.
+     */
+    public NetworkMultiplayerSession startNetworkedMultiplayerGame(GameMode mode, boolean localIsPlayerOne, long seed) {
+        deactivateLocalMultiplayer();
+
+        Runnable sendGameEndCallback = () -> {
+            try {
+                java.util.Map<String, Object> data = new java.util.HashMap<>();
+                data.put("winnerId", localIsPlayerOne ? 2 : 1);
+                if (networkClient != null) {
+                    tetris.network.protocol.GameMessage message = new tetris.network.protocol.GameMessage(
+                            tetris.network.protocol.MessageType.GAME_END,
+                            "CLIENT",
+                            data);
+                    networkClient.sendMessage(message);
+                } else if (networkServer != null) {
+                    tetris.network.protocol.GameMessage message = new tetris.network.protocol.GameMessage(
+                            tetris.network.protocol.MessageType.GAME_END,
+                            "SERVER",
+                            data);
+                    networkServer.sendHostMessage(message);
+                }
+            } catch (Exception e) {
+                System.err.println("Failed to send GAME_END message: " + e.getMessage());
+            }
+        };
+
+        System.out.println("[GameController] Creating networked session with seed=" + seed);
+        NetworkMultiplayerSession session = LocalMultiplayerSessionFactory.createNetworkedSession(mode, localIsPlayerOne, sendGameEndCallback, seed);
+        networkSession = session;
+
+        tetris.multiplayer.controller.NetworkMultiPlayerController networkController = session.networkController();
+        System.out.println("[GameController] NetworkController - " + (networkController != null ? "FOUND" : "NULL"));
+        if (networkController != null) {
+            networkController.attachTransport(networkClient, networkServer);
+        }
+
+        System.out.println("[GameController] Enabling network multiplayer in GameModel (seed)");
+        gameModel.enableNetworkMultiplayer(session);
+        System.out.println("[GameController] Starting authoritative network multiplayer tick");
+        startNetworkMultiplayerTick();
+        pauseKeyPressed = false;
+        lastKeyPressTime.clear();
+        System.out.println("[GameController] Starting game with mode: " + mode);
+        gameModel.startGame(mode);
+        System.out.println("[GameController] Networked multiplayer setup complete");
+        return session;
+    }
     
+    /**
+     * Send piece locked event over network
+     */
+    // network sending moved to NetworkMultiPlayerController
+
+
+    /**
+     * Set the network client for sending input to the opponent.
+     */
+    public void setNetworkClient(tetris.network.client.GameClient client) {
+        this.networkClient = client;
+        if (client == null) return;
+        // Attach transport to session controller if present
+        final NetworkMultiplayerSession sess = this.networkSession;
+        if (sess != null && sess.networkController() != null) {
+            sess.networkController().attachTransport(client, this.networkServer);
+        }
+    }
+
+    /**
+     * Set the network server for host to send messages to clients.
+     */
+    public void setNetworkServer(tetris.network.server.GameServer server) {
+        this.networkServer = server;
+        final NetworkMultiplayerSession sess = this.networkSession;
+        if (sess != null && sess.networkController() != null) {
+            sess.networkController().attachTransport(this.networkClient, server);
+        }
+    }
+
+    /**
+     * 키 릴리즈 처리 (일시정지 키 상태 초기화)
+     */
+    public void handleKeyRelease(int keyCode) {
+        if (keyCode == keyBindings.get("PAUSE")) {
+            pauseKeyPressed = false;
+        }
+    }
+
+    /**
+     * 로컬 멀티플레이어 전용 입력 처리 (P1/P2 키 바인딩 사용)
+     */
+    private boolean routeLocalMultiplayerInput(int keyCode) {
+        if (localSession == null || !gameModel.isLocalMultiplayerActive()) {
+            return false;
+        }
+        MultiplayerHandler handler = localSession.handler();
+        if (handler == null) {
+            return false;
+        }
+
+        // 로컬 멀티플레이: P1/P2 키 바인딩 사용
+        // P1 입력 처리
+        if (keyCode == keyFor("P1_MOVE_LEFT")) {
+            handler.dispatchToPlayer(1, GameModel::moveBlockLeft);
+            return true;
+        }
+        if (keyCode == keyFor("P1_MOVE_RIGHT")) {
+            handler.dispatchToPlayer(1, GameModel::moveBlockRight);
+            return true;
+        }
+        if (keyCode == keyFor("P1_SOFT_DROP")) {
+            handler.dispatchToPlayer(1, GameModel::moveBlockDown);
+            return true;
+        }
+        if (keyCode == keyFor("P1_ROTATE_CW")) {
+            handler.dispatchToPlayer(1, GameModel::rotateBlockClockwise);
+            return true;
+        }
+        if (keyCode == keyFor("P1_HARD_DROP")) {
+            handler.dispatchToPlayer(1, GameModel::hardDropBlock);
+            return true;
+        }
+
+        // P2 입력 처리
+        if (keyCode == keyFor("P2_MOVE_LEFT")) {
+            handler.dispatchToPlayer(2, GameModel::moveBlockLeft);
+            return true;
+        }
+        if (keyCode == keyFor("P2_MOVE_RIGHT")) {
+            handler.dispatchToPlayer(2, GameModel::moveBlockRight);
+            return true;
+        }
+        if (keyCode == keyFor("P2_SOFT_DROP")) {
+            handler.dispatchToPlayer(2, GameModel::moveBlockDown);
+            return true;
+        }
+        if (keyCode == keyFor("P2_ROTATE_CW")) {
+            handler.dispatchToPlayer(2, GameModel::rotateBlockClockwise);
+            return true;
+        }
+        if (keyCode == keyFor("P2_HARD_DROP")) {
+            handler.dispatchToPlayer(2, GameModel::hardDropBlock);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * 네트워크 멀티플레이어 전용 입력 처리 (싱글 게임 키 바인딩 사용)
+        * - 서버(P1): 로컬에서 입력 처리 + 네트워크 전송
+        * - 클라이언트(P2): 네트워크 전송만 (로컬 처리 안 함)
+     */
+    private boolean routeNetworkMultiplayerInput(int keyCode) {
+        if (networkSession == null) {
+            return false;
+        }
+        MultiplayerHandler handler = networkSession.handler();
+        if (handler == null) {
+            return false;
+        }
+
+        // NetworkedMultiplayerHandler에서 로컬 플레이어 ID 가져오기
+        int localPlayerId = 0;
+            boolean isServer = false;
+        if (handler instanceof tetris.multiplayer.handler.NetworkedMultiplayerHandler) {
+            localPlayerId = ((tetris.multiplayer.handler.NetworkedMultiplayerHandler) handler).getLocalPlayerId();
+            isServer = (localPlayerId == 1);
+        } else {
+            return false;
+        }
+
+        // 싱글 플레이 키 바인딩 사용하여 입력 처리 및 네트워크 전송
+        if (keyCode == keyBindings.get("MOVE_LEFT")) {
+            if (isServer) {
+                handler.dispatchToPlayer(localPlayerId, GameModel::moveBlockLeft);
+            }
+            if (networkSession != null && networkSession.networkController() != null) {
+                networkSession.networkController().sendPlayerInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.MOVE_LEFT));
+            } else {
+                sendNetworkInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.MOVE_LEFT));
+            }
+            notifyNetworkControllerInput();
+            return true;
+        }
+        if (keyCode == keyBindings.get("MOVE_RIGHT")) {
+            if (isServer) {
+                handler.dispatchToPlayer(localPlayerId, GameModel::moveBlockRight);
+            }
+            if (networkSession != null && networkSession.networkController() != null) {
+                networkSession.networkController().sendPlayerInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.MOVE_RIGHT));
+            } else {
+                sendNetworkInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.MOVE_RIGHT));
+            }
+            notifyNetworkControllerInput();
+            return true;
+        }
+        if (keyCode == keyBindings.get("SOFT_DROP")) {
+            if (isServer) {
+                handler.dispatchToPlayer(localPlayerId, GameModel::moveBlockDown);
+            }
+            if (networkSession != null && networkSession.networkController() != null) {
+                networkSession.networkController().sendPlayerInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.SOFT_DROP));
+            } else {
+                sendNetworkInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.SOFT_DROP));
+            }
+            notifyNetworkControllerInput();
+            return true;
+        }
+        if (keyCode == keyBindings.get("ROTATE_CW")) {
+            if (isServer) {
+                handler.dispatchToPlayer(localPlayerId, GameModel::rotateBlockClockwise);
+            }
+            if (networkSession != null && networkSession.networkController() != null) {
+                networkSession.networkController().sendPlayerInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.ROTATE));
+            } else {
+                sendNetworkInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.ROTATE));
+            }
+            notifyNetworkControllerInput();
+            return true;
+        }
+        if (keyCode == keyBindings.get("ROTATE_CCW")) {
+            if (isServer) {
+                handler.dispatchToPlayer(localPlayerId, GameModel::rotateBlockCounterClockwise);
+            }
+            if (networkSession != null && networkSession.networkController() != null) {
+                networkSession.networkController().sendPlayerInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.ROTATE));
+            } else {
+                sendNetworkInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.ROTATE));
+            }
+            notifyNetworkControllerInput();
+            return true;
+        }
+        if (keyCode == keyBindings.get("HARD_DROP")) {
+            if (isServer) {
+                handler.dispatchToPlayer(localPlayerId, GameModel::hardDropBlock);
+            }
+            if (networkSession != null && networkSession.networkController() != null) {
+                networkSession.networkController().sendPlayerInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.HARD_DROP));
+            } else {
+                sendNetworkInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.HARD_DROP));
+            }
+            notifyNetworkControllerInput();
+            return true;
+        }
+        if (keyCode == keyBindings.get("HOLD")) {
+            if (isServer) {
+                handler.dispatchToPlayer(localPlayerId, GameModel::holdCurrentBlock);
+            }
+            if (networkSession != null && networkSession.networkController() != null) {
+                networkSession.networkController().sendPlayerInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.HOLD));
+            } else {
+                sendNetworkInput(new tetris.network.protocol.PlayerInput(tetris.network.protocol.InputType.HOLD));
+            }
+            notifyNetworkControllerInput();
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * 호스트가 키 입력 후 즉시 스냅샷을 브로드캐스트하도록 통지합니다.
+     */
+    private void notifyNetworkControllerInput() {
+        if (networkSession != null && networkSession.networkController() != null) {
+            networkSession.networkController().onLocalInput();
+        }
+    }
+
+    /**
+     * Send input to network (client or server).
+     */
+    private void sendNetworkInput(tetris.network.protocol.PlayerInput input) {
+        if (networkClient != null) {
+            networkClient.sendPlayerInput(input);
+        } else if (networkServer != null) {
+            networkServer.sendHostMessage(new tetris.network.protocol.GameMessage(
+                tetris.network.protocol.MessageType.PLAYER_INPUT,
+                "Player-1", // Host is always Player-1
+                input
+            ));
+        }
+    }
+
+    private int keyFor(String action) {
+        return keyBindings.getOrDefault(action, -1);
+    }
+
+    private void deactivateLocalMultiplayer() {
+        if (localSession == null) {
+            return;
+        }
+        stopLocalMultiplayerTick();
+        gameModel.clearLocalMultiplayerSession();
+        localSession = null;
+    }
+
+    private void stopNetworkMultiplayerTick() {
+        if (networkMultiplayerTimer != null) {
+            networkMultiplayerTimer.stop();
+            networkMultiplayerTimer = null;
+        }
+    }
+
+    private void startNetworkMultiplayerTick() {
+        stopNetworkMultiplayerTick();
+        if (networkSession == null) return;
+        networkMultiplayerTimer = new Timer(16, e -> {
+            if (networkSession == null) { stopNetworkMultiplayerTick(); return; }
+            MultiplayerHandler handler = networkSession.handler();
+            if (handler == null) return;
+            // 서버만 로직 실행 (localPlayerId==1) - handler.update 내부 분기
+            handler.update(gameModel);
+        });
+        networkMultiplayerTimer.setRepeats(true);
+        networkMultiplayerTimer.start();
+    }
+
+    /**
+     * 로컬 멀티 모드에서 두 플레이어 GameModel을 동시에 진행시키기 위한 전용 틱 타이머.
+     * - GAME CLOCK와 분리되어 LocalMultiplayerHandler.update()를 주기적으로 호출한다.
+     */
+    private void startLocalMultiplayerTick() {
+        stopLocalMultiplayerTick();
+        localMultiplayerTimer = new Timer(16, e -> {
+            if (localSession == null || !gameModel.isLocalMultiplayerActive()) {
+                stopLocalMultiplayerTick();
+                return;
+            }
+            MultiplayerHandler handler = localSession.handler();
+            if (handler != null) {
+                handler.update(gameModel);
+            }
+        });
+        localMultiplayerTimer.setRepeats(true);
+        localMultiplayerTimer.start();
+    }
+
+    private void stopLocalMultiplayerTick() {
+        if (localMultiplayerTimer != null) {
+            localMultiplayerTimer.stop();
+            localMultiplayerTimer = null;
+        }
+    }
 }

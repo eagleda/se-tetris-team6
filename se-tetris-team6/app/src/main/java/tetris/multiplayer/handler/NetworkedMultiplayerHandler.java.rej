@@ -1,0 +1,9 @@
+diff a/se-tetris-team6/app/src/main/java/tetris/multiplayer/handler/NetworkedMultiplayerHandler.java b/se-tetris-team6/app/src/main/java/tetris/multiplayer/handler/NetworkedMultiplayerHandler.java	(rejected hunks)
+@@ -19,6 +19,7 @@
+     private final int localPlayerId;
+     private final Runnable sendGameEndCallback;
+     private boolean gameEndSent = false;
++    private boolean gameEndHandled = false;
+ 
+     public NetworkedMultiplayerHandler(MultiPlayerGame game,
+                                        MultiPlayerController controller,
