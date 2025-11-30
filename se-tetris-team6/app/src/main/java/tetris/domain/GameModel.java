@@ -1013,7 +1013,25 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         }
         int elapsed = (int) (getElapsedMillis() / 1000L);
         int pending = pendingGarbageLines;
-        return new tetris.network.protocol.GameSnapshot(playerId, copy, currentId, nextId, pts, elapsed, pending, blockX, blockY, blockRotation);
+        
+        // 공격 대기열 정보 수집
+        boolean[][] attackLinesData = null;
+        if (activeNetworkSession != null) {
+            try {
+                java.util.List<tetris.multiplayer.model.AttackLine> lines = 
+                    activeNetworkSession.handler().getPendingAttackLines(playerId);
+                if (lines != null && !lines.isEmpty()) {
+                    attackLinesData = new boolean[lines.size()][];
+                    for (int i = 0; i < lines.size(); i++) {
+                        attackLinesData[i] = lines.get(i).copyHoles();
+                    }
+                }
+            } catch (Exception e) {
+                System.err.println("[toSnapshot] Failed to get attack lines: " + e.getMessage());
+            }
+        }
+        
+        return new tetris.network.protocol.GameSnapshot(playerId, copy, currentId, nextId, pts, elapsed, pending, blockX, blockY, blockRotation, attackLinesData);
     }
 
     /** 스냅샷을 적용 (클라이언트 렌더링 전용) */
@@ -1034,8 +1052,15 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
      */
     private void applySnapshotImpl(tetris.network.protocol.GameSnapshot snapshot) {
         if (snapshot == null) return;
+        
+        // 공격 대기열 정보 로깅
+        int attackLineCount = snapshot.attackLines() != null ? snapshot.attackLines().length : 0;
         try {
-            System.out.println("[GameModel] Applying snapshot -> player=" + snapshot.playerId() + ", currentId=" + snapshot.currentBlockId() + ", nextId=" + snapshot.nextBlockId() + ", pending=" + snapshot.pendingGarbage());
+            System.out.println("[GameModel] Applying snapshot -> player=" + snapshot.playerId() 
+                + ", currentId=" + snapshot.currentBlockId() 
+                + ", nextId=" + snapshot.nextBlockId() 
+                + ", pending=" + snapshot.pendingGarbage()
+                + ", attackLines=" + attackLineCount);
         } catch (Exception ignore) {}
         
         // 보드 상태 적용

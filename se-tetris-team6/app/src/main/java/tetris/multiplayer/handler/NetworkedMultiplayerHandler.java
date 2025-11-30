@@ -159,8 +159,8 @@ public final class NetworkedMultiplayerHandler implements MultiplayerHandler {
             game.player(1).getModel().addMultiplayerHook(createHook(1));
             game.player(2).getModel().addMultiplayerHook(createHook(2));
         } else {
-            int pid = localPlayerId;
-            game.player(pid).getModel().addMultiplayerHook(createHook(pid));
+            // 클라이언트(P2)는 서버 권한 모델이므로 로컬 모델에 공격 로직 Hook을 등록하지 않습니다.
+            // 모든 공격 처리 및 적용은 서버가 수행하고 스냅샷을 통해 동기화됩니다.
         }
     }
 
@@ -169,8 +169,7 @@ public final class NetworkedMultiplayerHandler implements MultiplayerHandler {
             try { game.player(1).getModel().removeMultiplayerHook(createHook(1)); } catch (Exception ignore) {}
             try { game.player(2).getModel().removeMultiplayerHook(createHook(2)); } catch (Exception ignore) {}
         } else {
-            int pid = localPlayerId;
-            try { game.player(pid).getModel().removeMultiplayerHook(createHook(pid)); } catch (Exception ignore) {}
+            // 클라이언트(P2)는 Hook을 등록하지 않았으므로 해제할 필요가 없습니다.
         }
     }
 
@@ -178,11 +177,24 @@ public final class NetworkedMultiplayerHandler implements MultiplayerHandler {
         return new tetris.domain.GameModel.MultiplayerHook() {
             @Override
             public void onPieceLocked(tetris.multiplayer.model.LockedPieceSnapshot snapshot, int[] clearedRows, int boardWidth) {
-                controller.onLocalPieceLocked(snapshot, clearedRows);
+                // Hook의 playerId 매개변수를 사용하여 정확한 플레이어의 공격으로 등록합니다.
+                // P1 모델의 Hook이 호출되면 playerId=1로 공격 등록 (상대방 P2 버퍼에 추가)
+                // P2 모델의 Hook이 호출되면 playerId=2로 공격 등록 (상대방 P1 버퍼에 추가)
+                GameModel model = game.modelOf(playerId);
+                game.onPieceLocked(playerId, snapshot, clearedRows, boardWidth);
+                
+                // 로컬 플레이어만 네트워크로 이벤트 전송
+                if (playerId == localPlayerId) {
+                    controller.sendPieceLockedEvent(snapshot, clearedRows);
+                    if (clearedRows.length > 0) {
+                        controller.sendGameState(model);
+                    }
+                }
             }
 
             @Override
             public void beforeNextSpawn() {
+                // 서버(P1)에서 P1 또는 P2의 공격 대기열을 처리합니다.
                 controller.injectAttackBeforeNextSpawn(playerId);
             }
         };
