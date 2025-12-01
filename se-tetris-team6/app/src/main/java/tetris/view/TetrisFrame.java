@@ -144,13 +144,13 @@ public class TetrisFrame extends JFrame {
                         message = "Match Finished";
                     } else if (winnerId == localPlayerId) {
                         // 온라인 멀티플레이: localPlayerId 기준
-                        message = "You Win!";
+                        message = "You Win !";
                     } else {
                         // 온라인 멀티플레이: 상대가 이김
-                        message = "You Lose";
+                        message = "You Lose !";
                     }
                     if (gameOverPanel != null) {
-                        gameOverPanel.showMultiplayerResult(message);
+                        gameOverPanel.showMultiplayerResult(message, false);
                         layeredPane.moveToFront(gameOverPanel);
                     }
                 });
@@ -167,7 +167,7 @@ public class TetrisFrame extends JFrame {
                         message = "Player " + winnerId + " Wins";
                     }
                     if (gameOverPanel != null) {
-                        gameOverPanel.showMultiplayerResult(message);
+                        gameOverPanel.showMultiplayerResult(message, false);
                         layeredPane.moveToFront(gameOverPanel);
                     }
                 });
