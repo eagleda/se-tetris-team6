@@ -28,6 +28,7 @@ public class GamePanel extends JPanel {
     private static final int BOARD_ROWS = Board.H;
     private static final Color BACKGROUND_COLOR = new Color(18, 18, 18);
     private static final Color GRID_COLOR = new Color(48, 48, 48, 180);
+    private static final Color ATTACK_LINE_COLOR = new Color(180, 180, 180); // 공격 라인 색상 (회색)
     private GameModel gameModel;
     private static final Color ITEM_OUTLINE_COLOR = new Color(255, 215, 0, 210);
     private static final Color ITEM_LABEL_BACKGROUND = new Color(0, 0, 0, 180);
@@ -252,6 +253,11 @@ public class GamePanel extends JPanel {
     }
 
     private Color colorFor(int value) {
+        // 공격 라인(value=8)은 회색으로 표시
+        if (value == 8) {
+            return ATTACK_LINE_COLOR;
+        }
+        
         Color[] palette = ColorPaletteProvider.palette(gameModel != null && gameModel.isColorBlindMode());
         if (value <= 0)
             return palette[0];
