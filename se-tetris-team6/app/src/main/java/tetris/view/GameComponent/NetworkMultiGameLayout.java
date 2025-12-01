@@ -151,11 +151,21 @@ public class NetworkMultiGameLayout extends JPanel {
         // 5. 모델 바인딩 (leftModel -> gamePanel_1, rightModel -> gamePanel_2)
         bindPlayerModels(leftModel, rightModel);
 
-        // 6. 공격 대기열 바인딩 (leftPlayerId와 rightPlayerId에 맞춰)
+        // 6. 공격 대기열 바인딩
+        // - 서버(호스트): handler를 통해 실제 공격 대기열 가져오기
+        // - 클라이언트: 스냅샷에서 받은 공격 대기열 데이터 표시
         final int lp = leftPlayerId;
         final int rp = rightPlayerId;
-        attackQueuePanel_1.bindAttackLinesSupplier(() -> session.handler().getPendingAttackLines(lp));
-        attackQueuePanel_2.bindAttackLinesSupplier(() -> session.handler().getPendingAttackLines(rp));
+        
+        if (localPlayerId == 1) {
+            // 서버인 경우: handler에서 실제 공격 대기열 데이터 가져오기
+            attackQueuePanel_1.bindAttackLinesSupplier(() -> session.handler().getPendingAttackLines(lp));
+            attackQueuePanel_2.bindAttackLinesSupplier(() -> session.handler().getPendingAttackLines(rp));
+        } else {
+            // 클라이언트인 경우: 스냅샷에서 받은 데이터 표시
+            attackQueuePanel_1.bindAttackLinesSupplier(() -> leftModel.getSnapshotAttackLines());
+            attackQueuePanel_2.bindAttackLinesSupplier(() -> rightModel.getSnapshotAttackLines());
+        }
 
         System.out.println("[NetworkMultiGameLayout] Session binding complete, repainting");
         String out = tetris.view.PvPGameRenderer.render(session.playerOneModel(), session.playerTwoModel(), true, true, "상태 메시지");

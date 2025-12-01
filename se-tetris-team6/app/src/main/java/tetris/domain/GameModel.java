@@ -147,6 +147,8 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
             () -> new LineClearBehavior(),
             WeightBehavior::new);
     private final List<MultiplayerHook> multiplayerHooks = new CopyOnWriteArrayList<>();
+    // 네트워크 멀티플레이어에서 스냅샷으로 받은 공격 대기열 데이터 (클라이언트 렌더링용)
+    private java.util.List<tetris.multiplayer.model.AttackLine> snapshotAttackLines = new java.util.ArrayList<>();
 
     public static final class ActiveItemInfo {
         private final BlockLike block;
@@ -1131,6 +1133,16 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         
         // 가비지 라인 업데이트
         this.pendingGarbageLines = snapshot.pendingGarbage();
+        
+        // 공격 대기열 데이터 저장 (클라이언트 렌더링용)
+        snapshotAttackLines.clear();
+        if (snapshot.attackLines() != null && snapshot.attackLines().length > 0) {
+            for (boolean[] holes : snapshot.attackLines()) {
+                snapshotAttackLines.add(new tetris.multiplayer.model.AttackLine(holes));
+            }
+            System.out.println("[GameModel] Stored " + snapshotAttackLines.size() + " attack lines from snapshot");
+        }
+        
         if (uiBridge != null) uiBridge.refreshBoard();
         try {
             System.out.println("[GameModel] Snapshot applied -> player=" + snapshot.playerId() + ", pending=" + this.pendingGarbageLines);
@@ -1500,7 +1512,15 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
     }
 
      // 공격 대기열 필드 추가 (최대 10줄)
-    private int pendingGarbageLines = 0; 
+    private int pendingGarbageLines = 0;
+    
+    /**
+     * 스냅샷에서 받은 공격 대기열 데이터를 반환합니다 (클라이언트 렌더링용).
+     */
+    public java.util.List<tetris.multiplayer.model.AttackLine> getSnapshotAttackLines() {
+        return new java.util.ArrayList<>(snapshotAttackLines);
+    }
+    
     /**
      * 네트워크를 통해 수신된 공격 라인을 처리합니다.
      * @param attackLines 수신된 공격 라인 배열
