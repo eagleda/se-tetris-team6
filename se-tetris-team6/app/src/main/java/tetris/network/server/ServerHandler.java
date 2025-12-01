@@ -170,6 +170,10 @@ import java.util.concurrent.atomic.AtomicInteger; // 추가: 스레드 안전한
                 // 클라이언트로부터 PING 받으면 PONG 응답
                 sendMessage(new GameMessage(MessageType.PONG, "SERVER", null));
                 break;
+            case PONG:
+                // 클라이언트로부터 PONG 받으면 서버의 핑 측정 완료
+                server.handlePong();
+                break;
             case PLAYER_INPUT:
             case ATTACK_LINES:
                 // 클라이언트 입력을 호스트에게 전달 (중복 시퀀스 필터링)

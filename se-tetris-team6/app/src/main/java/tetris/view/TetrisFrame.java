@@ -1142,10 +1142,16 @@ public class TetrisFrame extends JFrame {
             networkStatusOverlay.setVisible(true);
         }
         
-        // 클라이언트에서 핑 측정 시작
         NetworkMultiplayerSession session = gameController.getNetworkSession();
+        
+        // 클라이언트인 경우
         if (session != null && session.networkClient() != null) {
             session.networkClient().startPingMeasurement();
+        }
+        
+        // 호스트(서버)인 경우
+        if (hostedServer != null) {
+            hostedServer.startPingMeasurement();
         }
         
         // 주기적으로 UI 업데이트 (500ms마다)
@@ -1169,10 +1175,16 @@ public class TetrisFrame extends JFrame {
             networkUpdateTimer = null;
         }
         
-        // 클라이언트에서 핑 측정 중지
         NetworkMultiplayerSession session = gameController.getNetworkSession();
+        
+        // 클라이언트에서 핑 측정 중지
         if (session != null && session.networkClient() != null) {
             session.networkClient().stopPingMeasurement();
+        }
+        
+        // 호스트(서버)에서 핑 측정 중지
+        if (hostedServer != null) {
+            hostedServer.stopPingMeasurement();
         }
     }
     
@@ -1182,13 +1194,19 @@ public class TetrisFrame extends JFrame {
     private void updateNetworkStatus() {
         if (networkStatusOverlay == null) return;
         
+        long ping = -1;
         NetworkMultiplayerSession session = gameController.getNetworkSession();
+        
+        // 클라이언트인 경우
         if (session != null && session.networkClient() != null) {
-            long ping = session.networkClient().getCurrentPing();
-            networkStatusOverlay.updateStatus(ping);
-        } else {
-            networkStatusOverlay.updateStatus(-1);
+            ping = session.networkClient().getCurrentPing();
         }
+        // 호스트(서버)인 경우
+        else if (hostedServer != null) {
+            ping = hostedServer.getCurrentPing();
+        }
+        
+        networkStatusOverlay.updateStatus(ping);
     }
 
     /**
