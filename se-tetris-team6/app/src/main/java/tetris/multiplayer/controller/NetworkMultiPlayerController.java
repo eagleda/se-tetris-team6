@@ -497,11 +497,19 @@ public final class NetworkMultiPlayerController {
         GameModel opponentModel = game.modelOf(opponentId);
         
         if (localModel != null && opponentModel != null) {
+            // 이미 게임이 끝났으면 중복 처리하지 않음
+            if (localModel.getCurrentState() == tetris.domain.model.GameState.GAME_OVER) {
+                System.out.println("[NetCtrl] Game already over, skipping disconnect handling");
+                return;
+            }
+            
             localModel.changeState(tetris.domain.model.GameState.GAME_OVER);
             opponentModel.changeState(tetris.domain.model.GameState.GAME_OVER);
             
             // 승리 메시지 표시 (localPlayerId가 승자)
             localModel.showMultiplayerResult(localPlayerId, localPlayerId);
+            
+            System.out.println("[NetCtrl] You win due to opponent disconnect!");
         }
     }
 }

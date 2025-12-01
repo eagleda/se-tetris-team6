@@ -218,5 +218,9 @@ public class GameClient {
         /*todo */
     }
 
+    // 서버 연결 끊김 알림 (ClientHandler에서 호출)
+    public void setDisconnected() {
+        this.isConnected = false;
+    }
 
 }

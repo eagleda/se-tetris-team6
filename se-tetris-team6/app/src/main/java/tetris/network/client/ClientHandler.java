@@ -52,8 +52,10 @@ public class ClientHandler implements Runnable {
             }
         } catch (EOFException e) {
             System.out.println("Server closed connection.");
+            notifyServerDisconnected();
         } catch (IOException | ClassNotFoundException e) {
             handleError(e);
+            notifyServerDisconnected();
         } finally {
             client.disconnect();
         }
@@ -158,6 +160,24 @@ public class ClientHandler implements Runnable {
         if (client.getGameStateListener() != null) {
             javax.swing.SwingUtilities.invokeLater(() -> {
                 client.getGameStateListener().onGameStateChange(message);
+            });
+        }
+    }
+
+    // 서버 연결 끊김 알림
+    private void notifyServerDisconnected() {
+        System.out.println("[ClientHandler] Server disconnected - notifying game state listener");
+        // Mark client as disconnected
+        client.setDisconnected();
+        
+        if (client.getGameStateListener() != null) {
+            GameMessage disconnectMsg = new GameMessage(
+                tetris.network.protocol.MessageType.OPPONENT_DISCONNECTED,
+                "SERVER",
+                "Server"
+            );
+            javax.swing.SwingUtilities.invokeLater(() -> {
+                client.getGameStateListener().onGameStateChange(disconnectMsg);
             });
         }
     }
