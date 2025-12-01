@@ -76,8 +76,13 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         /** Show a dedicated name-entry overlay (optional). */
         void showNameEntryOverlay(tetris.domain.score.Score score);
 
-        /** 멀티플레이 승자 표시용 오버레이를 보여준다. */
+        /** 온라인 멀티플레이 승자 표시용 오버레이를 보여준다. */
         default void showMultiplayerResult(int winnerId, int localPlayerId) {
+            /* no-op */
+        }
+
+        /** 로컬 멀티플레이 승자 표시용 오버레이를 보여준다. */
+        default void showLocalMultiplayerResult(int winnerId) {
             /* no-op */
         }
     }
@@ -1244,6 +1249,13 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
      */
     public void showMultiplayerResult(int winnerId, int localPlayerId) {
         uiBridge.showMultiplayerResult(winnerId, localPlayerId);
+    }
+
+    /**
+     * 로컬 멀티플레이 전용: winnerId를 "Player X Wins" 형식으로 표시
+     */
+    public void showLocalMultiplayerResult(int winnerId) {
+        uiBridge.showLocalMultiplayerResult(winnerId);
     }
 
     // === 외부 제어 진입점 ===

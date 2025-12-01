@@ -117,8 +117,10 @@ public class GameOverPanel extends JPanel {
 
     public void show(Score score, boolean allowNameEntry) {
         Objects.requireNonNull(score, "score");
+        title.setText("Game Over");
         scoreLabel.setText(String.format("Score: %d | Lines: %d | Level: %d",
             score.getPoints(), score.getClearedLines(), score.getLevel()));
+        winnerLabel.setText("");
         // 항상 새 입력을 위해 필드를 비우고 포커스를 맞춘다.
         nameField.setText("");
         nameField.setVisible(allowNameEntry);
@@ -132,9 +134,9 @@ public class GameOverPanel extends JPanel {
      * 멀티플레이 승자 오버레이 표시: 입력 없이 메시지와 닫기 버튼만 노출.
      */
     public void showMultiplayerResult(String message) {
-        title.setText("Match Result");
+        title.setText(message == null ? "Match Result" : message);
         scoreLabel.setText("");
-        winnerLabel.setText(message == null ? "" : message);
+        winnerLabel.setText("");
         nameField.setVisible(false);
         saveButton.setVisible(false);
         skipButton.setVisible(false);

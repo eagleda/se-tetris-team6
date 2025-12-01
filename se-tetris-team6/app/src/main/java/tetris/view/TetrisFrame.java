@@ -143,9 +143,28 @@ public class TetrisFrame extends JFrame {
                     if (winnerId <= 0) {
                         message = "Match Finished";
                     } else if (winnerId == localPlayerId) {
+                        // 온라인 멀티플레이: localPlayerId 기준
                         message = "You Win!";
                     } else {
+                        // 온라인 멀티플레이: 상대가 이김
                         message = "You Lose";
+                    }
+                    if (gameOverPanel != null) {
+                        gameOverPanel.showMultiplayerResult(message);
+                        layeredPane.moveToFront(gameOverPanel);
+                    }
+                });
+            }
+
+            @Override
+            public void showLocalMultiplayerResult(int winnerId) {
+                SwingUtilities.invokeLater(() -> {
+                    String message;
+                    if (winnerId <= 0) {
+                        message = "Match Finished";
+                    } else {
+                        // 로컬 멀티플레이: "Player X Wins" 형식
+                        message = "Player " + winnerId + " Wins";
                     }
                     if (gameOverPanel != null) {
                         gameOverPanel.showMultiplayerResult(message);
