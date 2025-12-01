@@ -134,6 +134,22 @@ public class GameController {
             return;
         }
 
+        // 로컬 멀티플레이어가 활성화되어 있으면 P1/P2 키 바인딩을 우선 처리
+        if (localSession != null && gameModel.isLocalMultiplayerActive()) {
+            if (routeLocalMultiplayerInput(keyCode)) {
+                lastKeyPressTime.put(keyCode, currentTime);
+                return;
+            }
+        }
+
+        // 네트워크 멀티플레이어가 활성화되어 있으면 네트워크 키 바인딩을 우선 처리
+        if (networkSession != null) {
+            if (routeNetworkMultiplayerInput(keyCode)) {
+                lastKeyPressTime.put(keyCode, currentTime);
+                return;
+            }
+        }
+
         GameState currentState = gameModel.getCurrentState();
 
         switch (currentState) {
@@ -186,17 +202,7 @@ public class GameController {
             return;
         }
 
-        // 네트워크 멀티플레이어 입력 처리 (싱글 게임 키 바인딩 사용)
-        if (networkSession != null && routeNetworkMultiplayerInput(keyCode)) {
-            return;
-        }
-
-        // 로컬 멀티플레이어 입력 처리 (P1/P2 키 바인딩 사용)
-        if (localSession != null && routeLocalMultiplayerInput(keyCode)) {
-            return;
-        }
-
-        // 블록 조작 키들
+        // 블록 조작 키들 (싱글 플레이어 전용)
         if (keyCode == keyBindings.get("MOVE_LEFT")) {
             gameModel.moveBlockLeft();
             System.out.println("Controller: 블록 왼쪽 이동");
