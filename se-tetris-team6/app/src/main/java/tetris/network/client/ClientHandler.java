@@ -101,6 +101,10 @@ public class ClientHandler implements Runnable {
             case GAME_STATE:
                 handleGameState(message);
                 break;
+            case PING:
+                // 서버로부터 PING 받으면 PONG 응답
+                sendMessage(new GameMessage(tetris.network.protocol.MessageType.PONG, client.getPlayerId(), null));
+                break;
             case PONG:
                 handlePong(message);
                 break;
@@ -265,19 +269,8 @@ public class ClientHandler implements Runnable {
 
     // 퐁 처리 - 지연시간 계산
     private void handlePong(GameMessage message){
-        // payload may contain timestamp or latency info
-        try {
-            Object payload = message.getPayload();
-            if (payload instanceof Long) {
-                long sent = (Long) payload;
-                long now = System.currentTimeMillis();
-                long rtt = now - sent;
-                // update optional latency metric on client if exposed
-                System.out.println("PONG received, rtt=" + rtt + "ms");
-            }
-        } catch (Exception e) {
-            // ignore parse issues
-        }
+        // GameClient의 handlePong 호출하여 RTT 계산
+        client.handlePong();
     }
 
     // 주기적 핑 전송 - 지연시간 측정 및 연결 확인

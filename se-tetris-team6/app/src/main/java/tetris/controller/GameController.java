@@ -829,4 +829,18 @@ public class GameController {
             networkSession = null;
         }
     }
+    
+    /**
+     * 현재 네트워크 세션을 반환합니다.
+     */
+    public NetworkMultiplayerSession getNetworkSession() {
+        return networkSession;
+    }
+    
+    /**
+     * 네트워크 클라이언트를 반환합니다.
+     */
+    public tetris.network.client.GameClient getNetworkClient() {
+        return networkClient;
+    }
 }

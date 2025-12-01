@@ -512,4 +512,11 @@ public final class NetworkMultiPlayerController {
             System.out.println("[NetCtrl] You win due to opponent disconnect!");
         }
     }
+    
+    /**
+     * 네트워크 클라이언트를 반환합니다.
+     */
+    public tetris.network.client.GameClient getNetworkClient() {
+        return transportClient;
+    }
 }

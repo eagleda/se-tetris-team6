@@ -77,6 +77,10 @@ public class TetrisFrame extends JFrame {
     private javax.swing.JDialog hostWaitingDialog;
     // 호스트 게임 대기 중 상태
     private boolean isHostWaitingForGameStart = false;
+    // 네트워크 상태 오버레이
+    private NetworkStatusOverlay networkStatusOverlay;
+    // 네트워크 상태 업데이트 타이머
+    private javax.swing.Timer networkUpdateTimer;
 
     public TetrisFrame(GameModel gameModel) {
         super(FRAME_TITLE);
@@ -415,6 +419,8 @@ public class TetrisFrame extends JFrame {
                                             TetrisFrame.this.bindOnlinePanelToCurrentSession();
                                             System.out.println("[UI][SERVER] Displaying onlineMultiGameLayout");
                                             TetrisFrame.this.displayPanel(onlineMultiGameLayout);
+                                            // 네트워크 상태 오버레이 시작
+                                            TetrisFrame.this.startNetworkStatusMonitoring();
                                         });
                                         break;
                                     }
@@ -695,6 +701,8 @@ public class TetrisFrame extends JFrame {
                                     bindOnlinePanelToCurrentSession();
                                     System.out.println("[UI][CLIENT] Displaying onlineMultiGameLayout");
                                     displayPanel(onlineMultiGameLayout);
+                                    // 네트워크 상태 모니터링 시작
+                                    startNetworkStatusMonitoring();
                                 });
                                 break;
                             }
@@ -746,6 +754,12 @@ public class TetrisFrame extends JFrame {
         onlineMultiGameLayout = new tetris.view.GameComponent.NetworkMultiGameLayout();
         onlineMultiGameLayout.setVisible(false);
         layeredPane.add(onlineMultiGameLayout, JLayeredPane.DEFAULT_LAYER);
+        
+        // 네트워크 상태 오버레이 추가
+        networkStatusOverlay = new NetworkStatusOverlay();
+        networkStatusOverlay.setVisible(false);
+        networkStatusOverlay.setBounds(0, 0, 800, 50); // 상단에 배치
+        layeredPane.add(networkStatusOverlay, JLayeredPane.PALETTE_LAYER); // 게임 화면 위에 표시
     }
 
     private void setupSettingPanel() {
@@ -1111,12 +1125,70 @@ public class TetrisFrame extends JFrame {
      * Convenience to show the main menu panel.
      */
     public void showMainPanel() {
+        stopNetworkStatusMonitoring(); // 네트워크 모니터링 중지
         displayPanel(mainPanel);
     }
 
     /** Convenience to show the scoreboard panel. */
     public void showScoreboardPanel() {
         displayPanel(scoreboardPanel);
+    }
+    
+    /**
+     * 네트워크 상태 모니터링 시작 - 온라인 게임 시작 시 호출
+     */
+    private void startNetworkStatusMonitoring() {
+        if (networkStatusOverlay != null) {
+            networkStatusOverlay.setVisible(true);
+        }
+        
+        // 클라이언트에서 핑 측정 시작
+        NetworkMultiplayerSession session = gameController.getNetworkSession();
+        if (session != null && session.networkClient() != null) {
+            session.networkClient().startPingMeasurement();
+        }
+        
+        // 주기적으로 UI 업데이트 (500ms마다)
+        if (networkUpdateTimer != null) {
+            networkUpdateTimer.stop();
+        }
+        networkUpdateTimer = new javax.swing.Timer(500, e -> updateNetworkStatus());
+        networkUpdateTimer.start();
+    }
+    
+    /**
+     * 네트워크 상태 모니터링 중지 - 게임 종료 시 호출
+     */
+    private void stopNetworkStatusMonitoring() {
+        if (networkStatusOverlay != null) {
+            networkStatusOverlay.setVisible(false);
+        }
+        
+        if (networkUpdateTimer != null) {
+            networkUpdateTimer.stop();
+            networkUpdateTimer = null;
+        }
+        
+        // 클라이언트에서 핑 측정 중지
+        NetworkMultiplayerSession session = gameController.getNetworkSession();
+        if (session != null && session.networkClient() != null) {
+            session.networkClient().stopPingMeasurement();
+        }
+    }
+    
+    /**
+     * 네트워크 상태 UI 업데이트
+     */
+    private void updateNetworkStatus() {
+        if (networkStatusOverlay == null) return;
+        
+        NetworkMultiplayerSession session = gameController.getNetworkSession();
+        if (session != null && session.networkClient() != null) {
+            long ping = session.networkClient().getCurrentPing();
+            networkStatusOverlay.updateStatus(ping);
+        } else {
+            networkStatusOverlay.updateStatus(-1);
+        }
     }
 
     /**

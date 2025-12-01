@@ -166,6 +166,10 @@ import java.util.concurrent.atomic.AtomicInteger; // 추가: 스레드 안전한
                 System.out.println("ServerHandler: DISCONNECT from " + clientId);
                 disconnect();
                 break;
+            case PING:
+                // 클라이언트로부터 PING 받으면 PONG 응답
+                sendMessage(new GameMessage(MessageType.PONG, "SERVER", null));
+                break;
             case PLAYER_INPUT:
             case ATTACK_LINES:
                 // 클라이언트 입력을 호스트에게 전달 (중복 시퀀스 필터링)

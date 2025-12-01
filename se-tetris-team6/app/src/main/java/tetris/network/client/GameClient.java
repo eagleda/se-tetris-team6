@@ -50,6 +50,12 @@ public class GameClient {
     private volatile boolean startReceived = false;
     private volatile String startMode = null;
     private volatile Long startSeed = null;
+    
+    // === 핑 측정 관련 ===
+    private volatile long lastPingTime = 0;        // 마지막 PING 전송 시간
+    private volatile long currentPing = -1;        // 현재 핑 (ms), -1이면 측정 중 또는 연결 안됨
+    private volatile boolean waitingForPong = false; // PONG 응답 대기 중
+    private Thread pingThread;                     // 핑 측정 스레드
 
     // === 주요 메서드들 ===
 
@@ -94,6 +100,7 @@ public class GameClient {
     // 서버와 연결 해제
     public void disconnect() {
         this.isConnected = false;
+        stopPingMeasurement();
         if (clientHandler != null) {
             // 클라이언트 핸들러에게 연결 종료 메시지 전송 후 종료 요청
             clientHandler.sendMessage(new GameMessage(MessageType.DISCONNECT, this.playerId, null));
@@ -262,6 +269,74 @@ public class GameClient {
     // 서버 연결 끊김 알림 (ClientHandler에서 호출)
     public void setDisconnected() {
         this.isConnected = false;
+    }
+    
+    // === 핑 측정 메서드 ===
+    
+    /**
+     * 핑 측정 시작 - 주기적으로 PING 메시지를 서버로 전송
+     */
+    public void startPingMeasurement() {
+        if (pingThread != null && pingThread.isAlive()) {
+            return; // 이미 실행 중
+        }
+        
+        pingThread = new Thread(() -> {
+            while (isConnected && !Thread.currentThread().isInterrupted()) {
+                try {
+                    // PING 전송
+                    if (!waitingForPong) {
+                        lastPingTime = System.currentTimeMillis();
+                        waitingForPong = true;
+                        sendMessage(new GameMessage(MessageType.PING, this.playerId, null));
+                    }
+                    
+                    // 2초마다 측정
+                    Thread.sleep(2000);
+                    
+                    // 타임아웃 체크 (5초 이상 응답 없으면)
+                    if (waitingForPong && (System.currentTimeMillis() - lastPingTime) > 5000) {
+                        currentPing = -1; // 연결 불안정
+                        waitingForPong = false;
+                    }
+                } catch (InterruptedException e) {
+                    break;
+                }
+            }
+        }, "PingMeasurement");
+        pingThread.setDaemon(true);
+        pingThread.start();
+    }
+    
+    /**
+     * 핑 측정 중지
+     */
+    public void stopPingMeasurement() {
+        if (pingThread != null) {
+            pingThread.interrupt();
+            pingThread = null;
+        }
+        currentPing = -1;
+        waitingForPong = false;
+    }
+    
+    /**
+     * 현재 핑 값 반환 (ms)
+     * @return 핑 값, -1이면 측정 중이거나 연결 안됨
+     */
+    public long getCurrentPing() {
+        return currentPing;
+    }
+    
+    /**
+     * PONG 응답 처리 - ClientHandler에서 호출
+     */
+    public void handlePong() {
+        if (waitingForPong) {
+            long rtt = System.currentTimeMillis() - lastPingTime;
+            currentPing = rtt;
+            waitingForPong = false;
+        }
     }
 
 }
