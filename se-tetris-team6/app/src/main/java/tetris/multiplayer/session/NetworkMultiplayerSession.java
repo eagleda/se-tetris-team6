@@ -72,6 +72,19 @@ public final class NetworkMultiplayerSession {
         GameMode resolved = mode == null ? GameMode.STANDARD : mode;
         playerOneModel().startGame(resolved);
         playerTwoModel().startGame(resolved);
+        
+        // 게임 시작 직후 초기 스냅샷을 즉시 전송하여 첫 블록과 다음 블록 동기화
+        if (controller.getLocalPlayerId() == 1) {
+            try {
+                javax.swing.SwingUtilities.invokeLater(() -> {
+                    controller.sendGameState(playerOneModel());
+                    controller.sendGameState(playerTwoModel());
+                    System.out.println("[NetworkSession] Initial snapshots sent after game start");
+                });
+            } catch (Exception e) {
+                System.err.println("[NetworkSession] Failed to send initial snapshots: " + e.getMessage());
+            }
+        }
     }
 
     /**

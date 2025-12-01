@@ -29,6 +29,10 @@ public final class NetworkMultiPlayerController {
         this.localPlayerId = localPlayerId;
     }
 
+    public int getLocalPlayerId() {
+        return localPlayerId;
+    }
+
     public void setNetworkHandler(NetworkEventHandler handler) {
         this.networkHandler = handler;
     }

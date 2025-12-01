@@ -1094,6 +1094,12 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
             gameplayEngine.setActiveBlock(null);
         }
         
+        // 다음 블록 정보 동기화
+        if (snapshot.nextBlockId() > 0 && blockGenerator instanceof RandomBlockGenerator) {
+            BlockKind nextKind = BlockKind.values()[snapshot.nextBlockId() - 1];
+            ((RandomBlockGenerator) blockGenerator).forceNextBlock(nextKind);
+        }
+        
         // 점수 업데이트
         if (scoreRepository != null) {
             tetris.domain.score.Score currentScore = scoreRepository.load();
