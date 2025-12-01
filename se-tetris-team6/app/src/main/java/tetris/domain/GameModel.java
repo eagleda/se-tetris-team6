@@ -636,6 +636,9 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         GameMode selected = mode == null ? GameMode.STANDARD : mode;
         this.currentMode = selected;
         this.lastMode = selected;
+        
+        System.out.println("[GameModel] startGame called with mode=" + mode + ", resolved to " + selected);
+        
         if (activeLocalSession != null) {
             // 로컬 멀티가 활성화되어 있다면 각 플레이어 모델을 동일한 모드로 재가동한다.
             activeLocalSession.restartPlayers(selected);
@@ -697,6 +700,8 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         if (nextBlockIsItem) {
             ItemBehavior behavior = rollBehavior();
             String behaviorId = behavior.id();
+            
+            System.out.println("[GameModel] Spawning ITEM block! behaviorId=" + behaviorId);
             
             // Weight나 Bomb 아이템인 경우 블록 형태 강제
             if ("weight".equals(behaviorId) && block.getKind() != BlockKind.W) {
@@ -785,6 +790,8 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         }
         if (itemSpawnIntervalLines > 0 && totalClearedLines % itemSpawnIntervalLines == 0) {
             nextBlockIsItem = true;
+            System.out.println("[GameModel] Item spawn triggered! totalClearedLines=" + totalClearedLines + 
+                ", interval=" + itemSpawnIntervalLines + ", nextBlockIsItem=true");
         }
         itemManager.onLineClear(itemContext, null);
 

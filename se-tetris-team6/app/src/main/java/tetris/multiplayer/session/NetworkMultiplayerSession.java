@@ -70,8 +70,15 @@ public final class NetworkMultiplayerSession {
      */
     public void restartPlayers(GameMode mode) {
         GameMode resolved = mode == null ? GameMode.STANDARD : mode;
+        System.out.println("[NetworkMultiplayerSession] restartPlayers with mode: " + resolved);
         playerOneModel().startGame(resolved);
         playerTwoModel().startGame(resolved);
+        
+        // 아이템 모드 확인 로그
+        if (resolved == GameMode.ITEM) {
+            System.out.println("[NetworkMultiplayerSession] ITEM mode enabled - itemSpawnIntervalLines: " + 
+                playerOneModel().getItemSpawnIntervalLines());
+        }
         
         // 게임 시작 직후 초기 스냅샷을 즉시 전송하여 첫 블록과 다음 블록 동기화
         if (controller.getLocalPlayerId() == 1) {
