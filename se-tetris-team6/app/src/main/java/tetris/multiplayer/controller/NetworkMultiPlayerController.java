@@ -164,7 +164,19 @@ public final class NetworkMultiPlayerController {
     }
 
     public List<AttackLine> getPendingAttackLines(int playerId) {
-        return game.getPendingAttackLines(playerId);
+        // 서버: VersusRules에서 실제 공격 대기열 반환
+        // 클라이언트: 스냅샷에서 받은 공격 대기열 반환
+        if (localPlayerId == 1) {
+            // 서버: VersusRules 사용
+            return game.getPendingAttackLines(playerId);
+        } else {
+            // 클라이언트: 각 모델의 스냅샷 공격 대기열 사용
+            GameModel model = game.modelOf(playerId);
+            if (model != null) {
+                return model.getSnapshotAttackLines();
+            }
+            return java.util.Collections.emptyList();
+        }
     }
 
     private int getRemotePlayerId() {

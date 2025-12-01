@@ -1140,7 +1140,6 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
             for (boolean[] holes : snapshot.attackLines()) {
                 snapshotAttackLines.add(new tetris.multiplayer.model.AttackLine(holes));
             }
-            System.out.println("[GameModel] Stored " + snapshotAttackLines.size() + " attack lines from snapshot");
         }
         
         if (uiBridge != null) uiBridge.refreshBoard();
