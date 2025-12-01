@@ -6,6 +6,10 @@ import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.prefs.Preferences;
 import tetris.network.protocol.AttackLine;
 import tetris.network.protocol.GameMessage;
 import tetris.network.protocol.MessageType;
@@ -19,6 +23,10 @@ import tetris.network.protocol.PlayerInput;
  * - 연결 상태 모니터링 및 재연결 처리
  */
 public class GameClient {
+    private static final int MAX_RECENT_HOSTS = 5;
+    private static final String PREF_KEY_RECENT_HOSTS = "tetris.recent.hosts";
+    private static final Preferences PREFS = Preferences.userRoot().node("tetris");
+
     // === 네트워크 관련 ===
     private Socket serverSocket;               // 서버와의 소켓 연결
     private ClientHandler clientHandler;       // 메시지 처리 핸들러
@@ -72,6 +80,8 @@ public class GameClient {
 
             this.isConnected = true;
             System.out.println("Successfully connected to server at " + ip + ":" + port);
+            // persist recent host:port on successful connect
+            addRecentHost(ip + ":" + port);
             return true;
 
         } catch (IOException e) {
@@ -193,18 +203,49 @@ public class GameClient {
 
     // 최근 접속 IP 저장/불러오기
     public void saveRecentIP(String ip){
-        // Best-effort: store in a simple system property for this session
-        if (ip == null) return;
-        try {
-            System.setProperty("tetris.recent.ip", ip);
-        } catch (Exception ignore) {}
+        addRecentHost(ip);
     }
     public String getRecentIP(){
+        List<String> recents = getRecentHosts();
+        if (!recents.isEmpty()) return recents.get(0);
+        return "127.0.0.1";
+    }
+
+    /**
+     * 최근 연결 시도한 host:port 목록을 반환 (최신순).
+     */
+    public static List<String> getRecentHosts() {
         try {
-            String v = System.getProperty("tetris.recent.ip");
-            return v == null ? "127.0.0.1" : v;
+            String raw = PREFS.get(PREF_KEY_RECENT_HOSTS, "");
+            if (raw == null || raw.isBlank()) return Collections.emptyList();
+            String[] parts = raw.split(",");
+            List<String> list = new ArrayList<>();
+            for (String p : parts) {
+                String v = p.trim();
+                if (!v.isEmpty()) list.add(v);
+            }
+            return list;
         } catch (Exception e) {
-            return "127.0.0.1";
+            return Collections.emptyList();
+        }
+    }
+
+    /**
+     * 최근 host:port를 저장 (중복 제거 후 최신순, 최대 MAX_RECENT_HOSTS).
+     */
+    public static void addRecentHost(String hostPort) {
+        if (hostPort == null || hostPort.isBlank()) return;
+        try {
+            List<String> list = new ArrayList<>(getRecentHosts());
+            list.removeIf(s -> s.equalsIgnoreCase(hostPort));
+            list.add(0, hostPort);
+            if (list.size() > MAX_RECENT_HOSTS) {
+                list = list.subList(0, MAX_RECENT_HOSTS);
+            }
+            String joined = String.join(",", list);
+            PREFS.put(PREF_KEY_RECENT_HOSTS, joined);
+        } catch (Exception ignore) {
+            // ignore persistence errors
         }
     }
 

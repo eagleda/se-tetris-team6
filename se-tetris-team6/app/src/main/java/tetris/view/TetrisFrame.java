@@ -434,8 +434,25 @@ public class TetrisFrame extends JFrame {
                     final javax.swing.JLabel info = new javax.swing.JLabel("서버 주소를 입력하세요 (예: 127.0.0.1:5000)", javax.swing.SwingConstants.CENTER);
                     center.add(info);
                     center.add(javax.swing.Box.createVerticalStrut(8));
+                    java.util.List<String> recentHosts = tetris.network.client.GameClient.getRecentHosts();
                     final javax.swing.JTextField addressField = new javax.swing.JTextField(16);
+                    if (!recentHosts.isEmpty()) {
+                        addressField.setText(recentHosts.get(0));
+                    }
                     center.add(addressField);
+                    if (!recentHosts.isEmpty()) {
+                        center.add(javax.swing.Box.createVerticalStrut(6));
+                        javax.swing.JComboBox<String> recentCombo = new javax.swing.JComboBox<>(recentHosts.toArray(new String[0]));
+                        recentCombo.setSelectedIndex(0);
+                        recentCombo.addActionListener(ev -> {
+                            Object sel = recentCombo.getSelectedItem();
+                            if (sel != null) addressField.setText(sel.toString());
+                        });
+                        javax.swing.JPanel recentRow = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 4, 0));
+                        recentRow.add(new javax.swing.JLabel("최근 접속:"));
+                        recentRow.add(recentCombo);
+                        center.add(recentRow);
+                    }
                     final javax.swing.JLabel errorLabel = new javax.swing.JLabel("");
                     errorLabel.setForeground(java.awt.Color.RED);
                     center.add(errorLabel);
@@ -1197,7 +1214,7 @@ public class TetrisFrame extends JFrame {
             return GameMode.ITEM;
         }
         if ("TIME_LIMIT".equalsIgnoreCase(mode)) {
-            System.out.println("[UI][WARN] Time Limit mode is not implemented; falling back to STANDARD");
+            return GameMode.TIME_LIMIT;
         }
         return GameMode.STANDARD;
     }

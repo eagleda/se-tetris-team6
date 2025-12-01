@@ -61,8 +61,8 @@ public class TimerPanel extends JPanel {
     private Method findTimeGetter(GameModel model) {
         if (model == null)
             return null;
-        String[] candidates = { "getElapsedMillis", "getElapsedMs", "getElapsedTimeMs", "getElapsedTime",
-                "getCurrentTimeMs", "getCurrentTick", "getCurrentTickMillis" };
+        String[] candidates = { "getRemainingTimeMillis", "getTimerMillis", "getElapsedMillis", "getElapsedMs",
+                "getElapsedTimeMs", "getElapsedTime", "getCurrentTimeMs", "getCurrentTick", "getCurrentTickMillis" };
         for (String name : candidates) {
             try {
                 Method m = model.getClass().getMethod(name);
