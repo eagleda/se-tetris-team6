@@ -48,7 +48,17 @@ public final class MultiPlayerGame {
     }
 
     public Integer getWinnerId() {
-        return loserId == null ? null : (loserId == 1 ? 2 : 1);
+        if (loserId == null) {
+            return null;
+        }
+        if (loserId == 0) {
+            return -1; // draw
+        }
+        return loserId == 1 ? 2 : 1;
+    }
+
+    public boolean isDraw() {
+        return loserId != null && loserId == 0;
     }
 
     public void markLoser(int playerId) {
@@ -57,6 +67,10 @@ public final class MultiPlayerGame {
         }
         // 멀티 컨트롤러가 공격 줄 주입 이후 스폰 불가를 감지하면 여기로 들어온다.
         loserId = playerId;
+    }
+
+    public void endWithDraw() {
+        loserId = 0;
     }
 
     public void onPieceLocked(int playerId,
@@ -72,6 +86,15 @@ public final class MultiPlayerGame {
         return versusRules.consumeAttackLinesForNextSpawn(playerId);
     }
 
+    /**
+     * 점수 우위 플레이어를 반환한다. P1이 높으면 양수, P2가 높으면 음수, 동점이면 0.
+     */
+    public int compareScores() {
+        int p1Score = safePoints(p1.getModel());
+        int p2Score = safePoints(p2.getModel());
+        return Integer.compare(p1Score, p2Score);
+    }
+
     public int getPendingLines(int playerId) {
         return versusRules.getPendingLineCount(playerId);
     }
@@ -81,5 +104,17 @@ public final class MultiPlayerGame {
      */
     public java.util.List<AttackLine> getPendingAttackLines(int playerId) {
         return versusRules.getPendingAttackLines(playerId);
+    }
+
+    private static int safePoints(GameModel model) {
+        if (model == null) {
+            return 0;
+        }
+        try {
+            tetris.domain.score.Score score = model.getScore();
+            return score != null ? score.getPoints() : 0;
+        } catch (Exception e) {
+            return 0;
+        }
     }
 }
