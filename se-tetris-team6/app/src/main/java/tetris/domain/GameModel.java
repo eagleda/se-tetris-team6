@@ -1103,8 +1103,18 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         // 점수 업데이트
         if (scoreRepository != null) {
             tetris.domain.score.Score currentScore = scoreRepository.load();
-            if (currentScore.getPoints() != snapshot.score()) {
-                scoreRepository.save(currentScore.withAdditionalPoints(snapshot.score() - currentScore.getPoints()));
+            int currentPoints = currentScore != null ? currentScore.getPoints() : 0;
+            int snapshotPoints = snapshot.score();
+            
+            if (currentPoints != snapshotPoints) {
+                System.out.println("[GameModel] Updating score from " + currentPoints + " to " + snapshotPoints);
+                // 점수 차이만큼 업데이트
+                int delta = snapshotPoints - currentPoints;
+                if (delta > 0) {
+                    scoreRepository.save(currentScore.withAdditionalPoints(delta));
+                } else if (delta < 0) {
+                    scoreRepository.save(currentScore.minusPoints(-delta));
+                }
             }
         }
         
