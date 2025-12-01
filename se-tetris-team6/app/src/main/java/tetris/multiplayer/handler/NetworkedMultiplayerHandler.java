@@ -94,7 +94,7 @@ public final class NetworkedMultiplayerHandler implements MultiplayerHandler {
                 }
                 
                 model.changeState(GameState.GAME_OVER);
-                model.showMultiplayerResult(game.getWinnerId() == null ? -1 : game.getWinnerId());
+                model.showMultiplayerResult(game.getWinnerId() == null ? -1 : game.getWinnerId(), localPlayerId);
                 
                 if (!gameEndSent && sendGameEndCallback != null) {
                     sendGameEndCallback.run();
@@ -110,7 +110,7 @@ public final class NetworkedMultiplayerHandler implements MultiplayerHandler {
             if (localModel != null && localModel.getCurrentState() == GameState.GAME_OVER) {
                 gameEndHandled = true;
                 model.changeState(GameState.GAME_OVER);
-                model.showMultiplayerResult(game.getWinnerId() == null ? -1 : game.getWinnerId());
+                model.showMultiplayerResult(game.getWinnerId() == null ? -1 : game.getWinnerId(), localPlayerId);
             }
         }
     }

@@ -64,7 +64,8 @@ public final class LocalMultiplayerHandler implements MultiplayerHandler {
             controller.withPlayer(1, m -> m.changeState(GameState.GAME_OVER));
             controller.withPlayer(2, m -> m.changeState(GameState.GAME_OVER));
             model.changeState(GameState.GAME_OVER);
-            model.showMultiplayerResult(winnerId);
+            // 로컬 멀티에서는 항상 플레이어 1 기준으로 표시
+            model.showMultiplayerResult(winnerId, 1);
         }
     }
 

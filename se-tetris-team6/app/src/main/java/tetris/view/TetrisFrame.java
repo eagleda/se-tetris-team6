@@ -137,9 +137,16 @@ public class TetrisFrame extends JFrame {
             }
 
             @Override
-            public void showMultiplayerResult(int winnerId) {
+            public void showMultiplayerResult(int winnerId, int localPlayerId) {
                 SwingUtilities.invokeLater(() -> {
-                    String message = winnerId <= 0 ? "Match Finished" : "Player " + winnerId + " Wins!";
+                    String message;
+                    if (winnerId <= 0) {
+                        message = "Match Finished";
+                    } else if (winnerId == localPlayerId) {
+                        message = "You Win!";
+                    } else {
+                        message = "You Lose";
+                    }
                     if (gameOverPanel != null) {
                         gameOverPanel.showMultiplayerResult(message);
                         layeredPane.moveToFront(gameOverPanel);
@@ -171,6 +178,59 @@ public class TetrisFrame extends JFrame {
                 gameModel.getLeaderboardRepository(),
                 gameOverPanel,
                 this);
+        
+        // Back to Menu 버튼 클릭 시 네트워크 세션 정리
+        gameOverPanel.setListener(new GameOverPanel.Listener() {
+            @Override
+            public void onSave(String name) {
+                // GameOverController가 이미 listener를 설정함
+            }
+            
+            @Override
+            public void onSkip() {
+                gameOverPanel.hidePanel();
+                TetrisFrame.this.cleanupNetworkSession();
+                displayPanel(mainPanel);
+                gameModel.quitToMenu();
+            }
+            
+            @Override
+            public void onBackToMenu() {
+                gameOverPanel.hidePanel();
+                TetrisFrame.this.cleanupNetworkSession();
+                displayPanel(mainPanel);
+                gameModel.quitToMenu();
+            }
+        });
+    }
+    
+    /**
+     * 네트워크 멀티플레이 세션을 정리하고 연결을 해제합니다.
+     */
+    private void cleanupNetworkSession() {
+        try {
+            // 네트워크 멀티플레이 세션 종료
+            if (gameModel.getActiveNetworkMultiplayerSession().isPresent()) {
+                System.out.println("[UI] Cleaning up network multiplayer session...");
+                NetworkMultiplayerSession session = gameModel.getActiveNetworkMultiplayerSession().get();
+                session.shutdown();
+            }
+            
+            // 서버 종료
+            if (hostedServer != null) {
+                System.out.println("[UI] Stopping hosted server...");
+                hostedServer.stopServer();
+                hostedServer = null;
+            }
+            
+            // 게임 모델을 메뉴 상태로 전환
+            gameModel.quitToMenu();
+            
+            System.out.println("[UI] Network session cleanup completed.");
+        } catch (Exception e) {
+            System.err.println("[UI] Error during network cleanup: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
     private void initializeControllers() {
@@ -695,12 +755,21 @@ public class TetrisFrame extends JFrame {
                                 opponentModel.changeState(tetris.domain.model.GameState.GAME_OVER);
                                 
                                 // Show result and update display
-                                gameModel.showMultiplayerResult(sess.game().getWinnerId() == null ? -1 : sess.game().getWinnerId());
+                                int localId = sess.networkController().getLocalPlayerId();
+                                gameModel.showMultiplayerResult(sess.game().getWinnerId() == null ? -1 : sess.game().getWinnerId(), localId);
                                 
-                                        // Force repaint to show final state
-                                        if (onlineMultiGameLayout != null) {
-                                            onlineMultiGameLayout.repaint();
-                                        }
+                                // Force repaint to show final state
+                                if (onlineMultiGameLayout != null) {
+                                    onlineMultiGameLayout.repaint();
+                                }
+                                
+                                // 게임 종료 후 약간의 지연 후 네트워크 세션 정리
+                                javax.swing.Timer cleanupTimer = new javax.swing.Timer(2000, evt -> {
+                                    System.out.println("[UI] Game ended, scheduling network cleanup...");
+                                    // 세션 종료는 Back to Menu 버튼으로 사용자가 트리거하도록 함
+                                });
+                                cleanupTimer.setRepeats(false);
+                                cleanupTimer.start();
                             }
                         }
                         break;
@@ -1152,7 +1221,7 @@ public class TetrisFrame extends JFrame {
             }
 
             @Override
-            public void showMultiplayerResult(int winnerId) {
+            public void showMultiplayerResult(int winnerId, int localPlayerId) {
                 // 로컬 뷰는 메인 UI 오버레이를 사용하므로 무시
             }
         };
