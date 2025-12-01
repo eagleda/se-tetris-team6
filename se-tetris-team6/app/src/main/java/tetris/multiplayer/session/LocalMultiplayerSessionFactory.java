@@ -55,9 +55,9 @@ public final class LocalMultiplayerSessionFactory {
         tetris.multiplayer.handler.NetworkedMultiplayerHandler handler = new tetris.multiplayer.handler.NetworkedMultiplayerHandler(game, controller, GameState.PLAYING, localIsPlayerOne ? 1 : 2, sendGameEndCallback);
         NetworkMultiplayerSession session = new NetworkMultiplayerSession(playerOne, playerTwo, game, controller, handler);
         
-        // 각 플레이어 모델에 네트워크 세션 설정 (스냅샷 생성 시 공격 대기열 포함을 위해)
-        p1.enableNetworkMultiplayer(session);
-        p2.enableNetworkMultiplayer(session);
+        // 각 플레이어 모델에 네트워크 세션 참조만 설정 (스냅샷 생성 시 공격 대기열 포함을 위해)
+        p1.setNetworkSessionReference(session);
+        p2.setNetworkSessionReference(session);
         
         session.restartPlayers(mode);
         return session;

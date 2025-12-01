@@ -950,6 +950,14 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         this.activeNetworkSession = session;
         handlers.put(GameState.PLAYING, session.handler());
     }
+    
+    /**
+     * 네트워크 세션 참조만 설정 (핸들러 변경 없이).
+     * 스냅샷 생성 시 공격 대기열을 포함하기 위해 사용.
+     */
+    public void setNetworkSessionReference(NetworkMultiplayerSession session) {
+        this.activeNetworkSession = session;
+    }
 
     /**
      * 메뉴 복귀 / 싱글 모드 전환 등으로 더 이상 세션이 필요 없을 때 정리한다.
