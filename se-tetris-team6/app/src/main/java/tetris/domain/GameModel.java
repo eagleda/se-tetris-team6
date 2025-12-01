@@ -952,14 +952,6 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
     }
     
     /**
-     * 네트워크 세션 참조만 설정 (핸들러 변경 없이).
-     * 스냅샷 생성 시 공격 대기열을 포함하기 위해 사용.
-     */
-    public void setNetworkSessionReference(NetworkMultiplayerSession session) {
-        this.activeNetworkSession = session;
-    }
-
-    /**
      * 메뉴 복귀 / 싱글 모드 전환 등으로 더 이상 세션이 필요 없을 때 정리한다.
      */
     public void clearLocalMultiplayerSession() {
@@ -1024,20 +1016,47 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         int elapsed = (int) (getElapsedMillis() / 1000L);
         int pending = pendingGarbageLines;
         
-        // 공격 대기열 정보 수집
+        return new tetris.network.protocol.GameSnapshot(playerId, copy, currentId, nextId, pts, elapsed, pending, blockX, blockY, blockRotation, null);
+    }
+    
+    /**
+     * 네트워크 스냅샷 생성 (공격 대기열 포함)
+     * @param playerId 플레이어 ID
+     * @param attackLines 공격 대기열 (서버가 전달)
+     */
+    public tetris.network.protocol.GameSnapshot toSnapshot(int playerId, java.util.List<tetris.multiplayer.model.AttackLine> attackLines) {
+        int[][] copy = board.gridView();
+        Block active = gameplayEngine != null ? gameplayEngine.getActiveBlock() : null;
+        int currentId = 0;
+        int blockX = -1;
+        int blockY = -1;
+        int blockRotation = 0;
+        
+        if (active != null && active.getShape() != null && active.getShape().kind() != null) {
+            currentId = active.getShape().kind().ordinal() + 1;
+            blockX = active.getX();
+            blockY = active.getY();
+            blockRotation = active.getRotation();
+        }
+        
+        BlockKind nextKind = getNextBlockKind();
+        int nextId = nextKind != null ? (nextKind.ordinal() + 1) : 0;
+        int pts = 0;
+        try {
+            tetris.domain.score.Score sc = scoreRepository != null ? scoreRepository.load() : null;
+            pts = sc != null ? sc.getPoints() : 0;
+        } catch (Exception ignore) {
+            pts = 0;
+        }
+        int elapsed = (int) (getElapsedMillis() / 1000L);
+        int pending = pendingGarbageLines;
+        
+        // 공격 대기열 정보 변환
         boolean[][] attackLinesData = null;
-        if (activeNetworkSession != null) {
-            try {
-                java.util.List<tetris.multiplayer.model.AttackLine> lines = 
-                    activeNetworkSession.handler().getPendingAttackLines(playerId);
-                if (lines != null && !lines.isEmpty()) {
-                    attackLinesData = new boolean[lines.size()][];
-                    for (int i = 0; i < lines.size(); i++) {
-                        attackLinesData[i] = lines.get(i).copyHoles();
-                    }
-                }
-            } catch (Exception e) {
-                System.err.println("[toSnapshot] Failed to get attack lines: " + e.getMessage());
+        if (attackLines != null && !attackLines.isEmpty()) {
+            attackLinesData = new boolean[attackLines.size()][];
+            for (int i = 0; i < attackLines.size(); i++) {
+                attackLinesData[i] = attackLines.get(i).copyHoles();
             }
         }
         

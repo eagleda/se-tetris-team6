@@ -343,7 +343,12 @@ public final class NetworkMultiPlayerController {
         if (model == null) return;
         try {
             int pid = determinePlayerIdForModel(model);
-            tetris.network.protocol.GameSnapshot snapshot = model.toSnapshot(pid);
+            // 서버는 VersusRules에서 공격 대기열을 가져와 스냅샷에 포함
+            java.util.List<tetris.multiplayer.model.AttackLine> attackLines = null;
+            if (localPlayerId == 1) {
+                attackLines = game.getPendingAttackLines(pid);
+            }
+            tetris.network.protocol.GameSnapshot snapshot = model.toSnapshot(pid, attackLines);
             System.out.println("[NetCtrl] sendGameState: sending snapshot for playerId=" + pid + ", model=" + model);
             if (transportClient != null) {
                 transportClient.sendGameStateSnapshot(snapshot);
