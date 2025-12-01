@@ -209,7 +209,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
     private static final long INACTIVITY_STAGE1_MS = 2000;
     private static final long INACTIVITY_STAGE2_MS = 5000;
     private static final int INACTIVITY_PENALTY_POINTS = 10;
-    private static final long DEFAULT_TIME_LIMIT_MS = 180_000L;
+    private static final long DEFAULT_TIME_LIMIT_MS = 60_000L;
 
     private ItemBlockModel activeItemBlock;
     private boolean nextBlockIsItem;
