@@ -464,10 +464,44 @@ public final class NetworkMultiPlayerController {
                         }
                         break;
                     }
+                    case OPPONENT_DISCONNECTED: {
+                        // 상대방 연결 끊김 처리
+                        Runnable handle = () -> NetworkMultiPlayerController.this.handleOpponentDisconnected(message);
+                        if (!javax.swing.SwingUtilities.isEventDispatchThread()) {
+                            javax.swing.SwingUtilities.invokeLater(handle);
+                        } else {
+                            handle.run();
+                        }
+                        break;
+                    }
                     default:
                         break;
                 }
             }
         });
+    }
+
+    /**
+     * 상대방 연결 끊김 처리 - 클라이언트가 승리
+     */
+    private void handleOpponentDisconnected(tetris.network.protocol.GameMessage message) {
+        String disconnectedId = (String) message.getPayload();
+        System.out.println("[NetCtrl] Opponent " + disconnectedId + " disconnected.");
+        
+        // 상대방을 패자로 표시
+        int opponentId = getRemotePlayerId();
+        game.markLoser(opponentId);
+        
+        // 양쪽 모델을 GAME_OVER 상태로 변경
+        GameModel localModel = game.modelOf(localPlayerId);
+        GameModel opponentModel = game.modelOf(opponentId);
+        
+        if (localModel != null && opponentModel != null) {
+            localModel.changeState(tetris.domain.model.GameState.GAME_OVER);
+            opponentModel.changeState(tetris.domain.model.GameState.GAME_OVER);
+            
+            // 승리 메시지 표시 (localPlayerId가 승자)
+            localModel.showMultiplayerResult(localPlayerId, localPlayerId);
+        }
     }
 }

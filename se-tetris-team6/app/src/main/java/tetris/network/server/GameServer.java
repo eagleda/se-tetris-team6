@@ -205,6 +205,24 @@ public class GameServer {
         broadcastGameStateSnapshot(p2);
     }
 
+    /**
+     * 클라이언트 연결 해제 시 상대방에게 알림
+     */
+    public void notifyOpponentDisconnected(String disconnectedClientId) {
+        System.out.println("[GameServer] Client " + disconnectedClientId + " disconnected, notifying others...");
+        GameMessage disconnectMsg = new GameMessage(
+            tetris.network.protocol.MessageType.OPPONENT_DISCONNECTED,
+            "SERVER",
+            disconnectedClientId
+        );
+        broadcastMessage(disconnectMsg);
+        
+        // 호스트에게도 알림
+        if (gameStateListener != null) {
+            gameStateListener.onGameStateChange(disconnectMsg);
+        }
+    }
+
     // 게임 시작 - 모든 클라이언트가 준비되었을 때
     public void startGame(){
         /* Step 4 구현 예정 */ }

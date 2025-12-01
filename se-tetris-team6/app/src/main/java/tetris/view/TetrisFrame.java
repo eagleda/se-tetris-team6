@@ -233,6 +233,46 @@ public class TetrisFrame extends JFrame {
         }
     }
 
+    /**
+     * 상대방 연결 끊김 처리 - 게임 승리 화면 표시
+     */
+    private void handleOpponentDisconnected(tetris.network.protocol.GameMessage message) {
+        String disconnectedId = (String) message.getPayload();
+        System.out.println("[TetrisFrame] Opponent " + disconnectedId + " disconnected.");
+        
+        NetworkMultiplayerSession session = gameModel.getActiveNetworkMultiplayerSession().orElse(null);
+        if (session == null) return;
+        
+        // 상대방 모델 찾기
+        int localPlayerId = session.networkController().getLocalPlayerId();
+        int opponentId = (localPlayerId == 1) ? 2 : 1;
+        
+        tetris.domain.GameModel localModel = session.game().modelOf(localPlayerId);
+        tetris.domain.GameModel opponentModel = session.game().modelOf(opponentId);
+        
+        // 이미 게임 종료 상태면 무시
+        if (localModel.getCurrentState() == tetris.domain.model.GameState.GAME_OVER) {
+            return;
+        }
+        
+        // 상대방을 패자로 표시, 나는 승리
+        session.game().markLoser(opponentId);
+        
+        // 양쪽 모두 게임 종료 상태로 변경
+        localModel.changeState(tetris.domain.model.GameState.GAME_OVER);
+        opponentModel.changeState(tetris.domain.model.GameState.GAME_OVER);
+        
+        // 승리 화면 표시 (localPlayerId가 승자)
+        gameModel.showMultiplayerResult(localPlayerId, localPlayerId);
+        
+        // 화면 갱신
+        if (onlineMultiGameLayout != null) {
+            onlineMultiGameLayout.repaint();
+        }
+        
+        System.out.println("[TetrisFrame] Game ended due to opponent disconnect. You win!");
+    }
+
     private void initializeControllers() {
         gameController = new GameController(gameModel);
         scoreController = null;
@@ -772,6 +812,9 @@ public class TetrisFrame extends JFrame {
                                 cleanupTimer.start();
                             }
                         }
+                        break;
+                    case OPPONENT_DISCONNECTED:
+                        TetrisFrame.this.handleOpponentDisconnected(message);
                         break;
                     default:
                         break;

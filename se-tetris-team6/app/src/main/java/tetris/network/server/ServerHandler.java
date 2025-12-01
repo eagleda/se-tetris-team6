@@ -127,10 +127,14 @@ import java.util.concurrent.atomic.AtomicInteger; // 추가: 스레드 안전한
     public void disconnect() {
         if (isConnected) {
             isConnected = false;
+            System.out.println("[ServerHandler] Client " + clientId + " disconnecting...");
             try {
                 if (clientSocket != null) clientSocket.close();
             } catch (IOException e) { /* ignore */ }
+            
+            // 서버에 클라이언트 연결 해제 알림 및 상대방에게 통보
             server.removeClient(this);
+            server.notifyOpponentDisconnected(this.clientId);
         }
     }
 

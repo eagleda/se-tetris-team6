@@ -69,6 +69,9 @@ public class ClientHandler implements Runnable {
                 System.out.println("Server requested disconnect.");
                 client.disconnect();
                 break;
+            case OPPONENT_DISCONNECTED:
+                handleOpponentDisconnected(message);
+                break;
             case GAME_START:
                 handleGameStart(message);
                 break;
@@ -144,6 +147,19 @@ public class ClientHandler implements Runnable {
     private void handleError(Exception e) {
         System.err.println("ClientHandler network error: " + e.getMessage());
         client.disconnect();
+    }
+
+    // 상대방 연결 끊김 처리
+    private void handleOpponentDisconnected(GameMessage message) {
+        String disconnectedId = (String) message.getPayload();
+        System.out.println("Opponent " + disconnectedId + " disconnected from the game.");
+        
+        // 게임 상태 리스너에게 알림 (승리 처리)
+        if (client.getGameStateListener() != null) {
+            javax.swing.SwingUtilities.invokeLater(() -> {
+                client.getGameStateListener().onGameStateChange(message);
+            });
+        }
     }
 
     // 게임 모드 선택 처리 - 서버가 게임 모드를 알려줄 때
