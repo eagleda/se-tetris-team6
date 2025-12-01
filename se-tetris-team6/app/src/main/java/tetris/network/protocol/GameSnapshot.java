@@ -6,7 +6,7 @@ import java.io.Serializable;
  * 전체 게임 상태 스냅샷 (네트워크 전송용 DTO)
  */
 public final class GameSnapshot implements Serializable {
-    private static final long serialVersionUID = 3L;
+    private static final long serialVersionUID = 4L;
 
     private final int playerId;       // 스냅샷 대상 플레이어 (1 또는 2)
     private final int[][] board;      // [y][x] 셀 값(0=빈칸, >0=블록 id)
@@ -23,6 +23,8 @@ public final class GameSnapshot implements Serializable {
     private final String activeItemLabel;    // 현재 활성 아이템 id (없으면 null)
     private final int itemCellX;             // 아이템 셀의 블록 내 X (없으면 -1)
     private final int itemCellY;             // 아이템 셀의 블록 내 Y (없으면 -1)
+    // 라인 클리어 하이라이트용
+    private final int[] clearedLines;        // 방금 제거된 라인들 (없으면 null)
 
     public GameSnapshot(int playerId,
                         int[][] board,
@@ -37,7 +39,8 @@ public final class GameSnapshot implements Serializable {
                         boolean[][] attackLines,
                         String activeItemLabel,
                         int itemCellX,
-                        int itemCellY) {
+                        int itemCellY,
+                        int[] clearedLines) {
         this.playerId = playerId;
         this.board = board;
         this.currentBlockId = currentBlockId;
@@ -52,6 +55,7 @@ public final class GameSnapshot implements Serializable {
         this.activeItemLabel = activeItemLabel;
         this.itemCellX = itemCellX;
         this.itemCellY = itemCellY;
+        this.clearedLines = clearedLines;
     }
 
     public int playerId() { return playerId; }
@@ -68,4 +72,5 @@ public final class GameSnapshot implements Serializable {
     public String activeItemLabel() { return activeItemLabel; }
     public int itemCellX() { return itemCellX; }
     public int itemCellY() { return itemCellY; }
+    public int[] clearedLines() { return clearedLines; }
 }

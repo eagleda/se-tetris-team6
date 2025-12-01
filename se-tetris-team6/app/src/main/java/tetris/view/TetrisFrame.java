@@ -410,7 +410,7 @@ public class TetrisFrame extends JFrame {
                                             dlg.dispose();
                                             GameMode gameMode = TetrisFrame.this.resolveMenuMode(selectedMode);
                                             // Start a networked session as host (host is Player-1)
-                                            System.out.println("[UI][SERVER] Starting networked multiplayer as Player-1 (Host)");
+                                            System.out.println("[UI][SERVER] Starting networked multiplayer as Player-1 (Host) with mode: " + gameMode + " (" + selectedMode + ")");
                                             gameController.setNetworkServer(hostedServer); // 서버 연결
                                             gameController.startNetworkedMultiplayerGame(gameMode, true);
                                             // 호스트는 서버를 통해 클라이언트 메시지를 받음
@@ -690,7 +690,7 @@ public class TetrisFrame extends JFrame {
                                     GameMode gameMode = TetrisFrame.this.resolveMenuMode(mode);
                                     boolean localIsPlayerOne = "Player-1".equals(client.getPlayerId());
                                     Long seed = client.getStartSeed();
-                                    System.out.println("[UI][CLIENT] Starting networked multiplayer as Player-" + (localIsPlayerOne ? "1" : "2"));
+                                    System.out.println("[UI][CLIENT] Starting networked multiplayer as Player-" + (localIsPlayerOne ? "1" : "2") + " with mode: " + gameMode + " (" + mode + ")");
                                     gameController.setNetworkClient(client); // 네트워크 클라이언트 연결
                                     if (seed != null) {
                                         gameController.startNetworkedMultiplayerGame(gameMode, localIsPlayerOne, seed);

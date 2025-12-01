@@ -546,6 +546,21 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         return isItemMode() && nextBlockIsItem;
     }
 
+    /** 아이템 스폰 간격(줄 수) 반환 */
+    public int getItemSpawnIntervalLines() {
+        return itemSpawnIntervalLines;
+    }
+
+    /**
+     * 아이템 모드일 때, 다음 스폰되는 블록을 아이템 블록으로 지정한다.
+     * 온라인 멀티 등 외부 규칙에서 조건을 만족했을 때 호출한다.
+     */
+    public void forceNextBlockAsItem() {
+        if (!isItemMode()) {
+            return;
+        }
+        nextBlockIsItem = true;
+    }
     public ActiveItemInfo getActiveItemInfo() {
         if (!isItemMode() || activeItemBlock == null) {
             // 네트워크 클라이언트는 스냅샷으로만 상태를 받으므로 스냅샷 정보 노출
@@ -1066,7 +1081,16 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
             }
         }
         
-        return new tetris.network.protocol.GameSnapshot(playerId, copy, currentId, nextId, pts, elapsed, pending, blockX, blockY, blockRotation, null, itemLabel, itemCellX, itemCellY);
+        // 라인 클리어 하이라이트용
+        int[] clearedLinesArray = null;
+        if (gameplayEngine != null) {
+            java.util.List<Integer> clearedList = gameplayEngine.getLastClearedRows();
+            if (clearedList != null && !clearedList.isEmpty()) {
+                clearedLinesArray = clearedList.stream().mapToInt(Integer::intValue).toArray();
+            }
+        }
+        
+        return new tetris.network.protocol.GameSnapshot(playerId, copy, currentId, nextId, pts, elapsed, pending, blockX, blockY, blockRotation, null, itemLabel, itemCellX, itemCellY, clearedLinesArray);
     }
     
     /**
@@ -1123,7 +1147,16 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
             }
         }
         
-        return new tetris.network.protocol.GameSnapshot(playerId, copy, currentId, nextId, pts, elapsed, pending, blockX, blockY, blockRotation, attackLinesData, itemLabel, itemCellX, itemCellY);
+        // 라인 클리어 하이라이트용
+        int[] clearedLinesArray = null;
+        if (gameplayEngine != null) {
+            java.util.List<Integer> clearedList = gameplayEngine.getLastClearedRows();
+            if (clearedList != null && !clearedList.isEmpty()) {
+                clearedLinesArray = clearedList.stream().mapToInt(Integer::intValue).toArray();
+            }
+        }
+        
+        return new tetris.network.protocol.GameSnapshot(playerId, copy, currentId, nextId, pts, elapsed, pending, blockX, blockY, blockRotation, attackLinesData, itemLabel, itemCellX, itemCellY, clearedLinesArray);
     }
 
     /** 스냅샷을 적용 (클라이언트 렌더링 전용) */
@@ -1171,18 +1204,19 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         }
         
         // 현재 블록 위치 및 회전 상태 적용
+        Block restoredBlock = null;
         if (snapshot.currentBlockId() > 0 && snapshot.blockX() >= 0 && snapshot.blockY() >= 0) {
             BlockKind kind = BlockKind.values()[snapshot.currentBlockId() - 1];
-            Block block = Block.spawn(kind, snapshot.blockX(), snapshot.blockY());
+            restoredBlock = Block.spawn(kind, snapshot.blockX(), snapshot.blockY());
             
             // 회전 상태 적용
             int rotation = snapshot.blockRotation();
             for (int i = 0; i < rotation; i++) {
-                block.rotateCW();
+                restoredBlock.rotateCW();
             }
             
             if (gameplayEngine != null) {
-                gameplayEngine.setActiveBlock(block);
+                gameplayEngine.setActiveBlock(restoredBlock);
             }
         } else if (gameplayEngine != null) {
             gameplayEngine.setActiveBlock(null);
@@ -1226,9 +1260,18 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         // 가비지 라인 업데이트
         this.pendingGarbageLines = snapshot.pendingGarbage();
         
-        // 아이템 정보 저장 (원격 렌더링용)
+        // 아이템 정보 저장 (원격 렌더링용) - 복원된 블록 참조 포함
         if (isItemMode() && snapshot.activeItemLabel() != null) {
-            snapshotItemInfo = new ActiveItemInfo(null, snapshot.activeItemLabel(), ItemType.INSTANT, snapshot.itemCellX(), snapshot.itemCellY());
+            snapshotItemInfo = new ActiveItemInfo(restoredBlock, snapshot.activeItemLabel(), ItemType.INSTANT, snapshot.itemCellX(), snapshot.itemCellY());
+        }
+        
+        // 라인 클리어 하이라이트 정보 복원
+        if (gameplayEngine != null && snapshot.clearedLines() != null && snapshot.clearedLines().length > 0) {
+            java.util.List<Integer> clearedList = new java.util.ArrayList<>();
+            for (int line : snapshot.clearedLines()) {
+                clearedList.add(line);
+            }
+            gameplayEngine.setLastClearedRows(clearedList);
         }
         
         // 공격 대기열 데이터 저장 (클라이언트 렌더링용)
