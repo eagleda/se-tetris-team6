@@ -226,6 +226,8 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
     private int slowLevelOffset;
     private long slowBuffExpiresAtMs;
     private ItemContextImpl itemContext;
+    // 원격 스냅샷 기반 아이템 표시용
+    private ActiveItemInfo snapshotItemInfo;
     private Supplier<ItemBehavior> behaviorOverride = () -> new WeightBehavior();
     private int itemSpawnIntervalLines = DEFAULT_ITEM_SPAWN_INTERVAL;
     private int currentGravityLevel;
@@ -546,7 +548,8 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
 
     public ActiveItemInfo getActiveItemInfo() {
         if (!isItemMode() || activeItemBlock == null) {
-            return null;
+            // 네트워크 클라이언트는 스냅샷으로만 상태를 받으므로 스냅샷 정보 노출
+            return snapshotItemInfo;
         }
         ItemBehavior primary = activeItemBlock.getBehaviors().isEmpty() ? null : activeItemBlock.getBehaviors().get(0);
         String label = primary != null ? primary.id() : null;
@@ -667,6 +670,8 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         if (block == null) {
             return;
         }
+        // 로컬 스폰 시 스냅샷 기반 아이템 정보는 무시
+        snapshotItemInfo = null;
         totalSpawnedBlocks++;
         updateGravityProgress();
         if (currentMode != GameMode.ITEM) {
@@ -1048,7 +1053,20 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         int elapsed = (int) (getElapsedMillis() / 1000L);
         int pending = pendingGarbageLines;
         
-        return new tetris.network.protocol.GameSnapshot(playerId, copy, currentId, nextId, pts, elapsed, pending, blockX, blockY, blockRotation, null);
+        // 아이템 정보 (호스트/로컬 모델에서만 채워짐)
+        String itemLabel = null;
+        int itemCellX = -1;
+        int itemCellY = -1;
+        if (isItemMode()) {
+            ActiveItemInfo info = getActiveItemInfo();
+            if (info != null) {
+                itemLabel = info.label();
+                itemCellX = info.itemCellX();
+                itemCellY = info.itemCellY();
+            }
+        }
+        
+        return new tetris.network.protocol.GameSnapshot(playerId, copy, currentId, nextId, pts, elapsed, pending, blockX, blockY, blockRotation, null, itemLabel, itemCellX, itemCellY);
     }
     
     /**
@@ -1092,7 +1110,20 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
             }
         }
         
-        return new tetris.network.protocol.GameSnapshot(playerId, copy, currentId, nextId, pts, elapsed, pending, blockX, blockY, blockRotation, attackLinesData);
+        // 아이템 정보 (호스트/로컬 모델에서만 채워짐)
+        String itemLabel = null;
+        int itemCellX = -1;
+        int itemCellY = -1;
+        if (isItemMode()) {
+            ActiveItemInfo info = getActiveItemInfo();
+            if (info != null) {
+                itemLabel = info.label();
+                itemCellX = info.itemCellX();
+                itemCellY = info.itemCellY();
+            }
+        }
+        
+        return new tetris.network.protocol.GameSnapshot(playerId, copy, currentId, nextId, pts, elapsed, pending, blockX, blockY, blockRotation, attackLinesData, itemLabel, itemCellX, itemCellY);
     }
 
     /** 스냅샷을 적용 (클라이언트 렌더링 전용) */
@@ -1113,6 +1144,8 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
      */
     private void applySnapshotImpl(tetris.network.protocol.GameSnapshot snapshot) {
         if (snapshot == null) return;
+        // 스냅샷에서 받은 아이템 정보 초기화
+        snapshotItemInfo = null;
         
         // 공격 대기열 정보 로깅
         int attackLineCount = snapshot.attackLines() != null ? snapshot.attackLines().length : 0;
@@ -1192,6 +1225,11 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         
         // 가비지 라인 업데이트
         this.pendingGarbageLines = snapshot.pendingGarbage();
+        
+        // 아이템 정보 저장 (원격 렌더링용)
+        if (isItemMode() && snapshot.activeItemLabel() != null) {
+            snapshotItemInfo = new ActiveItemInfo(null, snapshot.activeItemLabel(), ItemType.INSTANT, snapshot.itemCellX(), snapshot.itemCellY());
+        }
         
         // 공격 대기열 데이터 저장 (클라이언트 렌더링용)
         snapshotAttackLines.clear();

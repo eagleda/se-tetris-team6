@@ -106,7 +106,7 @@ public class GamePanel extends JPanel {
         g2.setColor(colorFor(colorIndex));
 
         ActiveItemInfo itemInfo = gameModel.getActiveItemInfo();
-        boolean highlightItem = itemInfo != null && itemInfo.block() == active;
+        boolean highlightItem = itemInfo != null && (itemInfo.block() == null || itemInfo.block() == active);
         int blockMinPx = originX + active.getX() * cellSize;
         int blockMinPy = originY + active.getY() * cellSize;
         int blockWidthPx = cellSize * shape.width();

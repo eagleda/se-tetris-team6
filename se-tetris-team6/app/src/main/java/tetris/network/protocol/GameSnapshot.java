@@ -6,7 +6,7 @@ import java.io.Serializable;
  * 전체 게임 상태 스냅샷 (네트워크 전송용 DTO)
  */
 public final class GameSnapshot implements Serializable {
-    private static final long serialVersionUID = 2L;
+    private static final long serialVersionUID = 3L;
 
     private final int playerId;       // 스냅샷 대상 플레이어 (1 또는 2)
     private final int[][] board;      // [y][x] 셀 값(0=빈칸, >0=블록 id)
@@ -19,6 +19,10 @@ public final class GameSnapshot implements Serializable {
     private final int blockY;         // 현재 블록 Y 위치
     private final int blockRotation;  // 현재 블록 회전 상태 (0-3)
     private final boolean[][] attackLines; // 공격 대기열 [줄 인덱스][x] (true=구멍, false=블록)
+    // 아이템 모드 전송용
+    private final String activeItemLabel;    // 현재 활성 아이템 id (없으면 null)
+    private final int itemCellX;             // 아이템 셀의 블록 내 X (없으면 -1)
+    private final int itemCellY;             // 아이템 셀의 블록 내 Y (없으면 -1)
 
     public GameSnapshot(int playerId,
                         int[][] board,
@@ -30,7 +34,10 @@ public final class GameSnapshot implements Serializable {
                         int blockX,
                         int blockY,
                         int blockRotation,
-                        boolean[][] attackLines) {
+                        boolean[][] attackLines,
+                        String activeItemLabel,
+                        int itemCellX,
+                        int itemCellY) {
         this.playerId = playerId;
         this.board = board;
         this.currentBlockId = currentBlockId;
@@ -42,6 +49,9 @@ public final class GameSnapshot implements Serializable {
         this.blockY = blockY;
         this.blockRotation = blockRotation;
         this.attackLines = attackLines;
+        this.activeItemLabel = activeItemLabel;
+        this.itemCellX = itemCellX;
+        this.itemCellY = itemCellY;
     }
 
     public int playerId() { return playerId; }
@@ -55,4 +65,7 @@ public final class GameSnapshot implements Serializable {
     public int blockY() { return blockY; }
     public int blockRotation() { return blockRotation; }
     public boolean[][] attackLines() { return attackLines; }
+    public String activeItemLabel() { return activeItemLabel; }
+    public int itemCellX() { return itemCellX; }
+    public int itemCellY() { return itemCellY; }
 }
