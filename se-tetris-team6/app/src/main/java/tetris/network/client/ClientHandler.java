@@ -31,6 +31,11 @@ public class ClientHandler implements Runnable {
     private final int[] lastAppliedSnapshotSeq = new int[] {-1, -1, -1};
 
     private CountDownLatch handshakeLatch;
+    
+    // === 연결 타임아웃 감지 ===
+    private volatile long lastMessageTime;     // 마지막 메시지 수신 시간
+    private static final long TIMEOUT_MS = 10000; // 10초 타임아웃
+    private Thread timeoutWatchdog;
 
     // === 주요 메서드들 ===
 
@@ -40,6 +45,8 @@ public class ClientHandler implements Runnable {
     this.outputStream = output;
     this.client = client;
     this.handshakeLatch = latch; // Latch 저장
+    this.lastMessageTime = System.currentTimeMillis();
+    startTimeoutWatchdog();
 }
 
     // 스레드 실행 메서드 - 서버 메시지 수신 루프
@@ -48,6 +55,7 @@ public class ClientHandler implements Runnable {
         try {
             while (client.isConnected()) { // 부모 클라이언트의 상태를 따름
                 GameMessage message = (GameMessage) inputStream.readObject();
+                lastMessageTime = System.currentTimeMillis(); // 메시지 수신 시 타임스탬프 갱신
                 handleMessage(message);
             }
         } catch (EOFException e) {
@@ -57,6 +65,7 @@ public class ClientHandler implements Runnable {
             handleError(e);
             notifyServerDisconnected();
         } finally {
+            stopTimeoutWatchdog();
             client.disconnect();
         }
     }
@@ -278,5 +287,46 @@ public class ClientHandler implements Runnable {
     // 현재 지연시간 반환
     public long getLatency() {
         return currentLatency;
+    }
+    
+    // 타임아웃 감시 스레드 시작
+    private void startTimeoutWatchdog() {
+        timeoutWatchdog = new Thread(() -> {
+            try {
+                while (client.isConnected()) {
+                    Thread.sleep(1000); // 1초마다 체크
+                    long elapsed = System.currentTimeMillis() - lastMessageTime;
+                    if (elapsed > TIMEOUT_MS) {
+                        System.err.println("[ClientHandler] Connection timeout detected (no message for " + elapsed + "ms)");
+                        notifyConnectionTimeout("서버로부터 10초 이상 응답이 없습니다.");
+                        client.disconnect();
+                        break;
+                    }
+                }
+            } catch (InterruptedException e) {
+                // 정상 종료
+            }
+        }, "ClientHandler-TimeoutWatchdog");
+        timeoutWatchdog.setDaemon(true);
+        timeoutWatchdog.start();
+    }
+    
+    // 타임아웃 감시 스레드 중지
+    private void stopTimeoutWatchdog() {
+        if (timeoutWatchdog != null) {
+            timeoutWatchdog.interrupt();
+        }
+    }
+    
+    // 연결 타임아웃 알림
+    private void notifyConnectionTimeout(String reason) {
+        System.out.println("[ClientHandler] Connection timeout - notifying game state listener");
+        client.setDisconnected();
+        
+        if (client.getGameStateListener() != null) {
+            javax.swing.SwingUtilities.invokeLater(() -> {
+                client.getGameStateListener().onConnectionTimeout(reason);
+            });
+        }
     }
 }

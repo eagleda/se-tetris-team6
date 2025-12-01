@@ -573,6 +573,42 @@ public class TetrisFrame extends JFrame {
                 // by setNetworkClient. This avoids UI-level direct manipulation of
                 // opponent models and centralizes input routing and network handling.
                 gameController.setNetworkClient(client);
+                
+                // Register connection timeout listener
+                client.setGameStateListener(new tetris.network.client.GameStateListener() {
+                    @Override
+                    public void onOpponentBoardUpdate(tetris.network.protocol.GameMessage message) {}
+                    
+                    @Override
+                    public void onGameStateChange(tetris.network.protocol.GameMessage message) {}
+                    
+                    @Override
+                    public void onGameStateSnapshot(tetris.network.protocol.GameSnapshot snapshot) {}
+                    
+                    @Override
+                    public void onConnectionTimeout(String reason) {
+                        javax.swing.SwingUtilities.invokeLater(() -> {
+                            // 게임 중이라면 게임 종료 상태로 전환
+                            if (gameModel.getCurrentState() == tetris.domain.model.GameState.PLAYING) {
+                                gameModel.changeState(tetris.domain.model.GameState.GAME_OVER);
+                            }
+                            
+                            // 네트워크 세션 정리
+                            gameController.cleanupNetworkSession();
+                            
+                            // 에러 메시지 팝업
+                            javax.swing.JOptionPane.showMessageDialog(
+                                TetrisFrame.this,
+                                "네트워크 연결이 끊겼습니다.\n" + reason,
+                                "연결 오류",
+                                javax.swing.JOptionPane.ERROR_MESSAGE
+                            );
+                            
+                            // 메인 화면으로 돌아가기
+                            showMainPanel();
+                        });
+                    }
+                });
 
                 // Show waiting-for-host dialog with Ready button
                 java.awt.Window win = SwingUtilities.getWindowAncestor(this);
@@ -855,6 +891,40 @@ public class TetrisFrame extends JFrame {
                     default:
                         break;
                 }
+            }
+            
+            @Override
+            public void onConnectionTimeout(String reason) {
+                javax.swing.SwingUtilities.invokeLater(() -> {
+                    // 게임 중이라면 게임 종료 상태로 전환
+                    if (gameModel.getCurrentState() == tetris.domain.model.GameState.PLAYING) {
+                        gameModel.changeState(tetris.domain.model.GameState.GAME_OVER);
+                    }
+                    
+                    // 네트워크 세션 정리
+                    gameController.cleanupNetworkSession();
+                    
+                    // 서버 종료
+                    if (hostedServer != null) {
+                        try {
+                            hostedServer.stopServer();
+                        } catch (Exception e) {
+                            System.err.println("Error stopping server: " + e.getMessage());
+                        }
+                        hostedServer = null;
+                    }
+                    
+                    // 에러 메시지 팝업
+                    javax.swing.JOptionPane.showMessageDialog(
+                        TetrisFrame.this,
+                        "클라이언트 연결이 끊겼습니다.\n" + reason,
+                        "연결 오류",
+                        javax.swing.JOptionPane.ERROR_MESSAGE
+                    );
+                    
+                    // 메인 화면으로 돌아가기
+                    showMainPanel();
+                });
             }
         });
     }

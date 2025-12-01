@@ -810,4 +810,23 @@ public class GameController {
             localMultiplayerTimer = null;
         }
     }
+    
+    /**
+     * 네트워크 세션을 정리합니다. 연결 끊김 시 호출됩니다.
+     */
+    public void cleanupNetworkSession() {
+        stopNetworkMultiplayerTick();
+        if (networkClient != null) {
+            networkClient.disconnect();
+            networkClient = null;
+        }
+        if (networkSession != null) {
+            try {
+                networkSession.shutdown();
+            } catch (Exception e) {
+                System.err.println("Error shutting down network session: " + e.getMessage());
+            }
+            networkSession = null;
+        }
+    }
 }
