@@ -1195,7 +1195,7 @@ public class TetrisFrame extends JFrame {
             return GameMode.ITEM;
         }
         if ("TIME_LIMIT".equalsIgnoreCase(mode)) {
-            System.out.println("[UI][WARN] Time Limit mode is not implemented; falling back to STANDARD");
+            return GameMode.TIME_LIMIT;
         }
         return GameMode.STANDARD;
     }

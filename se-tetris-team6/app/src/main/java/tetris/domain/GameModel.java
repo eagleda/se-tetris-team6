@@ -209,6 +209,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
     private static final long INACTIVITY_STAGE1_MS = 2000;
     private static final long INACTIVITY_STAGE2_MS = 5000;
     private static final int INACTIVITY_PENALTY_POINTS = 10;
+    private static final long DEFAULT_TIME_LIMIT_MS = 60_000L;
 
     private ItemBlockModel activeItemBlock;
     private boolean nextBlockIsItem;
@@ -229,6 +230,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
     private long pauseStartedAt = -1;
     private long gameplayStartedAtMillis = -1;
     private long accumulatedPauseMillis;
+    private long timeLimitMillis;
     private LockedPieceSnapshot lastLockedPieceSnapshot;
 
     private UiBridge uiBridge = NO_OP_UI_BRIDGE;
@@ -498,6 +500,29 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         return Math.max(0L, elapsed);
     }
 
+    public long getTimeLimitMillis() {
+        return timeLimitMillis;
+    }
+
+    public long getRemainingTimeMillis() {
+        if (timeLimitMillis <= 0) {
+            return getElapsedMillis();
+        }
+        return Math.max(0L, timeLimitMillis - getElapsedMillis());
+    }
+
+    public boolean isTimeLimitMode() {
+        return currentMode == GameMode.TIME_LIMIT;
+    }
+
+    public boolean isTimeLimitExpired() {
+        return timeLimitMillis > 0 && getElapsedMillis() >= timeLimitMillis;
+    }
+
+    public long getTimerMillis() {
+        return getRemainingTimeMillis();
+    }
+
     public GameMode getCurrentMode() {
         return currentMode;
     }
@@ -701,7 +726,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         }
 
         // 대전/아이템 모드에서 블록 고정 시 공격 대기열 적용
-        if (currentMode == GameMode.STANDARD || currentMode == GameMode.ITEM /* 또는 대전 모드 플래그 */) {
+        if (currentMode == GameMode.STANDARD || currentMode == GameMode.ITEM || currentMode == GameMode.TIME_LIMIT /* 또는 대전 모드 플래그 */) {
             commitPendingGarbageLines();
         }
 
@@ -880,6 +905,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         stopClockCompletely();
         gameplayStartedAtMillis = -1;
         accumulatedPauseMillis = 0;
+        timeLimitMillis = 0;
     }
 
     private void resetGameplayState() {
@@ -898,6 +924,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         lastInputMillis = System.currentTimeMillis();
         gameplayStartedAtMillis = lastInputMillis;
         accumulatedPauseMillis = 0;
+        timeLimitMillis = currentMode == GameMode.TIME_LIMIT ? DEFAULT_TIME_LIMIT_MS : 0L;
         currentTick = 0;
         scoreMultiplier = 1.0;
         doubleScoreUntilTick = 0;
