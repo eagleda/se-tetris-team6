@@ -69,9 +69,11 @@ public class GamePanel extends JPanel {
         g2.setColor(BACKGROUND_COLOR);
         g2.fillRect(originX, originY, boardWidthPx, boardHeightPx);
 
+        // 보드(고정 블록) → 라인 하이라이트 → 활성 블록(아이템 포함) → 그리드 순서로 그려
+        // 활성 블록을 마지막에 그려 아이템 그래픽이 다른 레이어에 덮이지 않도록 보장
         drawLockedBlocks(g2, cellSize, originX, originY);
-        drawActiveBlock(g2, cellSize, originX, originY);
         highlightLines(g2, cellSize, originX, originY);
+        drawActiveBlock(g2, cellSize, originX, originY);
         drawGridLines(g2, cellSize, originX, originY, boardWidthPx, boardHeightPx);
         g2.dispose();
     }
