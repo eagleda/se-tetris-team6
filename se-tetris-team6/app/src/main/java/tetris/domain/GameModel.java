@@ -203,7 +203,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         void beforeNextSpawn();
     }
 
-    private static final int DEFAULT_ITEM_SPAWN_INTERVAL = 2;
+    private static final int DEFAULT_ITEM_SPAWN_INTERVAL = 10;
     private static final int BLOCKS_PER_SPEED_STEP = 12;
     private static final int LINES_PER_SPEED_STEP = 4;
     private static final int MAX_SPEED_LEVEL = 20;
@@ -784,6 +784,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         if (clearedLines <= 0) {
             return;
         }
+        int previousTotal = totalClearedLines;
         totalClearedLines += clearedLines;
         notifyMultiplayerLineClear();
         updateGravityProgress();
@@ -791,10 +792,13 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         if (currentMode != GameMode.ITEM) {
             return;
         }
-        if (itemSpawnIntervalLines > 0 && totalClearedLines % itemSpawnIntervalLines == 0) {
-            nextBlockIsItem = true;
-            System.out.println("[GameModel] Item spawn triggered! totalClearedLines=" + totalClearedLines + 
-                ", interval=" + itemSpawnIntervalLines + ", nextBlockIsItem=true");
+        if (itemSpawnIntervalLines > 0) {
+            int itemsPassed = totalClearedLines / itemSpawnIntervalLines - previousTotal / itemSpawnIntervalLines;
+            if (itemsPassed > 0) {
+                nextBlockIsItem = true;
+                System.out.println("[GameModel] Item spawn triggered! totalClearedLines=" + totalClearedLines + 
+                    ", interval=" + itemSpawnIntervalLines + ", itemsPassed=" + itemsPassed + ", nextBlockIsItem=true");
+            }
         }
         itemManager.onLineClear(itemContext, null);
 
