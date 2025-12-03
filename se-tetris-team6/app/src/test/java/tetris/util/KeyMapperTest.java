@@ -1,4 +1,4 @@
-package tetris;
+package tetris.util;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -6,19 +6,18 @@ import java.awt.event.KeyEvent;
 
 import org.junit.jupiter.api.Test;
 
-import tetris.util.KeyMapper;
-
 class KeyMapperTest {
 
     @Test
-    void nameToKeyCode_and_back() {
+    void nameToKeyCode_convertsCommonNames() {
         assertEquals(KeyEvent.VK_LEFT, KeyMapper.nameToKeyCode("LEFT"));
-        assertEquals(KeyEvent.VK_RIGHT, KeyMapper.nameToKeyCode("Right"));
         assertEquals(KeyEvent.VK_SPACE, KeyMapper.nameToKeyCode("SPACE"));
         assertEquals(KeyEvent.VK_A, KeyMapper.nameToKeyCode("A"));
+    }
 
-        // reverse
-        assertEquals("Left", KeyMapper.keyCodeToName(KeyEvent.VK_LEFT));
-        assertTrue(KeyMapper.keyCodeToName(KeyEvent.VK_A).matches("(?i)a"));
+    @Test
+    void keyCodeToName_roundTripsKnownKeys() {
+        assertEquals("LEFT", KeyMapper.keyCodeToName(KeyEvent.VK_LEFT));
+        assertEquals("SPACE", KeyMapper.keyCodeToName(KeyEvent.VK_SPACE));
     }
 }

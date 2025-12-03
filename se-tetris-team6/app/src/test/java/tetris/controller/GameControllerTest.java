@@ -86,7 +86,6 @@ class GameControllerTest {
         when(gameModel.isLocalMultiplayerActive()).thenReturn(true);
         tetris.multiplayer.session.LocalMultiplayerSession session = mock(tetris.multiplayer.session.LocalMultiplayerSession.class);
         when(session.handler()).thenReturn(handler);
-        when(gameModel.getCurrentState()).thenReturn(GameState.PLAYING);
 
         Field f = GameController.class.getDeclaredField("localSession");
         f.setAccessible(true);

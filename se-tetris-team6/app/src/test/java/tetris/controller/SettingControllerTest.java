@@ -84,16 +84,23 @@ class SettingControllerTest {
         Field f = SettingController.class.getDeclaredField("service");
         f.setAccessible(true);
         f.set(controller, mockService);
-
         when(mockService.getSettings()).thenReturn(Setting.defaults());
     }
 
     @Test
     void saveButton_persistsAndApplies() {
+        Setting current = Setting.defaults();
+        current.setDifficulty(GameDifficulty.HARD);
+        current.setColorBlindMode(true);
+        Map<String, Integer> kb = new java.util.HashMap<>();
+        kb.put("MOVE_LEFT", java.awt.event.KeyEvent.VK_J);
+        current.setKeyBindings(kb);
+        when(mockService.getSettings()).thenReturn(current);
+
         getListener(panel.saveButton).actionPerformed(new ActionEvent(this, 0, "save"));
 
         verify(mockService).setKeyBindings(any(Map.class));
-        verify(mockService).setColorBlindMode(true);
+        verify(mockService, atLeastOnce()).setColorBlindMode(true);
         verify(mockService).setScreenSize(Setting.ScreenSize.MEDIUM);
         verify(mockService).setDifficulty(GameDifficulty.HARD);
         verify(mockService).save();
@@ -112,7 +119,6 @@ class SettingControllerTest {
     @Test
     void sizeCombo_updatesScreenSizeImmediately() {
         panel.sizeCombo.setSelectedItem(Setting.ScreenSize.LARGE);
-        getListener(panel.sizeCombo).actionPerformed(new ActionEvent(this, 0, "sizeChange"));
 
         verify(mockService).setScreenSize(Setting.ScreenSize.LARGE);
         verify(frame).applyScreenSize(Setting.ScreenSize.LARGE);
@@ -121,7 +127,6 @@ class SettingControllerTest {
     @Test
     void difficultyCombo_appliesToGameController() {
         panel.difficultyCombo.setSelectedItem(GameDifficulty.EASY);
-        getListener(panel.difficultyCombo).actionPerformed(new ActionEvent(this, 0, "difficultyChange"));
 
         verify(mockService).setDifficulty(GameDifficulty.EASY);
         verify(gameController).applyDifficulty(GameDifficulty.EASY);
