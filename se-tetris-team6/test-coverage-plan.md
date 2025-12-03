@@ -40,15 +40,15 @@ Grouping by priority batches (10 items each). Classes already covered by tests a
 30) [x] tetris.domain.GameMode
 
 4차 (아이템/행동)
-31) [x] tetris.domain.item.ItemBehavior
-32) [x] tetris.domain.item.ItemContext
-33) [x] tetris.domain.item.ItemContextImpl
-34) [x] tetris.domain.item.ItemType
-35) [x] tetris.domain.item.behavior.BombBehavior
-36) [x] tetris.domain.item.behavior.DoubleScoreBehavior
-37) [x] tetris.domain.item.behavior.LineClearBehavior
-38) [x] tetris.domain.item.behavior.TimeSlowBehavior
-39) [x] tetris.domain.item.behavior.WeightBehavior
+31) [o] tetris.domain.item.ItemBehavior
+32) [o] tetris.domain.item.ItemContext
+33) [o] tetris.domain.item.ItemContextImpl
+34) [o] tetris.domain.item.ItemType
+35) [o] tetris.domain.item.behavior.BombBehavior
+36) [o] tetris.domain.item.behavior.DoubleScoreBehavior
+37) [o] tetris.domain.item.behavior.LineClearBehavior
+38) [o] tetris.domain.item.behavior.TimeSlowBehavior
+39) [o] tetris.domain.item.behavior.WeightBehavior
 40) [o] tetris.domain.item.ItemManager
 
 5차 (모델/입력 상태)
