@@ -64,16 +64,16 @@ Grouping by priority batches (10 items each). Classes already covered by tests a
 50) [o] tetris.domain.item.model.ItemBlockModel
 
 6차 (멀티플레이 모델)
-51) [x] tetris.multiplayer.model.AttackLine
-52) [x] tetris.multiplayer.model.Cell
-53) [x] tetris.multiplayer.model.LockedPieceSnapshot
-54) [x] tetris.multiplayer.model.MultiPlayerGame
-55) [x] tetris.multiplayer.model.PendingAttackBuffer
-56) [x] tetris.multiplayer.model.PlayerState
-57) [x] tetris.multiplayer.model.VersusRules
-58) [x] tetris.multiplayer.session.LocalMultiplayerSession
-59) [x] tetris.multiplayer.session.MultiplayerSessionFactory
-60) [x] tetris.multiplayer.session.NetworkMultiplayerSession
+51) [o] tetris.multiplayer.model.AttackLine
+52) [o] tetris.multiplayer.model.Cell
+53) [o] tetris.multiplayer.model.LockedPieceSnapshot
+54) [o] tetris.multiplayer.model.MultiPlayerGame
+55) [o] tetris.multiplayer.model.PendingAttackBuffer
+56) [o] tetris.multiplayer.model.PlayerState
+57) [o] tetris.multiplayer.model.VersusRules
+58) [o] tetris.multiplayer.session.LocalMultiplayerSession
+59) [o] tetris.multiplayer.session.MultiplayerSessionFactory
+60) [o] tetris.multiplayer.session.NetworkMultiplayerSession
 
 7차 (멀티플레이 컨트롤러/핸들러)
 61) [x] tetris.multiplayer.controller.LocalMultiPlayerController
