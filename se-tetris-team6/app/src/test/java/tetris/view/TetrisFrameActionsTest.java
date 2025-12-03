@@ -20,6 +20,7 @@ package tetris.view;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.when;
 
 import java.awt.GraphicsEnvironment;
@@ -59,6 +60,7 @@ class TetrisFrameActionsTest {
         when(model.getLeaderboardRepository()).thenReturn(new InMemoryLeaderboardRepository());
         when(model.getActiveNetworkMultiplayerSession()).thenReturn(Optional.empty());
         when(model.getActiveLocalMultiplayerSession()).thenReturn(Optional.empty());
+        when(model.getRemainingTimeMillis()).thenReturn(0L);
         when(model.loadTopScores(GameMode.STANDARD, 10)).thenReturn(Collections.emptyList());
         when(model.loadTopScores(GameMode.ITEM, 10)).thenReturn(Collections.emptyList());
 
@@ -87,7 +89,8 @@ class TetrisFrameActionsTest {
 
         Action goMain = frame.getRootPane().getActionMap().get("goMainPanel");
         goMain.actionPerformed(new ActionEvent(this, 0, "home"));
-        verify(model, times(1)).quitToMenu();
+        // cleanupNetworkSession에서도 quitToMenu를 호출하므로 최소 1회로 검증
+        verify(model, atLeast(1)).quitToMenu();
     }
 
     @Test

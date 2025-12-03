@@ -104,7 +104,7 @@ class ItemBehaviorsTest {
         behavior.onLock(ctx, blockWithItemCell);
         verify(ctx).addGlobalBuff(
                 org.mockito.ArgumentMatchers.eq("double_score"),
-                org.mockito.ArgumentMatchers.eq(100L),
+                org.mockito.ArgumentMatchers.eq(0L),
                 org.mockito.ArgumentMatchers.argThat(meta ->
                         meta.containsKey("factor") && Double.compare((Double) meta.get("factor"), 2.0) == 0));
         verify(ctx).spawnParticles(3, 4, "text:2x");

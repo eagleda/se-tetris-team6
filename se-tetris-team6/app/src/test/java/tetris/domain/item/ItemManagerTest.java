@@ -18,38 +18,19 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
+import tetris.domain.BlockKind;
+import tetris.domain.BlockShape;
+import tetris.domain.item.ItemBehavior;
+import tetris.domain.item.ItemContext;
+import tetris.domain.item.ItemManager;
+import tetris.domain.item.ItemType;
 import tetris.domain.item.model.ItemBlockModel;
 
 class ItemManagerTest {
 
-    private static final class CountingItemBlockModel extends ItemBlockModel {
-        int tickCount = 0;
-        int lockCount = 0;
-        int lineClearCount = 0;
-
-        CountingItemBlockModel() {
-            super(new DummyBlockLike(), java.util.Collections.emptyList());
-        }
-
-        @Override
-        public void onTick(ItemContext ctx, long tick) {
-            tickCount++;
-        }
-
-        @Override
-        public void onLock(ItemContext ctx) {
-            lockCount++;
-        }
-
-        @Override
-        public void onLineClear(ItemContext ctx, int[] clearedRows) {
-            lineClearCount++;
-        }
-    }
-
     private static final class DummyBlockLike implements tetris.domain.block.BlockLike {
-        @Override public tetris.domain.BlockShape getShape() { return tetris.domain.BlockShape.of(tetris.domain.BlockKind.I); }
-        @Override public tetris.domain.BlockKind getKind() { return tetris.domain.BlockKind.I; }
+        @Override public BlockShape getShape() { return BlockShape.of(BlockKind.I); }
+        @Override public BlockKind getKind() { return BlockKind.I; }
         @Override public int getX() { return 0; }
         @Override public int getY() { return 0; }
         @Override public void setPosition(int x, int y) { }
@@ -58,22 +39,50 @@ class ItemManagerTest {
     @Test
     void add_tick_lineClear_lock_and_clear_flow() {
         ItemManager manager = new ItemManager();
-        CountingItemBlockModel item = new CountingItemBlockModel();
+        CountingBehavior behavior = new CountingBehavior();
+        ItemBlockModel item = new ItemBlockModel(new DummyBlockLike(), java.util.List.of(behavior));
 
         manager.add(item);
         assertEquals(1, manager.viewActive().size());
 
         manager.tick(null, 1L);
         manager.onLineClear(null, new int[] {0});
-        assertEquals(1, item.tickCount);
-        assertEquals(1, item.lineClearCount);
+        assertEquals(1, behavior.tickCount);
+        assertEquals(1, behavior.lineClearCount);
 
         manager.onLock(null, item);
-        assertEquals(1, item.lockCount);
+        assertEquals(1, behavior.lockCount);
         assertTrue(manager.viewActive().isEmpty(), "onLock should remove item");
 
-        manager.add(new CountingItemBlockModel());
+        manager.add(new ItemBlockModel(new DummyBlockLike(), java.util.List.of(new CountingBehavior())));
         manager.clear();
         assertTrue(manager.viewActive().isEmpty(), "clear should remove all items");
+    }
+
+    private static final class CountingBehavior implements ItemBehavior {
+        int tickCount = 0;
+        int lockCount = 0;
+        int lineClearCount = 0;
+
+        @Override
+        public String id() { return "count"; }
+
+        @Override
+        public ItemType type() { return ItemType.ACTIVE; }
+
+        @Override
+        public void onTick(ItemContext ctx, ItemBlockModel block, long tick) {
+            tickCount++;
+        }
+
+        @Override
+        public void onLock(ItemContext ctx, ItemBlockModel block) {
+            lockCount++;
+        }
+
+        @Override
+        public void onLineClear(ItemContext ctx, ItemBlockModel block, int[] clearedRows) {
+            lineClearCount++;
+        }
     }
 }

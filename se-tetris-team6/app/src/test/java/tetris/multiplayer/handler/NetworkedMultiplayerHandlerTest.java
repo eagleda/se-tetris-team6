@@ -1,6 +1,5 @@
 package tetris.multiplayer.handler;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
@@ -90,6 +89,6 @@ class NetworkedMultiplayerHandlerTest {
         verify(game).markLoser(1);
         verify(hostModel).changeState(GameState.GAME_OVER);
         verify(hostModel).showMultiplayerResult(2, 1);
-        assertTrue(gameEndSent.get());
+        verify(controller).sendGameOverEvent();
     }
 }

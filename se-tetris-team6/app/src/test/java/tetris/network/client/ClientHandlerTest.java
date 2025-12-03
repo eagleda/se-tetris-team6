@@ -45,7 +45,6 @@ class ClientHandlerTest {
 
     @BeforeEach
     void setUp() {
-        when(client.isConnected()).thenReturn(false); // watchdog 루프 즉시 종료
         handler = new ClientHandler(input, output, client, latch);
     }
 

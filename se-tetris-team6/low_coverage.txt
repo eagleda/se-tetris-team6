@@ -1,45 +1,154 @@
-# coverage <= 70.0% 인 클래스 목록
+# coverage <= 100.0% 인 클래스 목록
 # 형식: <coverage%>	missed=<N>	covered=<N>	<fully-qualified-class-name>
 
-  0.0%	missed= 117	covered=   0	tetris.view.tetris.view.TetrisFrame$5
-  0.0%	missed=  17	covered=   0	tetris.view.tetris.view.TetrisFrame$3$1
-  0.0%	missed=  12	covered=   0	tetris.view.tetris.view.TetrisFrame$12
-  0.0%	missed=   8	covered=   0	tetris.view.tetris.view.TetrisFrame$11
+  0.0%	missed= 117	covered=   0	tetris.view.tetris.view.TetrisFrame$4
+  0.0%	missed=   8	covered=   0	tetris.view.tetris.view.TetrisFrame$10
+  0.0%	missed=  12	covered=   0	tetris.view.tetris.view.TetrisFrame$11
   0.0%	missed=   3	covered=   0	tetris.view.tetris.view.MainPanel$3
   0.0%	missed=   3	covered=   0	tetris.view.tetris.view.MainPanel$2
+  0.0%	missed=  17	covered=   0	tetris.view.tetris.view.TetrisFrame$2$1
   0.0%	missed=   1	covered=   0	tetris.network.protocol.tetris.network.protocol.NetworkProtocol
   2.1%	missed=  46	covered=   1	tetris.view.tetris.view.TetrisFrame$1
-  2.3%	missed= 260	covered=   6	tetris.view.tetris.view.TetrisFrame$3
-  8.3%	missed=  11	covered=   1	tetris.view.tetris.view.TetrisFrame$4
+  2.3%	missed= 259	covered=   6	tetris.view.tetris.view.TetrisFrame$2
+  7.7%	missed=  12	covered=   1	tetris.view.tetris.view.TetrisFrame$3
  10.0%	missed=   9	covered=   1	tetris.multiplayer.handler.tetris.multiplayer.handler.NetworkedMultiplayerHandler$1
  10.0%	missed=   9	covered=   1	tetris.network.tetris.network.NetworkManager$1
  12.5%	missed=   7	covered=   1	tetris.controller.tetris.controller.SettingController$4
  20.0%	missed=   4	covered=   1	tetris.multiplayer.handler.tetris.multiplayer.handler.LocalMultiplayerHandler$1
  20.0%	missed=   4	covered=   1	tetris.domain.item.tetris.domain.item.ItemBehavior
  25.0%	missed=   3	covered=   1	tetris.domain.model.tetris.domain.model.GameClock$2
- 25.8%	missed=  46	covered=  16	tetris.multiplayer.controller.tetris.multiplayer.controller.LocalMultiPlayerController
- 30.8%	missed= 110	covered=  49	tetris.concurrent.tetris.concurrent.NetworkThread
- 32.2%	missed= 137	covered=  65	tetris.multiplayer.controller.tetris.multiplayer.controller.NetworkMultiPlayerController
+ 27.4%	missed=  45	covered=  17	tetris.multiplayer.controller.tetris.multiplayer.controller.LocalMultiPlayerController
+ 31.7%	missed= 138	covered=  64	tetris.multiplayer.controller.tetris.multiplayer.controller.NetworkMultiPlayerController
  33.3%	missed=   4	covered=   2	tetris.domain.engine.tetris.domain.engine.GameplayEngine$1
- 35.3%	missed= 134	covered=  73	tetris.concurrent.tetris.concurrent.GameThread
- 36.8%	missed=  60	covered=  35	tetris.view.GameComponent.tetris.view.GameComponent.AttackQueuePanel
  37.2%	missed= 172	covered= 102	tetris.view.tetris.view.MainPanel
- 38.8%	missed= 279	covered= 177	tetris.controller.tetris.controller.GameController
- 39.0%	missed=  83	covered=  53	tetris.view.GameComponent.tetris.view.GameComponent.NetworkMultiGameLayout
- 42.4%	missed=  91	covered=  67	tetris.network.client.tetris.network.client.ClientHandler
- 44.3%	missed= 476	covered= 378	tetris.domain.tetris.domain.GameModel
- 48.5%	missed= 106	covered= 100	tetris.domain.engine.tetris.domain.engine.GameplayEngine
+ 41.0%	missed= 269	covered= 187	tetris.controller.tetris.controller.GameController
+ 42.1%	missed=  55	covered=  40	tetris.view.GameComponent.tetris.view.GameComponent.AttackQueuePanel
+ 45.7%	missed= 465	covered= 392	tetris.domain.tetris.domain.GameModel
  49.2%	missed=  93	covered=  90	tetris.view.GameComponent.tetris.view.GameComponent.GamePanel
  51.1%	missed=  67	covered=  70	tetris.network.server.tetris.network.server.GameServer
  51.7%	missed=  14	covered=  15	tetris.util.tetris.util.KeyMapper
  54.9%	missed=  64	covered=  78	tetris.network.client.tetris.network.client.GameClient
  56.2%	missed=  39	covered=  50	tetris.network.tetris.network.NetworkManager
- 57.1%	missed=   3	covered=   4	tetris.concurrent.tetris.concurrent.GameThread$GameEvent
- 57.1%	missed=   9	covered=  12	tetris.domain.item.tetris.domain.item.ItemManager
+ 58.3%	missed= 153	covered= 214	tetris.view.tetris.view.TetrisFrame
+ 59.2%	missed=  84	covered= 122	tetris.domain.engine.tetris.domain.engine.GameplayEngine
  60.0%	missed=  12	covered=  18	tetris.domain.setting.tetris.domain.setting.SettingService
+ 60.1%	missed=  63	covered=  95	tetris.network.client.tetris.network.client.ClientHandler
  61.3%	missed=  46	covered=  73	tetris.multiplayer.handler.tetris.multiplayer.handler.NetworkedMultiplayerHandler
- 62.8%	missed= 125	covered= 211	tetris.view.tetris.view.TetrisFrame
  64.8%	missed=  38	covered=  70	tetris.network.server.tetris.network.server.ServerHandler
  66.7%	missed=   2	covered=   4	tetris.domain.tetris.domain.GameModel$1
- 66.7%	missed=   7	covered=  14	tetris.network.protocol.tetris.network.protocol.GameMessage
+ 66.7%	missed=  69	covered= 138	tetris.concurrent.tetris.concurrent.GameThread
  70.0%	missed=  18	covered=  42	tetris.multiplayer.handler.tetris.multiplayer.handler.LocalMultiplayerHandler
+ 70.9%	missed=  25	covered=  61	tetris.domain.tetris.domain.Board
+ 71.4%	missed=   6	covered=  15	tetris.network.protocol.tetris.network.protocol.GameMessage
+ 72.4%	missed=  27	covered=  71	tetris.view.GameComponent.tetris.view.GameComponent.NextBlockPanel
+ 73.0%	missed=  43	covered= 116	tetris.concurrent.tetris.concurrent.NetworkThread
+ 75.0%	missed=   1	covered=   3	tetris.tetris.App
+ 76.5%	missed=   4	covered=  13	tetris.view.tetris.view.SettingPanel$1
+ 76.5%	missed=   4	covered=  13	tetris.domain.item.behavior.tetris.domain.item.behavior.BombBehavior
+ 76.9%	missed=   3	covered=  10	tetris.multiplayer.model.tetris.multiplayer.model.Cell
+ 77.4%	missed=   7	covered=  24	tetris.domain.model.tetris.domain.model.Block
+ 77.7%	missed=  21	covered=  73	tetris.view.GameComponent.tetris.view.GameComponent.ScorePanel
+ 77.9%	missed=  23	covered=  81	tetris.view.GameComponent.tetris.view.GameComponent.GameOverPanel
+ 78.6%	missed=   9	covered=  33	tetris.data.setting.tetris.data.setting.PreferencesSettingRepository
+ 78.9%	missed=  12	covered=  45	tetris.multiplayer.controller.tetris.multiplayer.controller.NetworkMultiPlayerController$1
+ 78.9%	missed=   4	covered=  15	tetris.domain.item.behavior.tetris.domain.item.behavior.LineClearBehavior
+ 79.0%	missed=  13	covered=  49	tetris.view.GameComponent.tetris.view.GameComponent.TimerPanel
+ 79.1%	missed=   9	covered=  34	tetris.multiplayer.session.tetris.multiplayer.session.NetworkMultiplayerSession
+ 80.9%	missed=  26	covered= 110	tetris.view.GameComponent.tetris.view.GameComponent.NetworkMultiGameLayout
+ 81.0%	missed=  20	covered=  85	tetris.view.tetris.view.PvPGameRenderer
+ 83.8%	missed=   6	covered=  31	tetris.multiplayer.model.tetris.multiplayer.model.MultiPlayerGame
+ 84.0%	missed=   8	covered=  42	tetris.domain.score.tetris.domain.score.ScoreRuleEngine
+ 85.0%	missed=   3	covered=  17	tetris.concurrent.tetris.concurrent.NetworkThread$NetworkReader
+ 85.2%	missed=   4	covered=  23	tetris.domain.tetris.domain.BlockShape
+ 85.7%	missed=   1	covered=   6	tetris.concurrent.tetris.concurrent.GameThread$GameEvent
+ 86.4%	missed=   3	covered=  19	tetris.domain.item.behavior.tetris.domain.item.behavior.TimeSlowBehavior
+ 86.7%	missed=  11	covered=  72	tetris.view.GameComponent.tetris.view.GameComponent.MultiGameLayout
+ 87.0%	missed=   3	covered=  20	tetris.domain.score.tetris.domain.score.Score
+ 87.0%	missed=   3	covered=  20	tetris.domain.item.behavior.tetris.domain.item.behavior.DoubleScoreBehavior
+ 88.2%	missed=   2	covered=  15	tetris.domain.item.behavior.tetris.domain.item.behavior.WeightBehavior
+ 88.9%	missed=   1	covered=   8	tetris.view.tetris.view.TetrisFrame$5
+ 88.9%	missed=   1	covered=   8	tetris.multiplayer.model.tetris.multiplayer.model.AttackLine
+ 90.2%	missed=   8	covered=  74	tetris.domain.model.tetris.domain.model.GameClock
+ 90.5%	missed=   2	covered=  19	tetris.domain.item.tetris.domain.item.ItemContextImpl
+ 91.9%	missed=   3	covered=  34	tetris.view.tetris.view.PausePanel
+ 92.3%	missed=   4	covered=  48	tetris.domain.item.model.tetris.domain.item.model.ItemBlockModel
+ 93.3%	missed=   5	covered=  70	tetris.data.leaderboard.tetris.data.leaderboard.PreferencesLeaderboardRepository
+ 94.3%	missed=   2	covered=  33	tetris.view.tetris.view.NetworkStatusOverlay
+ 94.4%	missed=   2	covered=  34	tetris.multiplayer.model.tetris.multiplayer.model.VersusRules
+ 95.1%	missed=   2	covered=  39	tetris.domain.setting.tetris.domain.setting.Setting
+ 95.2%	missed=   1	covered=  20	tetris.multiplayer.session.tetris.multiplayer.session.LocalMultiplayerSession
+ 95.5%	missed=   2	covered=  42	tetris.data.leaderboard.tetris.data.leaderboard.InMemoryLeaderboardRepository
+ 96.6%	missed=   2	covered=  57	tetris.domain.tetris.domain.RandomBlockGenerator
+ 97.0%	missed=   5	covered= 159	tetris.view.tetris.view.SettingPanel
+ 97.3%	missed=   3	covered= 110	tetris.view.tetris.view.ScoreboardPanel
+ 99.1%	missed=   1	covered= 108	tetris.controller.tetris.controller.SettingController
+100.0%	missed=   0	covered=  13	tetris.domain.tetris.domain.GameModel$ActiveItemInfo
+100.0%	missed=   0	covered=   2	tetris.domain.tetris.domain.GameModel$UiBridge
+100.0%	missed=   0	covered=   2	tetris.domain.tetris.domain.BlockKind
+100.0%	missed=   0	covered=   4	tetris.domain.tetris.domain.GameMode
+100.0%	missed=   0	covered=   2	tetris.domain.tetris.domain.BlockGenerator
+100.0%	missed=   0	covered=   4	tetris.domain.tetris.domain.GameDifficulty
+100.0%	missed=   0	covered=   4	tetris.domain.handler.tetris.domain.handler.MenuHandler
+100.0%	missed=   0	covered=   8	tetris.domain.handler.tetris.domain.handler.PausedHandler
+100.0%	missed=   0	covered=  10	tetris.domain.handler.tetris.domain.handler.GamePlayHandler
+100.0%	missed=   0	covered=   6	tetris.domain.handler.tetris.domain.handler.NameInputHandler
+100.0%	missed=   0	covered=   4	tetris.domain.handler.tetris.domain.handler.ScoreboardHandler
+100.0%	missed=   0	covered=   6	tetris.domain.handler.tetris.domain.handler.SettingsHandler
+100.0%	missed=   0	covered=   7	tetris.domain.handler.tetris.domain.handler.AbstractGameHandler
+100.0%	missed=   0	covered=   6	tetris.domain.handler.tetris.domain.handler.GameOverHandler
+100.0%	missed=   0	covered=   8	tetris.domain.model.tetris.domain.model.GameState
+100.0%	missed=   0	covered=  35	tetris.domain.model.tetris.domain.model.InputState
+100.0%	missed=   0	covered=   3	tetris.domain.model.tetris.domain.model.GameClock$1
+100.0%	missed=   0	covered=   4	tetris.view.tetris.view.TetrisFrame$9
+100.0%	missed=   0	covered=   4	tetris.view.tetris.view.TetrisFrame$8
+100.0%	missed=   0	covered=   9	tetris.view.tetris.view.PausePanel$1
+100.0%	missed=   0	covered=   4	tetris.view.tetris.view.TetrisFrame$7
+100.0%	missed=   0	covered=   5	tetris.view.tetris.view.TetrisFrame$6
+100.0%	missed=   0	covered=   4	tetris.view.tetris.view.PausePanel$4
+100.0%	missed=   0	covered=   4	tetris.view.tetris.view.PausePanel$5
+100.0%	missed=   0	covered=   6	tetris.view.tetris.view.PausePanel$2
+100.0%	missed=   0	covered=   4	tetris.view.tetris.view.PausePanel$3
+100.0%	missed=   0	covered=   2	tetris.view.tetris.view.ScoreboardPanel$2
+100.0%	missed=   0	covered=  11	tetris.view.tetris.view.ScoreboardPanel$1
+100.0%	missed=   0	covered=   9	tetris.view.tetris.view.MainPanel$1
+100.0%	missed=   0	covered=   3	tetris.view.tetris.view.EmptySpace
+100.0%	missed=   0	covered=   4	tetris.network.protocol.tetris.network.protocol.AttackLine
+100.0%	missed=   0	covered=   1	tetris.network.protocol.tetris.network.protocol.PlayerInput
+100.0%	missed=   0	covered=  34	tetris.network.protocol.tetris.network.protocol.GameSnapshot
+100.0%	missed=   0	covered=   9	tetris.network.protocol.tetris.network.protocol.InputType
+100.0%	missed=   0	covered=  25	tetris.network.protocol.tetris.network.protocol.MessageType
+100.0%	missed=   0	covered=  33	tetris.multiplayer.session.tetris.multiplayer.session.MultiplayerSessionFactory
+100.0%	missed=   0	covered=   3	tetris.view.palette.tetris.view.palette.ColorPaletteProvider
+100.0%	missed=   0	covered=   3	tetris.concurrent.tetris.concurrent.GameThread$GameEvent$Type
+100.0%	missed=   0	covered=   5	tetris.concurrent.tetris.concurrent.GameEvent$Type
+100.0%	missed=   0	covered=   8	tetris.concurrent.tetris.concurrent.NetworkStats
+100.0%	missed=   0	covered=   8	tetris.concurrent.tetris.concurrent.GameThread$LineClearResult
+100.0%	missed=   0	covered=   6	tetris.concurrent.tetris.concurrent.GameEvent
+100.0%	missed=   0	covered=  18	tetris.view.ScoreboardComponent.tetris.view.ScoreboardComponent.StandardModePanel
+100.0%	missed=   0	covered=  18	tetris.view.ScoreboardComponent.tetris.view.ScoreboardComponent.ItemModePanel
+100.0%	missed=   0	covered=  13	tetris.multiplayer.model.tetris.multiplayer.model.PlayerState
+100.0%	missed=   0	covered=  19	tetris.multiplayer.model.tetris.multiplayer.model.PendingAttackBuffer
+100.0%	missed=   0	covered=   6	tetris.multiplayer.model.tetris.multiplayer.model.LockedPieceSnapshot
+100.0%	missed=   0	covered=   1	tetris.network.client.tetris.network.client.GameStateListener
+100.0%	missed=   0	covered=  21	tetris.domain.item.tetris.domain.item.ItemManager
+100.0%	missed=   0	covered=   5	tetris.domain.item.tetris.domain.item.ItemType
+100.0%	missed=   0	covered=   2	tetris.network.tetris.network.NetworkMode
+100.0%	missed=   0	covered=  11	tetris.controller.tetris.controller.ScoreController
+100.0%	missed=   0	covered=  10	tetris.controller.tetris.controller.GameOverController$1
+100.0%	missed=   0	covered=   5	tetris.controller.tetris.controller.SettingController$1
+100.0%	missed=   0	covered=   6	tetris.controller.tetris.controller.SettingController$2
+100.0%	missed=   0	covered=   8	tetris.controller.tetris.controller.SettingController$3
+100.0%	missed=   0	covered=  29	tetris.controller.tetris.controller.GameOverController
+100.0%	missed=   0	covered=   6	tetris.controller.tetris.controller.SettingController$5
+100.0%	missed=   0	covered=   6	tetris.controller.tetris.controller.SettingController$6
+100.0%	missed=   0	covered=  10	tetris.network.server.tetris.network.server.ServerStatus
+100.0%	missed=   0	covered=   8	tetris.domain.setting.tetris.domain.setting.Setting$ScreenSize
+100.0%	missed=   0	covered=   9	tetris.data.score.tetris.data.score.InMemoryScoreRepository
+100.0%	missed=   0	covered=  12	tetris.data.score.tetris.data.score.ScoreEntity
+100.0%	missed=   0	covered=   1	tetris.domain.engine.tetris.domain.engine.GameplayEngine$GameplayEvents
+100.0%	missed=   0	covered=  36	tetris.view.GameComponent.tetris.view.GameComponent.SingleGameLayout
+100.0%	missed=   0	covered=   8	tetris.view.GameComponent.tetris.view.GameComponent.RemotePlayerPanel
+100.0%	missed=   0	covered=   8	tetris.view.GameComponent.tetris.view.GameComponent.LocalPlayerPanel
+100.0%	missed=   0	covered=   1	tetris.domain.leaderboard.tetris.domain.leaderboard.LeaderboardResult
+100.0%	missed=   0	covered=  16	tetris.domain.leaderboard.tetris.domain.leaderboard.LeaderboardEntry
+100.0%	missed=   0	covered=  13	tetris.infrastructure.tetris.infrastructure.GameModelFactory
