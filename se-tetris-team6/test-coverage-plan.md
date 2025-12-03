@@ -88,38 +88,38 @@ Grouping by priority batches (10 items each). Classes already covered by tests a
 70) [x] tetris.infrastructure (기타)
 
 8차 (네트워크 프로토콜)
-71) [x] tetris.network.protocol.AttackLine
+71) [o] tetris.network.protocol.AttackLine
 72) [o] tetris.network.protocol.GameMessage
-73) [x] tetris.network.protocol.GameSnapshot
-74) [x] tetris.network.protocol.InputType
-75) [x] tetris.network.protocol.MessageType
-76) [x] tetris.network.protocol.NetworkProtocol
-77) [x] tetris.network.protocol.PlayerInput
+73) [o] tetris.network.protocol.GameSnapshot
+74) [o] tetris.network.protocol.InputType
+75) [o] tetris.network.protocol.MessageType
+76) [o] tetris.network.protocol.NetworkProtocol
+77) [o] tetris.network.protocol.PlayerInput
 78) [o] tetris.network.protocol.GameMessage 직렬화/동등성
-79) [x] tetris.network.protocol.AttackLine 직렬화
+79) [o] tetris.network.protocol.AttackLine 직렬화
 80) [x] tetris.network.protocol (기타 보조 타입)
 
 9차 (네트워크/컨커런시 인프라)
-81) [x] tetris.network.NetworkManager
-82) [x] tetris.network.NetworkMode
-83) [x] tetris.network.GameDataListener
-84) [x] tetris.network.GameEventListener
-85) [x] tetris.network.INetworkThreadCallback
-86) [x] tetris.network.NetworkEventListener
-87) [x] tetris.concurrent.GameEvent
-88) [x] tetris.concurrent.GameEventListener
-89) [x] tetris.concurrent.GameThread
-90) [x] tetris.concurrent.NetworkThread
+81) [x] tetris.network.NetworkManager (인터페이스, 별도 테스트 불필요)
+82) [o] tetris.network.NetworkMode
+83) [x] tetris.network.GameDataListener (인터페이스, 별도 테스트 불필요)
+84) [x] tetris.network.GameEventListener (인터페이스, 별도 테스트 불필요)
+85) [x] tetris.network.INetworkThreadCallback (인터페이스, 별도 테스트 불필요)
+86) [x] tetris.network.NetworkEventListener (인터페이스, 별도 테스트 불필요)
+87) [o] tetris.concurrent.GameEvent
+88) [x] tetris.concurrent.GameEventListener (인터페이스, 별도 테스트 불필요)
+89) [o] tetris.concurrent.GameThread
+90) [o] tetris.concurrent.NetworkThread
 
 10차 (네트워크 서버/클라이언트)
-91) [x] tetris.network.client.GameClient
-92) [x] tetris.network.client.ClientHandler
+91) [o] tetris.network.client.GameClient
+92) [o] tetris.network.client.ClientHandler
 93) [x] tetris.network.client.GameStateListener
-94) [x] tetris.network.server.GameServer
-95) [x] tetris.network.server.ServerHandler
-96) [x] tetris.network.server.ServerStatus
-97) [x] tetris.concurrent.NetworkManager
-98) [x] tetris.concurrent.NetworkStats
+94) [o] tetris.network.server.GameServer
+95) [o] tetris.network.server.ServerHandler
+96) [o] tetris.network.server.ServerStatus
+97) [o] tetris.concurrent.NetworkManager
+98) [o] tetris.concurrent.NetworkStats
 99) [x] tetris.concurrent.NetworkThread (동기 메서드)
 100) [x] tetris.network (기타 동기 메서드 대상)
 
