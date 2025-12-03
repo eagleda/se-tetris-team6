@@ -32,6 +32,12 @@ public class GameServer {
     private String selectedGameMode;            // 선택된 게임 모드
     private boolean gameInProgress;             // 게임 진행 중 여부
     private tetris.network.client.GameStateListener gameStateListener; // 호스트 UI 리스너
+    
+    // === 핑 측정 관련 ===
+    private volatile long lastPingTime = 0;        // 마지막 PING 전송 시간
+    private volatile long currentPing = -1;        // 현재 핑 (ms), -1이면 측정 중 또는 연결 안됨
+    private volatile boolean waitingForPong = false; // PONG 응답 대기 중
+    private Thread pingThread;                     // 핑 측정 스레드
 
     // === 주요 메서드들 ===
 
@@ -139,6 +145,22 @@ public class GameServer {
 
      // 모든 클라이언트에게 메시지 브로드캐스트
     public void broadcastMessage(GameMessage message) {
+        // GAME_END 메시지인 경우 특별히 로깅
+        if (message != null && message.getType() == tetris.network.protocol.MessageType.GAME_END) {
+            Object payload = message.getPayload();
+            Integer winnerId = null;
+            Integer loserId = null;
+            
+            if (payload instanceof java.util.Map) {
+                Object winnerIdObj = ((java.util.Map<?, ?>) payload).get("winnerId");
+                Object loserIdObj = ((java.util.Map<?, ?>) payload).get("loserId");
+                
+                if (winnerIdObj instanceof Number) winnerId = ((Number) winnerIdObj).intValue();
+                if (loserIdObj instanceof Number) loserId = ((Number) loserIdObj).intValue();
+            }
+            System.out.println("[GameServer] Broadcasting GAME_END message - winnerId: " + winnerId + ", loserId: " + loserId + ", clients: " + connectedClients.size());
+        }
+        
         for (ServerHandler handler : connectedClients) {
             handler.sendMessage(message);
         }
@@ -189,7 +211,7 @@ public class GameServer {
     public void broadcastGameStateSnapshot(tetris.network.protocol.GameSnapshot snapshot) {
         if (snapshot == null) return;
         try {
-            System.out.println("[GameServer] Broadcasting snapshot -> player=" + snapshot.playerId() + ", currentId=" + snapshot.currentBlockId() + ", nextId=" + snapshot.nextBlockId() + ", pending=" + snapshot.pendingGarbage());
+            // System.out.println("[GameServer] Broadcasting snapshot -> player=" + snapshot.playerId() + ", currentId=" + snapshot.currentBlockId() + ", nextId=" + snapshot.nextBlockId() + ", pending=" + snapshot.pendingGarbage());
         } catch (Exception ignore) {}
         GameMessage msg = new GameMessage(
             tetris.network.protocol.MessageType.GAME_STATE,
@@ -205,6 +227,24 @@ public class GameServer {
         broadcastGameStateSnapshot(p2);
     }
 
+    /**
+     * 클라이언트 연결 해제 시 상대방에게 알림
+     */
+    public void notifyOpponentDisconnected(String disconnectedClientId) {
+        System.out.println("[GameServer] Client " + disconnectedClientId + " disconnected, notifying others...");
+        GameMessage disconnectMsg = new GameMessage(
+            tetris.network.protocol.MessageType.OPPONENT_DISCONNECTED,
+            "SERVER",
+            disconnectedClientId
+        );
+        broadcastMessage(disconnectMsg);
+        
+        // 호스트에게도 알림
+        if (gameStateListener != null) {
+            gameStateListener.onGameStateChange(disconnectMsg);
+        }
+    }
+
     // 게임 시작 - 모든 클라이언트가 준비되었을 때
     public void startGame(){
         /* Step 4 구현 예정 */ }
@@ -216,4 +256,73 @@ public class GameServer {
     // 서버 상태 정보 반환 (연결된 클라이언트 수, 게임 상태 등)
     public ServerStatus getServerStatus() { 
         return null; /* Step 4 구현 예정 */ }
+    
+    // === 핑 측정 메서드 ===
+    
+    /**
+     * 핑 측정 시작 - 주기적으로 클라이언트에게 PING 메시지 전송
+     */
+    public void startPingMeasurement() {
+        if (pingThread != null && pingThread.isAlive()) {
+            return; // 이미 실행 중
+        }
+        
+        pingThread = new Thread(() -> {
+            while (isRunning && !Thread.currentThread().isInterrupted()) {
+                try {
+                    // PING 전송 (첫 번째 클라이언트에게만)
+                    if (!waitingForPong && !connectedClients.isEmpty()) {
+                        lastPingTime = System.currentTimeMillis();
+                        waitingForPong = true;
+                        ServerHandler firstClient = connectedClients.get(0);
+                        firstClient.sendMessage(new GameMessage(tetris.network.protocol.MessageType.PING, "SERVER", null));
+                    }
+                    
+                    // 2초마다 측정
+                    Thread.sleep(2000);
+                    
+                    // 타임아웃 체크 (5초 이상 응답 없으면)
+                    if (waitingForPong && (System.currentTimeMillis() - lastPingTime) > 5000) {
+                        currentPing = -1; // 연결 불안정
+                        waitingForPong = false;
+                    }
+                } catch (InterruptedException e) {
+                    break;
+                }
+            }
+        }, "ServerPingMeasurement");
+        pingThread.setDaemon(true);
+        pingThread.start();
+    }
+    
+    /**
+     * 핑 측정 중지
+     */
+    public void stopPingMeasurement() {
+        if (pingThread != null) {
+            pingThread.interrupt();
+            pingThread = null;
+        }
+        currentPing = -1;
+        waitingForPong = false;
+    }
+    
+    /**
+     * 현재 핑 값 반환 (ms)
+     * @return 핑 값, -1이면 측정 중이거나 연결 안됨
+     */
+    public long getCurrentPing() {
+        return currentPing;
+    }
+    
+    /**
+     * PONG 응답 처리 - ServerHandler에서 호출
+     */
+    public void handlePong() {
+        if (waitingForPong) {
+            long rtt = System.currentTimeMillis() - lastPingTime;
+            currentPing = rtt;
+            waitingForPong = false;
+        }
+    }
 }

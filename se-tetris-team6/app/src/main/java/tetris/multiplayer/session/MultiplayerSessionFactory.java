@@ -16,9 +16,9 @@ import tetris.multiplayer.model.VersusRules;
  * - GameModelFactory 를 재사용해 싱글 모드와 동일한 규칙을 가져온다.
  * - 로컬 멀티플레이는 LocalMultiplayerSession을, 네트워크 멀티플레이는 NetworkMultiplayerSession을 반환한다.
  */
-public final class LocalMultiplayerSessionFactory {
+public final class MultiplayerSessionFactory {
 
-    private LocalMultiplayerSessionFactory() {
+    private MultiplayerSessionFactory() {
     }
 
     /**
@@ -54,6 +54,11 @@ public final class LocalMultiplayerSessionFactory {
         NetworkMultiPlayerController controller = new NetworkMultiPlayerController(game, localIsPlayerOne ? 1 : 2);
         tetris.multiplayer.handler.NetworkedMultiplayerHandler handler = new tetris.multiplayer.handler.NetworkedMultiplayerHandler(game, controller, GameState.PLAYING, localIsPlayerOne ? 1 : 2, sendGameEndCallback);
         NetworkMultiplayerSession session = new NetworkMultiplayerSession(playerOne, playerTwo, game, controller, handler);
+        
+        // 각 플레이어 모델에 네트워크 세션 참조만 설정 (스냅샷 생성 시 공격 대기열 포함을 위해)
+        // p1.setNetworkSessionReference(session);
+        // p2.setNetworkSessionReference(session);
+        
         session.restartPlayers(mode);
         return session;
     }

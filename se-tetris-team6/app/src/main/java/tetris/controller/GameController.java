@@ -12,7 +12,7 @@ import tetris.domain.model.GameState;
 import tetris.domain.setting.Setting;
 import tetris.multiplayer.handler.MultiplayerHandler;
 import tetris.multiplayer.session.LocalMultiplayerSession;
-import tetris.multiplayer.session.LocalMultiplayerSessionFactory;
+import tetris.multiplayer.session.MultiplayerSessionFactory;
 import tetris.multiplayer.session.NetworkMultiplayerSession;
 // 이제부터 모델의 좌우 움직임이 안 되는 이유를 해결합니다.
 
@@ -134,6 +134,22 @@ public class GameController {
             return;
         }
 
+        // 로컬 멀티플레이어가 활성화되어 있으면 P1/P2 키 바인딩을 우선 처리
+        if (localSession != null && gameModel.isLocalMultiplayerActive()) {
+            if (routeLocalMultiplayerInput(keyCode)) {
+                lastKeyPressTime.put(keyCode, currentTime);
+                return;
+            }
+        }
+
+        // 네트워크 멀티플레이어가 활성화되어 있으면 네트워크 키 바인딩을 우선 처리
+        if (networkSession != null) {
+            if (routeNetworkMultiplayerInput(keyCode)) {
+                lastKeyPressTime.put(keyCode, currentTime);
+                return;
+            }
+        }
+
         GameState currentState = gameModel.getCurrentState();
 
         switch (currentState) {
@@ -186,17 +202,7 @@ public class GameController {
             return;
         }
 
-        // 네트워크 멀티플레이어 입력 처리 (싱글 게임 키 바인딩 사용)
-        if (networkSession != null && routeNetworkMultiplayerInput(keyCode)) {
-            return;
-        }
-
-        // 로컬 멀티플레이어 입력 처리 (P1/P2 키 바인딩 사용)
-        if (localSession != null && routeLocalMultiplayerInput(keyCode)) {
-            return;
-        }
-
-        // 블록 조작 키들
+        // 블록 조작 키들 (싱글 플레이어 전용)
         if (keyCode == keyBindings.get("MOVE_LEFT")) {
             gameModel.moveBlockLeft();
             System.out.println("Controller: 블록 왼쪽 이동");
@@ -390,7 +396,7 @@ public class GameController {
      */
     public LocalMultiplayerSession startLocalMultiplayerGame(GameMode mode) {
         deactivateLocalMultiplayer();
-        LocalMultiplayerSession session = LocalMultiplayerSessionFactory.create(mode);
+        LocalMultiplayerSession session = MultiplayerSessionFactory.create(mode);
         localSession = session;
         gameModel.enableLocalMultiplayer(session);
         startLocalMultiplayerTick();
@@ -413,7 +419,13 @@ public class GameController {
         Runnable sendGameEndCallback = () -> {
             try {
                 java.util.Map<String, Object> data = new java.util.HashMap<>();
-                data.put("winnerId", localIsPlayerOne ? 2 : 1); // Opponent is the winner
+                int winnerId = localIsPlayerOne ? 2 : 1; // Opponent is the winner
+                int loserId = localIsPlayerOne ? 1 : 2; // Local player is the loser
+                
+                data.put("winnerId", winnerId);
+                data.put("loserId", loserId);
+                
+                System.out.println("[GameController] Sending GAME_END - winnerId: " + winnerId + ", loserId: " + loserId);
                 
                 if (networkClient != null) {
                     tetris.network.protocol.GameMessage message = new tetris.network.protocol.GameMessage(
@@ -436,7 +448,7 @@ public class GameController {
         };
         
         System.out.println("[GameController] Creating networked session");
-        NetworkMultiplayerSession session = LocalMultiplayerSessionFactory.createNetworkedSession(mode, localIsPlayerOne, sendGameEndCallback);
+        NetworkMultiplayerSession session = MultiplayerSessionFactory.createNetworkedSession(mode, localIsPlayerOne, sendGameEndCallback);
         networkSession = session;
         System.out.println("[GameController] Session created - " + (session != null ? "SUCCESS" : "FAILED"));
         
@@ -489,7 +501,7 @@ public class GameController {
         };
 
         System.out.println("[GameController] Creating networked session with seed=" + seed);
-        NetworkMultiplayerSession session = LocalMultiplayerSessionFactory.createNetworkedSession(mode, localIsPlayerOne, sendGameEndCallback, seed);
+        NetworkMultiplayerSession session = MultiplayerSessionFactory.createNetworkedSession(mode, localIsPlayerOne, sendGameEndCallback, seed);
         networkSession = session;
 
         tetris.multiplayer.controller.NetworkMultiPlayerController networkController = session.networkController();
@@ -803,5 +815,38 @@ public class GameController {
             localMultiplayerTimer.stop();
             localMultiplayerTimer = null;
         }
+    }
+    
+    /**
+     * 네트워크 세션을 정리합니다. 연결 끊김 시 호출됩니다.
+     */
+    public void cleanupNetworkSession() {
+        stopNetworkMultiplayerTick();
+        if (networkClient != null) {
+            networkClient.disconnect();
+            networkClient = null;
+        }
+        if (networkSession != null) {
+            try {
+                networkSession.shutdown();
+            } catch (Exception e) {
+                System.err.println("Error shutting down network session: " + e.getMessage());
+            }
+            networkSession = null;
+        }
+    }
+    
+    /**
+     * 현재 네트워크 세션을 반환합니다.
+     */
+    public NetworkMultiplayerSession getNetworkSession() {
+        return networkSession;
+    }
+    
+    /**
+     * 네트워크 클라이언트를 반환합니다.
+     */
+    public tetris.network.client.GameClient getNetworkClient() {
+        return networkClient;
     }
 }

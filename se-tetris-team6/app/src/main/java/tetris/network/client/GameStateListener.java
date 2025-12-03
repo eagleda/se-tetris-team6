@@ -27,5 +27,13 @@ public interface GameStateListener {
      */
     void onGameStateSnapshot(tetris.network.protocol.GameSnapshot snapshot);
     
+    /**
+     * 네트워크 연결 타임아웃 또는 연결 끊김 시 호출됩니다.
+     * @param reason 연결 끊김 이유
+     */
+    default void onConnectionTimeout(String reason) {
+        // 기본 구현은 비어있음
+    }
+    
     // Step 3, 4에서 필요한 다른 메서드들을 추가할 수 있습니다.
 }

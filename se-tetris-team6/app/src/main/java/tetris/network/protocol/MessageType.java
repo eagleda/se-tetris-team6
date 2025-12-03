@@ -13,6 +13,7 @@ public enum MessageType {
     CONNECTION_ACCEPTED,    // 서버 → 클라이언트: 연결 승인
     CONNECTION_REJECTED,    // 서버 → 클라이언트: 연결 거부
     DISCONNECT,            // 양방향: 연결 종료 알림
+    OPPONENT_DISCONNECTED, // 서버 → 클라이언트: 상대방 연결 끊김 알림
 
     // === 게임 제어 ===
     GAME_MODE_SELECT,      // 서버 → 클라이언트: 게임 모드 선택

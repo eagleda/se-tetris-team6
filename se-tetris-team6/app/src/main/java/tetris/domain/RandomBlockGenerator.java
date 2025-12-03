@@ -68,6 +68,14 @@ public final class RandomBlockGenerator implements BlockGenerator {
         }
     }
 
+    /**
+     * 네트워크 동기화를 위해 다음 블록을 강제로 설정합니다.
+     * 클라이언트가 서버로부터 받은 nextBlockId를 적용할 때 사용합니다.
+     */
+    public void forceNextBlock(BlockKind kind) {
+        this.nextKind = kind;
+    }
+
     private void ensureBuffered() {
         if (nextKind == null) {
             if (dirty) recomputeWeights();

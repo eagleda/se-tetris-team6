@@ -90,6 +90,10 @@ public class GameplayEngine implements GameClock.Listener {
         return lastClearedRows;
     }
 
+    public void setLastClearedRows(List<Integer> rows) {
+        this.lastClearedRows = rows != null ? rows : Collections.emptyList();
+    }
+
     public void clearLastClearedRows() {
         lastClearedRows = Collections.emptyList();
     }

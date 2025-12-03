@@ -78,21 +78,23 @@ public final class VersusRules {
         List<AttackLine> rows = new ArrayList<>(clearedYs.length);
         for (int y : clearedYs) {
             boolean[] holes = new boolean[boardWidth];
-            // 삭제를 완성한 블록 셀 중 하나를 구멍으로 선택 (없으면 폭 전체 중 랜덤)
+            // 삭제를 완성한 블록 셀 모두를 구멍으로 남긴다. (없으면 폭 전체 중 랜덤 1개)
             List<Cell> contributors = new ArrayList<>();
             for (Cell cell : snapshot.cells()) {
                 if (cell.y() == y && cell.x() >= 0 && cell.x() < boardWidth) {
                     contributors.add(cell);
                 }
             }
-            int holeX;
             if (!contributors.isEmpty()) {
-                Cell chosen = contributors.get(rng.nextInt(contributors.size()));
-                holeX = chosen.x();
+                // 기여한 모든 셀을 구멍으로 표시
+                for (Cell c : contributors) {
+                    holes[c.x()] = true;
+                }
             } else {
-                holeX = boardWidth <= 0 ? 0 : rng.nextInt(boardWidth);
+                // 안전 장치: 기여 정보가 없으면 최소 한 칸은 구멍으로 처리
+                int holeX = boardWidth <= 0 ? 0 : rng.nextInt(boardWidth);
+                holes[holeX] = true;
             }
-            holes[holeX] = true; // 단 하나의 구멍만 남긴다.
             rows.add(new AttackLine(holes));
         }
         return rows;

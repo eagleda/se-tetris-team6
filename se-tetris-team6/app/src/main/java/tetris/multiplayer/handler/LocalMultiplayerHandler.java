@@ -46,6 +46,9 @@ public final class LocalMultiplayerHandler implements MultiplayerHandler {
     @Override
     public void update(GameModel model) {
         controller.tick();
+        if (!game.isGameOver()) {
+            maybeHandleTimeLimit();
+        }
         // 개별 플레이어가 먼저 GAME_OVER가 되면 즉시 패배자로 표시한다.
         if (!game.isGameOver()) {
             if (game.modelOf(1).getCurrentState() == GameState.GAME_OVER) {
@@ -64,7 +67,8 @@ public final class LocalMultiplayerHandler implements MultiplayerHandler {
             controller.withPlayer(1, m -> m.changeState(GameState.GAME_OVER));
             controller.withPlayer(2, m -> m.changeState(GameState.GAME_OVER));
             model.changeState(GameState.GAME_OVER);
-            model.showMultiplayerResult(winnerId);
+            // 로컬 멀티플레이용 메시지를 직접 전달
+            model.showLocalMultiplayerResult(winnerId);
         }
     }
 
@@ -86,6 +90,24 @@ public final class LocalMultiplayerHandler implements MultiplayerHandler {
      */
     public java.util.List<tetris.multiplayer.model.AttackLine> getPendingAttackLines(int playerId) {
         return controller.getPendingAttackLines(playerId);
+    }
+
+    private void maybeHandleTimeLimit() {
+        GameModel reference = game.modelOf(1);
+        if (reference == null || !reference.isTimeLimitMode()) {
+            return;
+        }
+        if (!reference.isTimeLimitExpired()) {
+            return;
+        }
+        int comparison = game.compareScores();
+        if (comparison > 0) {
+            game.markLoser(2);
+        } else if (comparison < 0) {
+            game.markLoser(1);
+        } else {
+            game.endWithDraw();
+        }
     }
 
     private void registerHooks() {

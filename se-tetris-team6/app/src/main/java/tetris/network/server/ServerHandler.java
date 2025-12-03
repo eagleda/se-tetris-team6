@@ -26,6 +26,7 @@ import java.util.concurrent.atomic.AtomicInteger; // 추가: 스레드 안전한
         this.clientSocket = clientSocket;
         this.server = server;
         this.clientId = "UNASSIGNED";
+        this.lastMessageTime = System.currentTimeMillis();
 
         try {
             // ObjectOutputStream을 먼저 초기화하여 Deadlock을 피하고, 필드명 통일
@@ -51,6 +52,11 @@ import java.util.concurrent.atomic.AtomicInteger; // 추가: 스레드 안전한
 
     // === 서버 참조 ===
     private GameServer server;                 // 부모 서버 참조
+    
+    // === 연결 타임아웃 감지 ===
+    private volatile long lastMessageTime;     // 마지막 메시지 수신 시간
+    private static final long TIMEOUT_MS = 10000; // 10초 타임아웃
+    private Thread timeoutWatchdog;
 
     // === 주요 메서드들 ===
 
@@ -59,11 +65,13 @@ import java.util.concurrent.atomic.AtomicInteger; // 추가: 스레드 안전한
     public void run() {
         try {
             initializeConnection();
+            startTimeoutWatchdog();
             
             // Step 2에서는 연결 수락 후 바로 종료해도 무방하나, 메시지 루프 구조를 잡습니다.
             while (isConnected) {
                 // 클라이언트로부터 메시지 수신 대기
                 GameMessage message = (GameMessage) inputStream.readObject();
+                lastMessageTime = System.currentTimeMillis(); // 메시지 수신 시 타임스탬프 갱신
                 // Log the raw read for tracing duplicates (identity + seq)
                 try {
                     int seq = message == null ? -1 : message.getSequenceNumber();
@@ -76,6 +84,7 @@ import java.util.concurrent.atomic.AtomicInteger; // 추가: 스레드 안전한
         } catch (IOException | ClassNotFoundException e) {
             System.err.println("ServerHandler error for client " + clientId + ": " + e.getMessage());
         } finally {
+            stopTimeoutWatchdog();
             disconnect();
         }
     }
@@ -88,7 +97,7 @@ import java.util.concurrent.atomic.AtomicInteger; // 추가: 스레드 안전한
                 outputStream.writeObject(message);
                 outputStream.flush();
             }
-            System.out.println("ServerHandler sent message: " + message.getType());
+            // System.out.println("ServerHandler sent message: " + message.getType());
             }
         } catch (IOException e) {
             System.err.println("Error sending message to client " + clientId + ": " + e.getMessage());
@@ -127,10 +136,14 @@ import java.util.concurrent.atomic.AtomicInteger; // 추가: 스레드 안전한
     public void disconnect() {
         if (isConnected) {
             isConnected = false;
+            System.out.println("[ServerHandler] Client " + clientId + " disconnecting...");
             try {
                 if (clientSocket != null) clientSocket.close();
             } catch (IOException e) { /* ignore */ }
+            
+            // 서버에 클라이언트 연결 해제 알림 및 상대방에게 통보
             server.removeClient(this);
+            server.notifyOpponentDisconnected(this.clientId);
         }
     }
 
@@ -152,6 +165,14 @@ import java.util.concurrent.atomic.AtomicInteger; // 추가: 스레드 안전한
             case DISCONNECT:
                 System.out.println("ServerHandler: DISCONNECT from " + clientId);
                 disconnect();
+                break;
+            case PING:
+                // 클라이언트로부터 PING 받으면 PONG 응답
+                sendMessage(new GameMessage(MessageType.PONG, "SERVER", null));
+                break;
+            case PONG:
+                // 클라이언트로부터 PONG 받으면 서버의 핑 측정 완료
+                server.handlePong();
                 break;
             case PLAYER_INPUT:
             case ATTACK_LINES:
@@ -185,5 +206,32 @@ import java.util.concurrent.atomic.AtomicInteger; // 추가: 스레드 안전한
     private void handleAttackLines(GameMessage attackMessage){
         /* Step 3 구현 예정 */ }
 
+    // 타임아웃 감시 스레드 시작
+    private void startTimeoutWatchdog() {
+        timeoutWatchdog = new Thread(() -> {
+            try {
+                while (isConnected) {
+                    Thread.sleep(1000); // 1초마다 체크
+                    long elapsed = System.currentTimeMillis() - lastMessageTime;
+                    if (elapsed > TIMEOUT_MS) {
+                        System.err.println("[ServerHandler] Connection timeout detected for client " + clientId + " (no message for " + elapsed + "ms)");
+                        disconnect();
+                        break;
+                    }
+                }
+            } catch (InterruptedException e) {
+                // 정상 종료
+            }
+        }, "ServerHandler-TimeoutWatchdog-" + clientId);
+        timeoutWatchdog.setDaemon(true);
+        timeoutWatchdog.start();
+    }
+    
+    // 타임아웃 감시 스레드 중지
+    private void stopTimeoutWatchdog() {
+        if (timeoutWatchdog != null) {
+            timeoutWatchdog.interrupt();
+        }
+    }
     
 }
