@@ -37,11 +37,15 @@ public final class GameOverController {
 
             @Override
             public void onSkip() {
+                // 네트워크 세션 정리
+                frame.cleanupNetworkSessionPublic();
                 hideAndShowScoreboard();
             }
 
             @Override
             public void onBackToMenu() {
+                // 네트워크 세션 정리
+                frame.cleanupNetworkSessionPublic();
                 panel.hidePanel();
                 frame.showMainPanel();
             }
@@ -58,6 +62,8 @@ public final class GameOverController {
     private void submitName(String name) {
         if (name == null || name.isBlank()) {
             // ignore empty names; fallback to skip
+            // 네트워크 세션 정리
+            frame.cleanupNetworkSessionPublic();
             hideAndShowScoreboard();
             return;
         }
@@ -68,6 +74,8 @@ public final class GameOverController {
         System.out.printf("[UI][GameOver] saved entry name=%s pts=%d mode=%s highlight=%d size=%d%n",
                 entry.getName(), entry.getPoints(), mode, result.highlightIndex(), result.entries().size());
         frame.setPendingLeaderboard(mode, result);
+        // 네트워크 세션 정리
+        frame.cleanupNetworkSessionPublic();
         hideAndShowScoreboard();
     }
 
