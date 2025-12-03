@@ -13,12 +13,18 @@ import tetris.domain.item.model.ItemBlockModel;
  */
 public final class DoubleScoreBehavior implements ItemBehavior {
 
-    private final long durationTicks;
+    private static final long DEFAULT_DURATION_MS = 10_000L;
+
+    private final long durationMs;
     private final double factor;
     private boolean triggered;
 
-    public DoubleScoreBehavior(long durationTicks, double factor) {
-        this.durationTicks = durationTicks;
+    public DoubleScoreBehavior() {
+        this(DEFAULT_DURATION_MS, 2.0);
+    }
+
+    public DoubleScoreBehavior(long durationMs, double factor) {
+        this.durationMs = Math.max(0L, durationMs);
         this.factor = factor;
     }
 
@@ -45,8 +51,9 @@ public final class DoubleScoreBehavior implements ItemBehavior {
             itemY += block.getItemCellY();
         }
         Map<String, Object> meta = new HashMap<>();
+        meta.put("durationMs", durationMs);
         meta.put("factor", factor);
-        ctx.addGlobalBuff(id(), durationTicks, meta);
+        ctx.addGlobalBuff(id(), 0, meta);
         ctx.spawnParticles(itemX, itemY, "text:2x");
         ctx.playSfx("double_score_on");
         triggered = true;
