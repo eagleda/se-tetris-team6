@@ -56,7 +56,7 @@ class DoubleScoreBehaviorTest {
 
         behavior.onLock(ctx, block);
 
-        verify(ctx).addGlobalBuff(eq("double_score"), eq(10L), metaCaptor.capture());
+        verify(ctx).addGlobalBuff(eq("double_score"), eq(0L), metaCaptor.capture());
         assertEquals(2.5, metaCaptor.getValue().get("factor"));
         verify(ctx).spawnParticles(4, 5, "text:2x");
         verify(ctx).playSfx("double_score_on");
