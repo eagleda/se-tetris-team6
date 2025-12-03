@@ -43,6 +43,7 @@ class GameplayEngineTest {
             @Override public void onBlockLocked(tetris.domain.model.Block block) {}
             @Override public void onLinesCleared(int clearedLines) {}
             @Override public void onTick(long tick) {}
+            @Override public void onBlockRotated(tetris.domain.model.Block block, int times) {}
         });
 
         engine.spawnIfNeeded();
