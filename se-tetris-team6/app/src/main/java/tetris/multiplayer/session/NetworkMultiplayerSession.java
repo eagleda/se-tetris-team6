@@ -70,8 +70,39 @@ public final class NetworkMultiplayerSession {
      */
     public void restartPlayers(GameMode mode) {
         GameMode resolved = mode == null ? GameMode.STANDARD : mode;
+        System.out.println("[NetworkMultiplayerSession] ========================================");
+        System.out.println("[NetworkMultiplayerSession] restartPlayers called with mode: " + resolved);
+        System.out.println("[NetworkMultiplayerSession] Player 1 is local: " + isPlayerOneLocal());
+        System.out.println("[NetworkMultiplayerSession] Player 2 is local: " + isPlayerTwoLocal());
+        
         playerOneModel().startGame(resolved);
         playerTwoModel().startGame(resolved);
+        
+        // 아이템 모드 확인 로그
+        System.out.println("[NetworkMultiplayerSession] After startGame - P1 currentMode: " + playerOneModel().getCurrentMode());
+        System.out.println("[NetworkMultiplayerSession] After startGame - P2 currentMode: " + playerTwoModel().getCurrentMode());
+        
+        if (resolved == GameMode.ITEM) {
+            System.out.println("[NetworkMultiplayerSession] *** ITEM MODE ENABLED ***");
+            System.out.println("[NetworkMultiplayerSession] P1 itemSpawnIntervalLines: " + playerOneModel().getItemSpawnIntervalLines());
+            System.out.println("[NetworkMultiplayerSession] P2 itemSpawnIntervalLines: " + playerTwoModel().getItemSpawnIntervalLines());
+        } else {
+            System.out.println("[NetworkMultiplayerSession] Item mode NOT enabled - current mode: " + resolved);
+        }
+        System.out.println("[NetworkMultiplayerSession] ========================================");
+        
+        // 게임 시작 직후 초기 스냅샷을 즉시 전송하여 첫 블록과 다음 블록 동기화
+        if (controller.getLocalPlayerId() == 1) {
+            try {
+                javax.swing.SwingUtilities.invokeLater(() -> {
+                    controller.sendGameState(playerOneModel());
+                    controller.sendGameState(playerTwoModel());
+                    System.out.println("[NetworkSession] Initial snapshots sent after game start");
+                });
+            } catch (Exception e) {
+                System.err.println("[NetworkSession] Failed to send initial snapshots: " + e.getMessage());
+            }
+        }
     }
 
     /**
@@ -80,5 +111,12 @@ public final class NetworkMultiplayerSession {
     public void shutdown() {
         playerOneModel().quitToMenu();
         playerTwoModel().quitToMenu();
+    }
+    
+    /**
+     * 네트워크 클라이언트를 반환합니다.
+     */
+    public tetris.network.client.GameClient networkClient() {
+        return controller.getNetworkClient();
     }
 }

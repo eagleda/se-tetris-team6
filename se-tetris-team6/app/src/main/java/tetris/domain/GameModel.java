@@ -76,8 +76,13 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         /** Show a dedicated name-entry overlay (optional). */
         void showNameEntryOverlay(tetris.domain.score.Score score);
 
-        /** 멀티플레이 승자 표시용 오버레이를 보여준다. */
-        default void showMultiplayerResult(int winnerId) {
+        /** 온라인 멀티플레이 승자 표시용 오버레이를 보여준다. */
+        default void showMultiplayerResult(int winnerId, int localPlayerId) {
+            /* no-op */
+        }
+
+        /** 로컬 멀티플레이 승자 표시용 오버레이를 보여준다. */
+        default void showLocalMultiplayerResult(int winnerId) {
             /* no-op */
         }
     }
@@ -147,6 +152,8 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
             () -> new LineClearBehavior(),
             WeightBehavior::new);
     private final List<MultiplayerHook> multiplayerHooks = new CopyOnWriteArrayList<>();
+    // 네트워크 멀티플레이어에서 스냅샷으로 받은 공격 대기열 데이터 (클라이언트 렌더링용)
+    private java.util.List<tetris.multiplayer.model.AttackLine> snapshotAttackLines = new java.util.ArrayList<>();
 
     public static final class ActiveItemInfo {
         private final BlockLike block;
@@ -207,6 +214,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
     private static final long INACTIVITY_STAGE1_MS = 2000;
     private static final long INACTIVITY_STAGE2_MS = 5000;
     private static final int INACTIVITY_PENALTY_POINTS = 10;
+    private static final long DEFAULT_TIME_LIMIT_MS = 60_000L;
 
     private ItemBlockModel activeItemBlock;
     private boolean nextBlockIsItem;
@@ -218,6 +226,8 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
     private int slowLevelOffset;
     private long slowBuffExpiresAtMs;
     private ItemContextImpl itemContext;
+    // 원격 스냅샷 기반 아이템 표시용
+    private ActiveItemInfo snapshotItemInfo;
     private Supplier<ItemBehavior> behaviorOverride = () -> new WeightBehavior();
     private int itemSpawnIntervalLines = DEFAULT_ITEM_SPAWN_INTERVAL;
     private int currentGravityLevel;
@@ -227,6 +237,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
     private long pauseStartedAt = -1;
     private long gameplayStartedAtMillis = -1;
     private long accumulatedPauseMillis;
+    private long timeLimitMillis;
     private LockedPieceSnapshot lastLockedPieceSnapshot;
 
     private UiBridge uiBridge = NO_OP_UI_BRIDGE;
@@ -496,6 +507,29 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         return Math.max(0L, elapsed);
     }
 
+    public long getTimeLimitMillis() {
+        return timeLimitMillis;
+    }
+
+    public long getRemainingTimeMillis() {
+        if (timeLimitMillis <= 0) {
+            return getElapsedMillis();
+        }
+        return Math.max(0L, timeLimitMillis - getElapsedMillis());
+    }
+
+    public boolean isTimeLimitMode() {
+        return currentMode == GameMode.TIME_LIMIT;
+    }
+
+    public boolean isTimeLimitExpired() {
+        return timeLimitMillis > 0 && getElapsedMillis() >= timeLimitMillis;
+    }
+
+    public long getTimerMillis() {
+        return getRemainingTimeMillis();
+    }
+
     public GameMode getCurrentMode() {
         return currentMode;
     }
@@ -512,9 +546,25 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         return isItemMode() && nextBlockIsItem;
     }
 
+    /** 아이템 스폰 간격(줄 수) 반환 */
+    public int getItemSpawnIntervalLines() {
+        return itemSpawnIntervalLines;
+    }
+
+    /**
+     * 아이템 모드일 때, 다음 스폰되는 블록을 아이템 블록으로 지정한다.
+     * 온라인 멀티 등 외부 규칙에서 조건을 만족했을 때 호출한다.
+     */
+    public void forceNextBlockAsItem() {
+        if (!isItemMode()) {
+            return;
+        }
+        nextBlockIsItem = true;
+    }
     public ActiveItemInfo getActiveItemInfo() {
         if (!isItemMode() || activeItemBlock == null) {
-            return null;
+            // 네트워크 클라이언트는 스냅샷으로만 상태를 받으므로 스냅샷 정보 노출
+            return snapshotItemInfo;
         }
         ItemBehavior primary = activeItemBlock.getBehaviors().isEmpty() ? null : activeItemBlock.getBehaviors().get(0);
         String label = primary != null ? primary.id() : null;
@@ -586,6 +636,9 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         GameMode selected = mode == null ? GameMode.STANDARD : mode;
         this.currentMode = selected;
         this.lastMode = selected;
+        
+        System.out.println("[GameModel] startGame called with mode=" + mode + ", resolved to " + selected);
+        
         if (activeLocalSession != null) {
             // 로컬 멀티가 활성화되어 있다면 각 플레이어 모델을 동일한 모드로 재가동한다.
             activeLocalSession.restartPlayers(selected);
@@ -635,8 +688,13 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         if (block == null) {
             return;
         }
+        // 로컬 스폰 시 스냅샷 기반 아이템 정보는 무시
+        snapshotItemInfo = null;
         totalSpawnedBlocks++;
         updateGravityProgress();
+        
+        System.out.println("[GameModel] onBlockSpawned - currentMode: " + currentMode + ", nextBlockIsItem: " + nextBlockIsItem + ", totalSpawnedBlocks: " + totalSpawnedBlocks);
+        
         if (currentMode != GameMode.ITEM) {
             activeItemBlock = null;
             nextBlockIsItem = false;
@@ -645,6 +703,8 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         if (nextBlockIsItem) {
             ItemBehavior behavior = rollBehavior();
             String behaviorId = behavior.id();
+            
+            System.out.println("[GameModel] *** SPAWNING ITEM BLOCK *** behaviorId=" + behaviorId + ", blockKind=" + block.getKind());
             
             // Weight나 Bomb 아이템인 경우 블록 형태 강제
             if ("weight".equals(behaviorId) && block.getKind() != BlockKind.W) {
@@ -699,7 +759,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         }
 
         // 대전/아이템 모드에서 블록 고정 시 공격 대기열 적용
-        if (currentMode == GameMode.STANDARD || currentMode == GameMode.ITEM /* 또는 대전 모드 플래그 */) {
+        if (currentMode == GameMode.STANDARD || currentMode == GameMode.ITEM || currentMode == GameMode.TIME_LIMIT /* 또는 대전 모드 플래그 */) {
             commitPendingGarbageLines();
         }
 
@@ -733,6 +793,8 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         }
         if (itemSpawnIntervalLines > 0 && totalClearedLines % itemSpawnIntervalLines == 0) {
             nextBlockIsItem = true;
+            System.out.println("[GameModel] Item spawn triggered! totalClearedLines=" + totalClearedLines + 
+                ", interval=" + itemSpawnIntervalLines + ", nextBlockIsItem=true");
         }
         itemManager.onLineClear(itemContext, null);
 
@@ -878,6 +940,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         stopClockCompletely();
         gameplayStartedAtMillis = -1;
         accumulatedPauseMillis = 0;
+        timeLimitMillis = 0;
     }
 
     private void resetGameplayState() {
@@ -890,12 +953,15 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         activeItemBlock = null;
         nextBlockIsItem = false;
         totalClearedLines = 0;
+        
+        System.out.println("[GameModel] resetGameplayState - currentMode: " + currentMode + ", itemSpawnIntervalLines: " + itemSpawnIntervalLines);
         totalSpawnedBlocks = 0;
         currentGravityLevel = 0;
         inactivityPenaltyStage = 0;
         lastInputMillis = System.currentTimeMillis();
         gameplayStartedAtMillis = lastInputMillis;
         accumulatedPauseMillis = 0;
+        timeLimitMillis = currentMode == GameMode.TIME_LIMIT ? DEFAULT_TIME_LIMIT_MS : 0L;
         currentTick = 0;
         scoreMultiplier = 1.0;
         doubleScoreUntilTick = 0;
@@ -948,7 +1014,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         this.activeNetworkSession = session;
         handlers.put(GameState.PLAYING, session.handler());
     }
-
+    
     /**
      * 메뉴 복귀 / 싱글 모드 전환 등으로 더 이상 세션이 필요 없을 때 정리한다.
      */
@@ -1013,7 +1079,102 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         }
         int elapsed = (int) (getElapsedMillis() / 1000L);
         int pending = pendingGarbageLines;
-        return new tetris.network.protocol.GameSnapshot(playerId, copy, currentId, nextId, pts, elapsed, pending, blockX, blockY, blockRotation);
+        
+        // 아이템 정보 (호스트/로컬 모델에서만 채워짐)
+        String itemLabel = null;
+        int itemCellX = -1;
+        int itemCellY = -1;
+        if (isItemMode()) {
+            ActiveItemInfo info = getActiveItemInfo();
+            if (info != null) {
+                itemLabel = info.label();
+                itemCellX = info.itemCellX();
+                itemCellY = info.itemCellY();
+            }
+        }
+        
+        // 라인 클리어 하이라이트용
+        int[] clearedLinesArray = null;
+        if (gameplayEngine != null) {
+            java.util.List<Integer> clearedList = gameplayEngine.getLastClearedRows();
+            if (clearedList != null && !clearedList.isEmpty()) {
+                clearedLinesArray = clearedList.stream().mapToInt(Integer::intValue).toArray();
+            }
+        }
+        
+        // 게임 모드 정보 포함
+        String gameModeStr = currentMode != null ? currentMode.name() : "STANDARD";
+        
+        return new tetris.network.protocol.GameSnapshot(playerId, copy, currentId, nextId, pts, elapsed, pending, blockX, blockY, blockRotation, null, gameModeStr, itemLabel, itemCellX, itemCellY, clearedLinesArray);
+    }
+    
+    /**
+     * 네트워크 스냅샷 생성 (공격 대기열 포함)
+     * @param playerId 플레이어 ID
+     * @param attackLines 공격 대기열 (서버가 전달)
+     */
+    public tetris.network.protocol.GameSnapshot toSnapshot(int playerId, java.util.List<tetris.multiplayer.model.AttackLine> attackLines) {
+        int[][] copy = board.gridView();
+        Block active = gameplayEngine != null ? gameplayEngine.getActiveBlock() : null;
+        int currentId = 0;
+        int blockX = -1;
+        int blockY = -1;
+        int blockRotation = 0;
+        
+        if (active != null && active.getShape() != null && active.getShape().kind() != null) {
+            currentId = active.getShape().kind().ordinal() + 1;
+            blockX = active.getX();
+            blockY = active.getY();
+            blockRotation = active.getRotation();
+        }
+        
+        BlockKind nextKind = getNextBlockKind();
+        int nextId = nextKind != null ? (nextKind.ordinal() + 1) : 0;
+        int pts = 0;
+        try {
+            tetris.domain.score.Score sc = scoreRepository != null ? scoreRepository.load() : null;
+            pts = sc != null ? sc.getPoints() : 0;
+        } catch (Exception ignore) {
+            pts = 0;
+        }
+        int elapsed = (int) (getElapsedMillis() / 1000L);
+        int pending = pendingGarbageLines;
+        
+        // 공격 대기열 정보 변환
+        boolean[][] attackLinesData = null;
+        if (attackLines != null && !attackLines.isEmpty()) {
+            attackLinesData = new boolean[attackLines.size()][];
+            for (int i = 0; i < attackLines.size(); i++) {
+                attackLinesData[i] = attackLines.get(i).copyHoles();
+            }
+        }
+        
+        // 아이템 정보 (호스트/로컬 모델에서만 채워짐)
+        String itemLabel = null;
+        int itemCellX = -1;
+        int itemCellY = -1;
+        if (isItemMode()) {
+            ActiveItemInfo info = getActiveItemInfo();
+            if (info != null) {
+                itemLabel = info.label();
+                itemCellX = info.itemCellX();
+                itemCellY = info.itemCellY();
+            }
+        }
+        
+        // 라인 클리어 하이라이트용
+        int[] clearedLinesArray = null;
+        if (gameplayEngine != null) {
+            java.util.List<Integer> clearedList = gameplayEngine.getLastClearedRows();
+            if (clearedList != null && !clearedList.isEmpty()) {
+                clearedLinesArray = clearedList.stream().mapToInt(Integer::intValue).toArray();
+            }
+        }
+        
+        // 게임 모드 정보 포함
+        String gameModeStr = currentMode != null ? currentMode.name() : "STANDARD";
+        
+        return new tetris.network.protocol.GameSnapshot(playerId, copy, currentId, nextId, pts, elapsed, pending, blockX, blockY, blockRotation, attackLinesData, gameModeStr, itemLabel, itemCellX, itemCellY, clearedLinesArray);
     }
 
     /** 스냅샷을 적용 (클라이언트 렌더링 전용) */
@@ -1034,8 +1195,31 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
      */
     private void applySnapshotImpl(tetris.network.protocol.GameSnapshot snapshot) {
         if (snapshot == null) return;
+        // 스냅샷에서 받은 아이템 정보 초기화
+        snapshotItemInfo = null;
+        
+        // 게임 모드 동기화 - 스냅샷에 모드 정보가 있으면 적용
+        if (snapshot.gameMode() != null && !snapshot.gameMode().isEmpty()) {
+            try {
+                GameMode snapshotMode = GameMode.valueOf(snapshot.gameMode());
+                if (this.currentMode != snapshotMode) {
+                    System.out.println("[GameModel] Syncing game mode from snapshot: " + this.currentMode + " -> " + snapshotMode);
+                    this.currentMode = snapshotMode;
+                }
+            } catch (IllegalArgumentException e) {
+                System.err.println("[GameModel] Invalid game mode in snapshot: " + snapshot.gameMode());
+            }
+        }
+        
+        // 공격 대기열 정보 로깅
+        int attackLineCount = snapshot.attackLines() != null ? snapshot.attackLines().length : 0;
         try {
-            System.out.println("[GameModel] Applying snapshot -> player=" + snapshot.playerId() + ", currentId=" + snapshot.currentBlockId() + ", nextId=" + snapshot.nextBlockId() + ", pending=" + snapshot.pendingGarbage());
+            System.out.println("[GameModel] Applying snapshot -> player=" + snapshot.playerId() 
+                + ", currentId=" + snapshot.currentBlockId() 
+                + ", nextId=" + snapshot.nextBlockId() 
+                + ", gameMode=" + snapshot.gameMode()
+                + ", pending=" + snapshot.pendingGarbage()
+                + ", attackLines=" + attackLineCount);
         } catch (Exception ignore) {}
         
         // 보드 상태 적용
@@ -1052,28 +1236,45 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         }
         
         // 현재 블록 위치 및 회전 상태 적용
+        Block restoredBlock = null;
         if (snapshot.currentBlockId() > 0 && snapshot.blockX() >= 0 && snapshot.blockY() >= 0) {
             BlockKind kind = BlockKind.values()[snapshot.currentBlockId() - 1];
-            Block block = Block.spawn(kind, snapshot.blockX(), snapshot.blockY());
+            restoredBlock = Block.spawn(kind, snapshot.blockX(), snapshot.blockY());
             
             // 회전 상태 적용
             int rotation = snapshot.blockRotation();
             for (int i = 0; i < rotation; i++) {
-                block.rotateCW();
+                restoredBlock.rotateCW();
             }
             
             if (gameplayEngine != null) {
-                gameplayEngine.setActiveBlock(block);
+                gameplayEngine.setActiveBlock(restoredBlock);
             }
         } else if (gameplayEngine != null) {
             gameplayEngine.setActiveBlock(null);
         }
         
+        // 다음 블록 정보 동기화
+        if (snapshot.nextBlockId() > 0 && blockGenerator instanceof RandomBlockGenerator) {
+            BlockKind nextKind = BlockKind.values()[snapshot.nextBlockId() - 1];
+            ((RandomBlockGenerator) blockGenerator).forceNextBlock(nextKind);
+        }
+        
         // 점수 업데이트
         if (scoreRepository != null) {
             tetris.domain.score.Score currentScore = scoreRepository.load();
-            if (currentScore.getPoints() != snapshot.score()) {
-                scoreRepository.save(currentScore.withAdditionalPoints(snapshot.score() - currentScore.getPoints()));
+            int currentPoints = currentScore != null ? currentScore.getPoints() : 0;
+            int snapshotPoints = snapshot.score();
+            
+            if (currentPoints != snapshotPoints) {
+                System.out.println("[GameModel] Updating score from " + currentPoints + " to " + snapshotPoints);
+                // 점수 차이만큼 업데이트
+                int delta = snapshotPoints - currentPoints;
+                if (delta > 0) {
+                    scoreRepository.save(currentScore.withAdditionalPoints(delta));
+                } else if (delta < 0) {
+                    scoreRepository.save(currentScore.minusPoints(-delta));
+                }
             }
         }
         
@@ -1090,6 +1291,29 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         
         // 가비지 라인 업데이트
         this.pendingGarbageLines = snapshot.pendingGarbage();
+        
+        // 아이템 정보 저장 (원격 렌더링용) - 복원된 블록 참조 포함
+        if (isItemMode() && snapshot.activeItemLabel() != null) {
+            snapshotItemInfo = new ActiveItemInfo(restoredBlock, snapshot.activeItemLabel(), ItemType.INSTANT, snapshot.itemCellX(), snapshot.itemCellY());
+        }
+        
+        // 라인 클리어 하이라이트 정보 복원
+        if (gameplayEngine != null && snapshot.clearedLines() != null && snapshot.clearedLines().length > 0) {
+            java.util.List<Integer> clearedList = new java.util.ArrayList<>();
+            for (int line : snapshot.clearedLines()) {
+                clearedList.add(line);
+            }
+            gameplayEngine.setLastClearedRows(clearedList);
+        }
+        
+        // 공격 대기열 데이터 저장 (클라이언트 렌더링용)
+        snapshotAttackLines.clear();
+        if (snapshot.attackLines() != null && snapshot.attackLines().length > 0) {
+            for (boolean[] holes : snapshot.attackLines()) {
+                snapshotAttackLines.add(new tetris.multiplayer.model.AttackLine(holes));
+            }
+        }
+        
         if (uiBridge != null) uiBridge.refreshBoard();
         try {
             System.out.println("[GameModel] Snapshot applied -> player=" + snapshot.playerId() + ", pending=" + this.pendingGarbageLines);
@@ -1163,8 +1387,15 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
     /**
      * 로컬 멀티 전용 승리 결과 오버레이를 UI에 요청한다.
      */
-    public void showMultiplayerResult(int winnerId) {
-        uiBridge.showMultiplayerResult(winnerId);
+    public void showMultiplayerResult(int winnerId, int localPlayerId) {
+        uiBridge.showMultiplayerResult(winnerId, localPlayerId);
+    }
+
+    /**
+     * 로컬 멀티플레이 전용: winnerId를 "Player X Wins" 형식으로 표시
+     */
+    public void showLocalMultiplayerResult(int winnerId) {
+        uiBridge.showLocalMultiplayerResult(winnerId);
     }
 
     // === 외부 제어 진입점 ===
@@ -1459,7 +1690,15 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
     }
 
      // 공격 대기열 필드 추가 (최대 10줄)
-    private int pendingGarbageLines = 0; 
+    private int pendingGarbageLines = 0;
+    
+    /**
+     * 스냅샷에서 받은 공격 대기열 데이터를 반환합니다 (클라이언트 렌더링용).
+     */
+    public java.util.List<tetris.multiplayer.model.AttackLine> getSnapshotAttackLines() {
+        return new java.util.ArrayList<>(snapshotAttackLines);
+    }
+    
     /**
      * 네트워크를 통해 수신된 공격 라인을 처리합니다.
      * @param attackLines 수신된 공격 라인 배열

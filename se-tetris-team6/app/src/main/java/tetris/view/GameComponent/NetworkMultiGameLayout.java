@@ -151,9 +151,14 @@ public class NetworkMultiGameLayout extends JPanel {
         // 5. 모델 바인딩 (leftModel -> gamePanel_1, rightModel -> gamePanel_2)
         bindPlayerModels(leftModel, rightModel);
 
-        // 6. 공격 대기열 바인딩 (leftPlayerId와 rightPlayerId에 맞춰)
+        // 6. 공격 대기열 바인딩
+        // 서버와 클라이언트 모두 handler를 통해 공격 대기열 가져오기
+        // - 서버: handler -> VersusRules에서 실제 공격 대기열
+        // - 클라이언트: handler -> 각 모델의 스냅샷 공격 대기열
         final int lp = leftPlayerId;
         final int rp = rightPlayerId;
+        
+        // 서버/클라이언트 모두 동일한 방식으로 바인딩
         attackQueuePanel_1.bindAttackLinesSupplier(() -> session.handler().getPendingAttackLines(lp));
         attackQueuePanel_2.bindAttackLinesSupplier(() -> session.handler().getPendingAttackLines(rp));
 

@@ -31,6 +31,11 @@ public class ClientHandler implements Runnable {
     private final int[] lastAppliedSnapshotSeq = new int[] {-1, -1, -1};
 
     private CountDownLatch handshakeLatch;
+    
+    // === 연결 타임아웃 감지 ===
+    private volatile long lastMessageTime;     // 마지막 메시지 수신 시간
+    private static final long TIMEOUT_MS = 10000; // 10초 타임아웃
+    private Thread timeoutWatchdog;
 
     // === 주요 메서드들 ===
 
@@ -40,6 +45,8 @@ public class ClientHandler implements Runnable {
     this.outputStream = output;
     this.client = client;
     this.handshakeLatch = latch; // Latch 저장
+    this.lastMessageTime = System.currentTimeMillis();
+    startTimeoutWatchdog();
 }
 
     // 스레드 실행 메서드 - 서버 메시지 수신 루프
@@ -48,13 +55,17 @@ public class ClientHandler implements Runnable {
         try {
             while (client.isConnected()) { // 부모 클라이언트의 상태를 따름
                 GameMessage message = (GameMessage) inputStream.readObject();
+                lastMessageTime = System.currentTimeMillis(); // 메시지 수신 시 타임스탬프 갱신
                 handleMessage(message);
             }
         } catch (EOFException e) {
             System.out.println("Server closed connection.");
+            notifyServerDisconnected();
         } catch (IOException | ClassNotFoundException e) {
             handleError(e);
+            notifyServerDisconnected();
         } finally {
+            stopTimeoutWatchdog();
             client.disconnect();
         }
     }
@@ -68,6 +79,9 @@ public class ClientHandler implements Runnable {
             case DISCONNECT:
                 System.out.println("Server requested disconnect.");
                 client.disconnect();
+                break;
+            case OPPONENT_DISCONNECTED:
+                handleOpponentDisconnected(message);
                 break;
             case GAME_START:
                 handleGameStart(message);
@@ -87,11 +101,16 @@ public class ClientHandler implements Runnable {
             case GAME_STATE:
                 handleGameState(message);
                 break;
+            case PING:
+                // 서버로부터 PING 받으면 PONG 응답
+                sendMessage(new GameMessage(tetris.network.protocol.MessageType.PONG, client.getPlayerId(), null));
+                break;
             case PONG:
                 handlePong(message);
                 break;
             case GAME_END:
                 // game end - forward as a state change
+                System.out.println("[ClientHandler] Received GAME_END message - payload: " + message.getPayload());
                 if (client.getGameStateListener() != null) {
                     javax.swing.SwingUtilities.invokeLater(() -> client.getGameStateListener().onGameStateChange(message));
                 }
@@ -144,6 +163,37 @@ public class ClientHandler implements Runnable {
     private void handleError(Exception e) {
         System.err.println("ClientHandler network error: " + e.getMessage());
         client.disconnect();
+    }
+
+    // 상대방 연결 끊김 처리
+    private void handleOpponentDisconnected(GameMessage message) {
+        String disconnectedId = (String) message.getPayload();
+        System.out.println("Opponent " + disconnectedId + " disconnected from the game.");
+        
+        // 게임 상태 리스너에게 알림 (승리 처리)
+        if (client.getGameStateListener() != null) {
+            javax.swing.SwingUtilities.invokeLater(() -> {
+                client.getGameStateListener().onGameStateChange(message);
+            });
+        }
+    }
+
+    // 서버 연결 끊김 알림
+    private void notifyServerDisconnected() {
+        System.out.println("[ClientHandler] Server disconnected - notifying game state listener");
+        // Mark client as disconnected
+        client.setDisconnected();
+        
+        if (client.getGameStateListener() != null) {
+            GameMessage disconnectMsg = new GameMessage(
+                tetris.network.protocol.MessageType.OPPONENT_DISCONNECTED,
+                "SERVER",
+                "Server"
+            );
+            javax.swing.SwingUtilities.invokeLater(() -> {
+                client.getGameStateListener().onGameStateChange(disconnectMsg);
+            });
+        }
     }
 
     // 게임 모드 선택 처리 - 서버가 게임 모드를 알려줄 때
@@ -220,19 +270,8 @@ public class ClientHandler implements Runnable {
 
     // 퐁 처리 - 지연시간 계산
     private void handlePong(GameMessage message){
-        // payload may contain timestamp or latency info
-        try {
-            Object payload = message.getPayload();
-            if (payload instanceof Long) {
-                long sent = (Long) payload;
-                long now = System.currentTimeMillis();
-                long rtt = now - sent;
-                // update optional latency metric on client if exposed
-                System.out.println("PONG received, rtt=" + rtt + "ms");
-            }
-        } catch (Exception e) {
-            // ignore parse issues
-        }
+        // GameClient의 handlePong 호출하여 RTT 계산
+        client.handlePong();
     }
 
     // 주기적 핑 전송 - 지연시간 측정 및 연결 확인
@@ -242,5 +281,46 @@ public class ClientHandler implements Runnable {
     // 현재 지연시간 반환
     public long getLatency() {
         return currentLatency;
+    }
+    
+    // 타임아웃 감시 스레드 시작
+    private void startTimeoutWatchdog() {
+        timeoutWatchdog = new Thread(() -> {
+            try {
+                while (client.isConnected()) {
+                    Thread.sleep(1000); // 1초마다 체크
+                    long elapsed = System.currentTimeMillis() - lastMessageTime;
+                    if (elapsed > TIMEOUT_MS) {
+                        System.err.println("[ClientHandler] Connection timeout detected (no message for " + elapsed + "ms)");
+                        notifyConnectionTimeout("서버로부터 10초 이상 응답이 없습니다.");
+                        client.disconnect();
+                        break;
+                    }
+                }
+            } catch (InterruptedException e) {
+                // 정상 종료
+            }
+        }, "ClientHandler-TimeoutWatchdog");
+        timeoutWatchdog.setDaemon(true);
+        timeoutWatchdog.start();
+    }
+    
+    // 타임아웃 감시 스레드 중지
+    private void stopTimeoutWatchdog() {
+        if (timeoutWatchdog != null) {
+            timeoutWatchdog.interrupt();
+        }
+    }
+    
+    // 연결 타임아웃 알림
+    private void notifyConnectionTimeout(String reason) {
+        System.out.println("[ClientHandler] Connection timeout - notifying game state listener");
+        client.setDisconnected();
+        
+        if (client.getGameStateListener() != null) {
+            javax.swing.SwingUtilities.invokeLater(() -> {
+                client.getGameStateListener().onConnectionTimeout(reason);
+            });
+        }
     }
 }
