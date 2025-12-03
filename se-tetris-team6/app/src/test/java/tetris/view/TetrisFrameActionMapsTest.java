@@ -57,10 +57,13 @@ class TetrisFrameActionMapsTest {
         Action down = frame.getRootPane().getActionMap().get("moveDownButton");
         Action click = frame.getRootPane().getActionMap().get("clickFocusButton");
 
-        assertDoesNotThrow(() -> toggle.actionPerformed(new ActionEvent(this, 0, "t")));
-        assertDoesNotThrow(() -> goMain.actionPerformed(new ActionEvent(this, 0, "g")));
-        assertDoesNotThrow(() -> up.actionPerformed(new ActionEvent(this, 0, "u")));
-        assertDoesNotThrow(() -> down.actionPerformed(new ActionEvent(this, 0, "d")));
-        assertDoesNotThrow(() -> click.actionPerformed(new ActionEvent(this, 0, "c")));
+        // EDT 호출이 블로킹되지 않도록 간단히 invokeLater로 실행
+        java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(5);
+        javax.swing.SwingUtilities.invokeLater(() -> { toggle.actionPerformed(new ActionEvent(this, 0, "t")); latch.countDown(); });
+        javax.swing.SwingUtilities.invokeLater(() -> { goMain.actionPerformed(new ActionEvent(this, 0, "g")); latch.countDown(); });
+        javax.swing.SwingUtilities.invokeLater(() -> { up.actionPerformed(new ActionEvent(this, 0, "u")); latch.countDown(); });
+        javax.swing.SwingUtilities.invokeLater(() -> { down.actionPerformed(new ActionEvent(this, 0, "d")); latch.countDown(); });
+        javax.swing.SwingUtilities.invokeLater(() -> { click.actionPerformed(new ActionEvent(this, 0, "c")); latch.countDown(); });
+        assertDoesNotThrow(() -> latch.await(1, java.util.concurrent.TimeUnit.SECONDS));
     }
 }

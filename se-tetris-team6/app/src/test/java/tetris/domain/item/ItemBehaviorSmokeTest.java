@@ -11,6 +11,7 @@
 package tetris.domain.item;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 import org.junit.jupiter.api.Test;
 
@@ -41,5 +42,30 @@ class ItemBehaviorSmokeTest {
         ItemBlockModel block = new ItemBlockModel(Block.spawn(BlockKind.I, 0, 0), java.util.Collections.emptyList());
 
         assertDoesNotThrow(() -> behavior.onLock(ctx, block));
+    }
+
+    @Test
+    void defaultLifecycleMethods_noThrowAndNotExpired() {
+        ItemBehavior behavior = new ItemBehavior() {
+            @Override public String id() { return "default"; }
+            @Override public ItemType type() { return ItemType.PASSIVE; }
+        };
+        ItemContext ctx = new ItemContext() {
+            @Override public tetris.domain.Board getBoard() { return null; }
+            @Override public void requestClearCells(int x, int y, int width, int height) {}
+            @Override public void requestAddBlocks(int x, int y, int[][] cells) {}
+            @Override public void applyScoreDelta(int points) {}
+            @Override public void addGlobalBuff(String buffId, long durationTicks, java.util.Map<String, Object> meta) {}
+            @Override public long currentTick() { return 0; }
+            @Override public void spawnParticles(int x, int y, String type) {}
+            @Override public void playSfx(String id) {}
+        };
+        ItemBlockModel block = new ItemBlockModel(Block.spawn(BlockKind.I, 0, 0), java.util.Collections.emptyList());
+
+        assertDoesNotThrow(() -> behavior.onSpawn(ctx, block));
+        assertDoesNotThrow(() -> behavior.onTick(ctx, block, 1L));
+        assertDoesNotThrow(() -> behavior.onLineClear(ctx, block, new int[]{0}));
+        assertDoesNotThrow(() -> behavior.onLock(ctx, block));
+        assertFalse(behavior.isExpired());
     }
 }

@@ -17,6 +17,8 @@
 package tetris.view;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
+import java.time.Duration;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.atLeast;
@@ -52,7 +54,7 @@ class TetrisFrameActionsSmokeTest {
         when(model.getScoreRepository()).thenReturn(repo);
         when(model.getScoreEngine()).thenReturn(new ScoreRuleEngine(repo));
         when(model.getLeaderboardRepository()).thenReturn(new InMemoryLeaderboardRepository());
-        when(model.getRemainingTimeMillis()).thenReturn(0L);
+        Mockito.doReturn(0L).when(model).getRemainingTimeMillis();
         frame = new TetrisFrame(model);
         frame.setVisible(false);
     }
@@ -82,8 +84,16 @@ class TetrisFrameActionsSmokeTest {
         Action down = frame.getRootPane().getActionMap().get("moveDownButton");
         Action click = frame.getRootPane().getActionMap().get("clickFocusButton");
 
-        assertDoesNotThrow(() -> up.actionPerformed(new ActionEvent(this, 0, "up")));
-        assertDoesNotThrow(() -> down.actionPerformed(new ActionEvent(this, 0, "down")));
-        assertDoesNotThrow(() -> click.actionPerformed(new ActionEvent(this, 0, "enter")));
+        // EDT에서 바로 실행하되 타임아웃은 제거해 불필요한 프리엠션 실패를 막는다.
+        try {
+            javax.swing.SwingUtilities.invokeAndWait(() -> {
+                assertDoesNotThrow(() -> up.actionPerformed(new ActionEvent(this, 0, "up")));
+                assertDoesNotThrow(() -> down.actionPerformed(new ActionEvent(this, 0, "down")));
+                assertDoesNotThrow(() -> click.actionPerformed(new ActionEvent(this, 0, "enter")));
+            });
+        } catch (InterruptedException | java.lang.reflect.InvocationTargetException e) {
+            Thread.currentThread().interrupt();
+            throw new AssertionError(e);
+        }
     }
 }

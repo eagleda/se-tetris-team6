@@ -60,7 +60,7 @@ class TetrisFrameActionsTest {
         when(model.getLeaderboardRepository()).thenReturn(new InMemoryLeaderboardRepository());
         when(model.getActiveNetworkMultiplayerSession()).thenReturn(Optional.empty());
         when(model.getActiveLocalMultiplayerSession()).thenReturn(Optional.empty());
-        when(model.getRemainingTimeMillis()).thenReturn(0L);
+        Mockito.doReturn(0L).when(model).getRemainingTimeMillis();
         when(model.loadTopScores(GameMode.STANDARD, 10)).thenReturn(Collections.emptyList());
         when(model.loadTopScores(GameMode.ITEM, 10)).thenReturn(Collections.emptyList());
 
@@ -99,6 +99,7 @@ class TetrisFrameActionsTest {
         Action down = frame.getRootPane().getActionMap().get("moveDownButton");
         Action click = frame.getRootPane().getActionMap().get("clickFocusButton");
 
+        // EDT 대기 없이 바로 호출해 블로킹 가능성 제거
         assertDoesNotThrow(() -> up.actionPerformed(new ActionEvent(this, 0, "up")));
         assertDoesNotThrow(() -> down.actionPerformed(new ActionEvent(this, 0, "down")));
         assertDoesNotThrow(() -> click.actionPerformed(new ActionEvent(this, 0, "enter")));
