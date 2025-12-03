@@ -419,7 +419,13 @@ public class GameController {
         Runnable sendGameEndCallback = () -> {
             try {
                 java.util.Map<String, Object> data = new java.util.HashMap<>();
-                data.put("winnerId", localIsPlayerOne ? 2 : 1); // Opponent is the winner
+                int winnerId = localIsPlayerOne ? 2 : 1; // Opponent is the winner
+                int loserId = localIsPlayerOne ? 1 : 2; // Local player is the loser
+                
+                data.put("winnerId", winnerId);
+                data.put("loserId", loserId);
+                
+                System.out.println("[GameController] Sending GAME_END - winnerId: " + winnerId + ", loserId: " + loserId);
                 
                 if (networkClient != null) {
                     tetris.network.protocol.GameMessage message = new tetris.network.protocol.GameMessage(

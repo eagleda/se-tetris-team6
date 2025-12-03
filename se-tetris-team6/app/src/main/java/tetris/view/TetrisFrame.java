@@ -894,6 +894,7 @@ public class TetrisFrame extends JFrame {
                         }
                         break;
                     case GAME_END:
+                        System.out.println("[UI] Received GAME_END message");
                         NetworkMultiplayerSession sess = gameModel.getActiveNetworkMultiplayerSession().orElse(null);
                         if (sess != null) {
                             // Terminate game for both players
@@ -902,20 +903,31 @@ public class TetrisFrame extends JFrame {
                             
                             // Only process if not already in GAME_OVER state (prevent infinite loop)
                             if (localModel.getCurrentState() != tetris.domain.model.GameState.GAME_OVER) {
-                                // Get winnerId from message payload
+                                // Get winnerId and loserId from message payload
                                 Object payloadObj = message.getPayload();
                                 Integer winnerId = null;
+                                Integer loserId = null;
+                                
                                 if (payloadObj instanceof java.util.Map) {
                                     Object winnerIdObj = ((java.util.Map<?, ?>) payloadObj).get("winnerId");
+                                    Object loserIdObj = ((java.util.Map<?, ?>) payloadObj).get("loserId");
+                                    
                                     if (winnerIdObj instanceof Number) {
                                         winnerId = ((Number) winnerIdObj).intValue();
                                     }
+                                    if (loserIdObj instanceof Number) {
+                                        loserId = ((Number) loserIdObj).intValue();
+                                    }
                                 }
                                 
-                                // Mark loser based on winnerId
-                                if (winnerId != null) {
-                                    int loserId = (winnerId == 1) ? 2 : 1;
+                                System.out.println("[UI] GAME_END - winnerId: " + winnerId + ", loserId: " + loserId);
+                                
+                                // Mark loser based on loserId (preferred) or winnerId
+                                if (loserId != null) {
                                     sess.game().markLoser(loserId);
+                                } else if (winnerId != null) {
+                                    int calculatedLoserId = (winnerId == 1) ? 2 : 1;
+                                    sess.game().markLoser(calculatedLoserId);
                                 } else {
                                     // Fallback: client (player 2) sent GAME_END, so they lost
                                     sess.game().markLoser(2);
@@ -927,7 +939,13 @@ public class TetrisFrame extends JFrame {
                                 
                                 // Show result and update display
                                 int localId = sess.networkController().getLocalPlayerId();
-                                gameModel.showMultiplayerResult(sess.game().getWinnerId() == null ? -1 : sess.game().getWinnerId(), localId);
+                                int finalWinnerId = sess.game().getWinnerId() == null ? -1 : sess.game().getWinnerId();
+                                int finalLoserId = sess.game().getLoserId() == null ? -1 : sess.game().getLoserId();
+                                
+                                gameModel.showMultiplayerResult(finalWinnerId, localId);
+                                
+                                String result = (finalLoserId == localId) ? "LOSE" : (finalWinnerId == localId) ? "WIN" : "UNKNOWN";
+                                System.out.println("[UI] GAME_END processed - Winner: " + finalWinnerId + ", Loser: " + finalLoserId + ", LocalPlayer: " + localId + ", Result: " + result);
                                 
                                 // Force repaint to show final state
                                 if (onlineMultiGameLayout != null) {

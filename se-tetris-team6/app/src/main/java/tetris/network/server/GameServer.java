@@ -145,6 +145,22 @@ public class GameServer {
 
      // 모든 클라이언트에게 메시지 브로드캐스트
     public void broadcastMessage(GameMessage message) {
+        // GAME_END 메시지인 경우 특별히 로깅
+        if (message != null && message.getType() == tetris.network.protocol.MessageType.GAME_END) {
+            Object payload = message.getPayload();
+            Integer winnerId = null;
+            Integer loserId = null;
+            
+            if (payload instanceof java.util.Map) {
+                Object winnerIdObj = ((java.util.Map<?, ?>) payload).get("winnerId");
+                Object loserIdObj = ((java.util.Map<?, ?>) payload).get("loserId");
+                
+                if (winnerIdObj instanceof Number) winnerId = ((Number) winnerIdObj).intValue();
+                if (loserIdObj instanceof Number) loserId = ((Number) loserIdObj).intValue();
+            }
+            System.out.println("[GameServer] Broadcasting GAME_END message - winnerId: " + winnerId + ", loserId: " + loserId + ", clients: " + connectedClients.size());
+        }
+        
         for (ServerHandler handler : connectedClients) {
             handler.sendMessage(message);
         }

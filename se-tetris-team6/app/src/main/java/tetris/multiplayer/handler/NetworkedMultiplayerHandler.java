@@ -93,11 +93,16 @@ public final class NetworkedMultiplayerHandler implements MultiplayerHandler {
             boolean p2GameOver = player2Model != null && player2Model.getCurrentState() == GameState.GAME_OVER;
 
             if (p1GameOver || p2GameOver) {
+                int loserId;
                 if (p1GameOver) {
+                    loserId = 1;
                     game.markLoser(1);
                 } else {
+                    loserId = 2;
                     game.markLoser(2);
                 }
+                
+                System.out.println("[NetworkedMultiplayerHandler][SERVER] Player " + loserId + " lost, sending GAME_END to all");
 
                 concludeGame(model);
                 return; // 게임 종료 시 이후 브로드캐스트 생략
@@ -108,9 +113,24 @@ public final class NetworkedMultiplayerHandler implements MultiplayerHandler {
             // 게임 종료 확인만 수행
             GameModel localModel = game.modelOf(localPlayerId);
             if (localModel != null && localModel.getCurrentState() == GameState.GAME_OVER) {
-                gameEndHandled = true;
-                model.changeState(GameState.GAME_OVER);
-                model.showMultiplayerResult(game.getWinnerId() == null ? -1 : game.getWinnerId(), localPlayerId);
+                if (!gameEndHandled) {
+                    gameEndHandled = true;
+                    model.changeState(GameState.GAME_OVER);
+                    
+                    // 승자 결정: 게임이 종료되었으면 승자 ID 확인
+                    int winnerId = game.getWinnerId() == null ? -1 : game.getWinnerId();
+                    
+                    // 승자가 결정되지 않았다면 로컬 플레이어가 패배한 것으로 간주
+                    if (winnerId == -1 || winnerId == 0) {
+                        // 상대방을 승자로 설정
+                        int opponentId = (localPlayerId == 1) ? 2 : 1;
+                        winnerId = opponentId;
+                        game.markLoser(localPlayerId);
+                    }
+                    
+                    model.showMultiplayerResult(winnerId, localPlayerId);
+                    System.out.println("[NetworkedMultiplayerHandler][CLIENT] Game ended - Winner: " + winnerId + ", LocalPlayer: " + localPlayerId + ", Result: " + (winnerId == localPlayerId ? "WIN" : "LOSE"));
+                }
             }
         }
     }
@@ -166,10 +186,13 @@ public final class NetworkedMultiplayerHandler implements MultiplayerHandler {
         int comparison = game.compareScores();
         if (comparison > 0) {
             game.markLoser(2);
+            System.out.println("[NetworkedMultiplayerHandler][SERVER] Time limit - Player 2 lost (lower score)");
         } else if (comparison < 0) {
             game.markLoser(1);
+            System.out.println("[NetworkedMultiplayerHandler][SERVER] Time limit - Player 1 lost (lower score)");
         } else {
             game.endWithDraw();
+            System.out.println("[NetworkedMultiplayerHandler][SERVER] Time limit - Draw (equal scores)");
         }
         concludeGame(model);
         return true;
@@ -181,8 +204,16 @@ public final class NetworkedMultiplayerHandler implements MultiplayerHandler {
         }
         gameEndHandled = true;
         model.changeState(GameState.GAME_OVER);
-        model.showMultiplayerResult(game.getWinnerId() == null ? -1 : game.getWinnerId(), localPlayerId);
+        
+        int winnerId = game.getWinnerId() == null ? -1 : game.getWinnerId();
+        int loserId = game.getLoserId() == null ? -1 : game.getLoserId();
+        
+        // 서버(로컬)에게 결과 표시
+        model.showMultiplayerResult(winnerId, localPlayerId);
+        
+        System.out.println("[NetworkedMultiplayerHandler][SERVER] Game concluded - Winner: " + winnerId + ", Loser: " + loserId + ", LocalPlayer: " + localPlayerId + ", Result: " + (winnerId == localPlayerId ? "WIN" : "LOSE"));
 
+        // GAME_END 메시지 전송 (클라이언트에게 패배/승리 정보 전달)
         if (!gameEndSent && sendGameEndCallback != null) {
             sendGameEndCallback.run();
             gameEndSent = true;

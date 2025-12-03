@@ -110,6 +110,7 @@ public class ClientHandler implements Runnable {
                 break;
             case GAME_END:
                 // game end - forward as a state change
+                System.out.println("[ClientHandler] Received GAME_END message - payload: " + message.getPayload());
                 if (client.getGameStateListener() != null) {
                     javax.swing.SwingUtilities.invokeLater(() -> client.getGameStateListener().onGameStateChange(message));
                 }

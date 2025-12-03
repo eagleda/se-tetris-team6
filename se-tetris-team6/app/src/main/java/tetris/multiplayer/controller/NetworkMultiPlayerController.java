@@ -438,14 +438,26 @@ public final class NetworkMultiPlayerController {
                         Runnable handle = () -> {
                             Object payloadObj = message.getPayload();
                             Integer winnerId = null;
+                            Integer loserId = null;
+                            
                             if (payloadObj instanceof java.util.Map) {
                                 Object winnerIdObj = ((java.util.Map<?, ?>) payloadObj).get("winnerId");
+                                Object loserIdObj = ((java.util.Map<?, ?>) payloadObj).get("loserId");
+                                
                                 if (winnerIdObj instanceof Number) winnerId = ((Number) winnerIdObj).intValue();
+                                if (loserIdObj instanceof Number) loserId = ((Number) loserIdObj).intValue();
                             }
-                            if (winnerId != null) {
-                                int loserId = (winnerId == 1) ? 2 : 1;
+                            
+                            System.out.println("[NetCtrl][CLIENT] Received GAME_END message - winnerId: " + winnerId + ", loserId: " + loserId + ", localPlayerId: " + localPlayerId);
+                            
+                            // loserId가 명시되어 있으면 우선 사용
+                            if (loserId != null) {
                                 game.markLoser(loserId);
+                            } else if (winnerId != null) {
+                                int calculatedLoserId = (winnerId == 1) ? 2 : 1;
+                                game.markLoser(calculatedLoserId);
                             } else {
+                                // fallback: 원격 플레이어를 패배자로 간주
                                 game.markLoser(getRemotePlayerId());
                             }
 
@@ -455,6 +467,15 @@ public final class NetworkMultiPlayerController {
                             if (localModel != null && opponentModel != null) {
                                 localModel.changeState(tetris.domain.model.GameState.GAME_OVER);
                                 opponentModel.changeState(tetris.domain.model.GameState.GAME_OVER);
+                                
+                                // 게임 결과 UI 표시 (승자 ID와 로컬 플레이어 ID 전달)
+                                int finalWinnerId = game.getWinnerId() == null ? -1 : game.getWinnerId();
+                                int finalLoserId = game.getLoserId() == null ? -1 : game.getLoserId();
+                                
+                                localModel.showMultiplayerResult(finalWinnerId, localPlayerId);
+                                
+                                String result = (finalLoserId == localPlayerId) ? "LOSE" : (finalWinnerId == localPlayerId) ? "WIN" : "UNKNOWN";
+                                System.out.println("[NetCtrl][CLIENT] Game ended - Winner: " + finalWinnerId + ", Loser: " + finalLoserId + ", LocalPlayer: " + localPlayerId + ", Result: " + result);
                             }
                         };
                         if (!javax.swing.SwingUtilities.isEventDispatchThread()) {
