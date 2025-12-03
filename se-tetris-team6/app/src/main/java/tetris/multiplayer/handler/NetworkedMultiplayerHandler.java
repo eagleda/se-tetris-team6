@@ -110,28 +110,7 @@ public final class NetworkedMultiplayerHandler implements MultiplayerHandler {
         } else {
             // 클라이언트(P2): 아무것도 하지 않음
             // 서버로부터 받은 스냅샷으로만 화면 업데이트
-            // 게임 종료 확인만 수행
-            GameModel localModel = game.modelOf(localPlayerId);
-            if (localModel != null && localModel.getCurrentState() == GameState.GAME_OVER) {
-                if (!gameEndHandled) {
-                    gameEndHandled = true;
-                    model.changeState(GameState.GAME_OVER);
-                    
-                    // 승자 결정: 게임이 종료되었으면 승자 ID 확인
-                    int winnerId = game.getWinnerId() == null ? -1 : game.getWinnerId();
-                    
-                    // 승자가 결정되지 않았다면 로컬 플레이어가 패배한 것으로 간주
-                    if (winnerId == -1 || winnerId == 0) {
-                        // 상대방을 승자로 설정
-                        int opponentId = (localPlayerId == 1) ? 2 : 1;
-                        winnerId = opponentId;
-                        game.markLoser(localPlayerId);
-                    }
-                    
-                    model.showMultiplayerResult(winnerId, localPlayerId);
-                    System.out.println("[NetworkedMultiplayerHandler][CLIENT] Game ended - Winner: " + winnerId + ", LocalPlayer: " + localPlayerId + ", Result: " + (winnerId == localPlayerId ? "WIN" : "LOSE"));
-                }
-            }
+            // 게임 종료는 서버의 GAME_END 패킷으로만 처리됨 (concludeGame에서)
         }
     }
 
@@ -203,21 +182,31 @@ public final class NetworkedMultiplayerHandler implements MultiplayerHandler {
             return;
         }
         gameEndHandled = true;
-        model.changeState(GameState.GAME_OVER);
         
         int winnerId = game.getWinnerId() == null ? -1 : game.getWinnerId();
         int loserId = game.getLoserId() == null ? -1 : game.getLoserId();
         
-        // 서버(로컬)에게 결과 표시
-        model.showMultiplayerResult(winnerId, localPlayerId);
-        
-        System.out.println("[NetworkedMultiplayerHandler][SERVER] Game concluded - Winner: " + winnerId + ", Loser: " + loserId + ", LocalPlayer: " + localPlayerId + ", Result: " + (winnerId == localPlayerId ? "WIN" : "LOSE"));
+        System.out.println("[NetworkedMultiplayerHandler] Game concluded - Winner: " + winnerId + ", Loser: " + loserId + ", LocalPlayer: " + localPlayerId + ", Result: " + (winnerId == localPlayerId ? "WIN" : "LOSE"));
 
         // GAME_END 메시지 전송 (클라이언트에게 패배/승리 정보 전달)
         if (!gameEndSent && sendGameEndCallback != null) {
             sendGameEndCallback.run();
             gameEndSent = true;
         }
+        
+        // 서버: 양쪽 플레이어 상태를 GAME_OVER로 변경하여 update() 루프 중단
+        if (localPlayerId == 1) {
+            GameModel p1Model = game.modelOf(1);
+            GameModel p2Model = game.modelOf(2);
+            if (p1Model != null && p1Model.getCurrentState() != GameState.GAME_OVER) {
+                p1Model.changeState(GameState.GAME_OVER);
+            }
+            if (p2Model != null && p2Model.getCurrentState() != GameState.GAME_OVER) {
+                p2Model.changeState(GameState.GAME_OVER);
+            }
+        }
+        
+        // UI 표시는 GAME_END 패킷 수신 후 TetrisFrame에서 처리
     }
 
     private void registerHookForLocal() {
