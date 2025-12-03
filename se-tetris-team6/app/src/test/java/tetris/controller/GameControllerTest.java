@@ -82,6 +82,79 @@ class GameControllerTest {
     }
 
     @Test
+    void handleKeyPress_paused_resumeGame() {
+        when(gameModel.getCurrentState()).thenReturn(GameState.PAUSED);
+
+        controller.handleKeyPress(KeyEvent.VK_P);
+
+        verify(gameModel).resumeGame();
+    }
+
+    @Test
+    void handleKeyPress_gameOver_quitToMenu() {
+        when(gameModel.getCurrentState()).thenReturn(GameState.GAME_OVER);
+
+        controller.handleKeyPress(KeyEvent.VK_Q);
+
+        verify(gameModel).quitToMenu();
+    }
+
+    @Test
+    void handleKeyPress_settings_resetAll() {
+        when(gameModel.getCurrentState()).thenReturn(GameState.SETTINGS);
+
+        controller.handleKeyPress(KeyEvent.VK_DELETE);
+
+        verify(gameModel).resetAllSettings();
+    }
+
+    @Test
+    void handleKeyPress_scoreboard_scrollDown() {
+        when(gameModel.getCurrentState()).thenReturn(GameState.SCOREBOARD);
+
+        controller.handleKeyPress(KeyEvent.VK_DOWN);
+
+        verify(gameModel).scrollScoreboardDown();
+    }
+
+    @Test
+    void handleKeyPress_nameInput_addsCharacter() {
+        when(gameModel.getCurrentState()).thenReturn(GameState.NAME_INPUT);
+
+        controller.handleKeyPress((int) 'A');
+
+        verify(gameModel).addCharacterToName('A');
+    }
+
+    @Test
+    void handleKeyPress_nameInput_enterConfirms() {
+        when(gameModel.getCurrentState()).thenReturn(GameState.NAME_INPUT);
+
+        controller.handleKeyPress(KeyEvent.VK_ENTER);
+
+        verify(gameModel).confirmNameInput();
+    }
+
+    @Test
+    void handleKeyPress_ignoresRapidRepeat() throws Exception {
+        when(gameModel.getCurrentState()).thenReturn(GameState.PLAYING);
+
+        // 첫 입력
+        controller.handleKeyPress(KeyEvent.VK_LEFT);
+
+        // lastKeyPressTime을 바로 직전으로 설정해 반복 무시 유도
+        Field f = GameController.class.getDeclaredField("lastKeyPressTime");
+        f.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        Map<Integer, Long> times = (Map<Integer, Long>) f.get(controller);
+        times.put(KeyEvent.VK_LEFT, System.currentTimeMillis());
+
+        controller.handleKeyPress(KeyEvent.VK_LEFT);
+
+        verify(gameModel, times(1)).moveBlockLeft();
+    }
+
+    @Test
     void handleKeyPress_routesLocalMultiplayerP1() throws Exception {
         when(gameModel.isLocalMultiplayerActive()).thenReturn(true);
         tetris.multiplayer.session.LocalMultiplayerSession session = mock(tetris.multiplayer.session.LocalMultiplayerSession.class);
@@ -94,6 +167,49 @@ class GameControllerTest {
         controller.handleKeyPress(KeyEvent.VK_A); // 기본 P1_MOVE_LEFT
 
         verify(handler).dispatchToPlayer(eq(1), any());
+    }
+
+    @Test
+    void handleKeyPress_routesLocalMultiplayerP2() throws Exception {
+        when(gameModel.isLocalMultiplayerActive()).thenReturn(true);
+        tetris.multiplayer.session.LocalMultiplayerSession session = mock(tetris.multiplayer.session.LocalMultiplayerSession.class);
+        when(session.handler()).thenReturn(handler);
+
+        Field f = GameController.class.getDeclaredField("localSession");
+        f.setAccessible(true);
+        f.set(controller, session);
+
+        controller.handleKeyPress(KeyEvent.VK_RIGHT); // 기본 P2_MOVE_RIGHT
+
+        verify(handler).dispatchToPlayer(eq(2), any());
+    }
+
+    @Test
+    void handleKeyPress_routesNetworkMultiplayerAndSendsInput() throws Exception {
+        // Arrange network session and handler
+        tetris.multiplayer.handler.NetworkedMultiplayerHandler netHandler =
+                mock(tetris.multiplayer.handler.NetworkedMultiplayerHandler.class);
+        when(netHandler.getLocalPlayerId()).thenReturn(1);
+
+        tetris.multiplayer.session.NetworkMultiplayerSession session =
+                mock(tetris.multiplayer.session.NetworkMultiplayerSession.class);
+        when(session.handler()).thenReturn(netHandler);
+
+        Field sessionField = GameController.class.getDeclaredField("networkSession");
+        sessionField.setAccessible(true);
+        sessionField.set(controller, session);
+
+        tetris.network.client.GameClient client = mock(tetris.network.client.GameClient.class);
+        Field clientField = GameController.class.getDeclaredField("networkClient");
+        clientField.setAccessible(true);
+        clientField.set(controller, client);
+
+        // Act
+        controller.handleKeyPress(KeyEvent.VK_LEFT); // MOVE_LEFT
+
+        // Assert
+        verify(netHandler).dispatchToPlayer(eq(1), any());
+        verify(client).sendPlayerInput(any());
     }
 
     @Test

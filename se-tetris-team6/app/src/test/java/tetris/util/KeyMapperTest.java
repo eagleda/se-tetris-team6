@@ -24,4 +24,12 @@ class KeyMapperTest {
         assertNotNull(space);
         assertFalse(space.isBlank());
     }
+
+    @Test
+    void unknownKey_returnsNullOrEmpty() {
+        int custom = 9999;
+        String name = KeyMapper.keyCodeToName(custom);
+        assertTrue(name == null || name.isEmpty() || name.startsWith("Unknown") || name.startsWith("VK_") || name.matches(".*0x[0-9A-Fa-f]+.*"));
+        assertEquals(-1, KeyMapper.nameToKeyCode(String.valueOf(custom)));
+    }
 }
