@@ -130,6 +130,18 @@ class GameplayEngineTest {
     }
 
     @Test
+    void gameplayEventsDefaultOnGameOverDoesNotThrow() {
+        GameplayEngine.GameplayEvents events = new GameplayEngine.GameplayEvents() {
+            @Override public void onBlockSpawned(Block block) {}
+            @Override public void onBlockLocked(Block block) {}
+            @Override public void onLinesCleared(int clearedLines) {}
+            @Override public void onTick(long tick) {}
+            @Override public void onBlockRotated(Block block, int times) {}
+        };
+        assertDoesNotThrow(events::onGameOver);
+    }
+
+    @Test
     void spawnIfNeeded_onFullBoard_triggersGameOverEvent() {
         Board board = new Board();
         // 보드를 가득 채워 스폰이 불가능한 상태를 만든다.
