@@ -13,13 +13,17 @@ class RandomBlockGeneratorTest {
 
     @Test // Normal 난이도에서는 모든 블록이 균등 분포(±3%)로 나오는지 확인
     void normalDifficultyProducesUniformDistribution() {
+        BlockKind[] allowed = {
+            BlockKind.I, BlockKind.J, BlockKind.L,
+            BlockKind.O, BlockKind.S, BlockKind.T, BlockKind.Z
+        };
         Distribution dist = sampleDistribution(GameDifficulty.NORMAL, 100_000, 42L);
-        double expected = dist.samples() / (double) BlockKind.values().length;
+        double expected = dist.samples() / (double) allowed.length;
         double tolerance = 0.03; // 3% 허용 오차
 
         dist.log();
 
-        for (BlockKind kind : BlockKind.values()) {
+        for (BlockKind kind : allowed) {
             double observed = dist.counts().getOrDefault(kind, 0);
             double deviation = Math.abs(observed - expected) / expected;
             assertTrue(deviation < tolerance,
