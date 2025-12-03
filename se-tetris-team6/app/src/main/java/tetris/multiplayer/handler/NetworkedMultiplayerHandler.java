@@ -213,9 +213,9 @@ public final class NetworkedMultiplayerHandler implements MultiplayerHandler {
         
         System.out.println("[NetworkedMultiplayerHandler][SERVER] Game concluded - Winner: " + winnerId + ", Loser: " + loserId + ", LocalPlayer: " + localPlayerId + ", Result: " + (winnerId == localPlayerId ? "WIN" : "LOSE"));
 
-        // GAME_END 메시지 전송 (클라이언트에게 패배/승리 정보 전달)
-        if (!gameEndSent && sendGameEndCallback != null) {
-            sendGameEndCallback.run();
+        // GAME_END 메시지 전송 (클라이언트에게 정확한 승패 정보 전달)
+        if (!gameEndSent) {
+            controller.sendGameOverEvent();
             gameEndSent = true;
         }
     }
