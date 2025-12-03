@@ -99,12 +99,10 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
      * 현재 더블 스코어 버프의 남은 시간을 ms 단위로 반환합니다. 버프가 없으면 0을 반환합니다.
      */
     public long getDoubleScoreBuffRemainingTimeMs() {
-        if (doubleScoreUntilTick <= 0) return 0L;
-        // Tick을 ms로 환산 (tick은 내부적으로 1프레임 단위, 1프레임=약 16ms로 가정)
-        long nowTick = currentTick;
-        long remainingTick = doubleScoreUntilTick - nowTick;
-        long remainingMs = remainingTick * 16L;
-        return Math.max(0L, remainingMs);
+        if (doubleScoreBuffExpiresAtMs <= 0) return 0L;
+        long now = System.currentTimeMillis();
+        long remaining = doubleScoreBuffExpiresAtMs - now;
+        return Math.max(0L, remaining);
     }
 
     private static final UiBridge NO_OP_UI_BRIDGE = new UiBridge() {
@@ -146,7 +144,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
     private final ItemManager itemManager = new ItemManager();
     private final Random itemRandom = new Random();
     private final List<Supplier<ItemBehavior>> behaviorFactories = List.of(
-            () -> new DoubleScoreBehavior(600, 2.0),
+            DoubleScoreBehavior::new,
             TimeSlowBehavior::new,
             () -> new BombBehavior(),
             () -> new LineClearBehavior(),
@@ -205,7 +203,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         void beforeNextSpawn();
     }
 
-    private static final int DEFAULT_ITEM_SPAWN_INTERVAL = 2;
+    private static final int DEFAULT_ITEM_SPAWN_INTERVAL = 10;
     private static final int BLOCKS_PER_SPEED_STEP = 12;
     private static final int LINES_PER_SPEED_STEP = 4;
     private static final int MAX_SPEED_LEVEL = 20;
@@ -222,13 +220,13 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
     private int totalSpawnedBlocks;
     private long currentTick;
     private double scoreMultiplier = 1.0;
-    private long doubleScoreUntilTick;
+    private long doubleScoreBuffExpiresAtMs;
     private int slowLevelOffset;
     private long slowBuffExpiresAtMs;
     private ItemContextImpl itemContext;
     // 원격 스냅샷 기반 아이템 표시용
     private ActiveItemInfo snapshotItemInfo;
-    private Supplier<ItemBehavior> behaviorOverride = () -> new WeightBehavior();
+    private Supplier<ItemBehavior> behaviorOverride = null;
     private int itemSpawnIntervalLines = DEFAULT_ITEM_SPAWN_INTERVAL;
     private int currentGravityLevel;
     private boolean colorBlindMode;
@@ -470,12 +468,14 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         }
         Map<String, Object> data = meta == null ? Collections.emptyMap() : meta;
         if ("double_score".equals(buffId)) {
-            long duration = Math.max(0, durationTicks);
-            long expiry = currentTick + duration;
+            Object durationObj = data.get("durationMs");
+            long durationMs = durationObj instanceof Number
+                    ? Math.max(0L, ((Number) durationObj).longValue())
+                    : 10_000L;
             Object factorObj = data.getOrDefault("factor", Double.valueOf(2.0));
             double factor = factorObj instanceof Number ? ((Number) factorObj).doubleValue() : 2.0;
             scoreMultiplier = Math.max(0.0, factor);
-            doubleScoreUntilTick = expiry;
+            doubleScoreBuffExpiresAtMs = System.currentTimeMillis() + durationMs;
             scoreEngine.setMultiplier(scoreMultiplier);
         } else if ("slow".equals(buffId)) {
             Object durationObj = data.get("durationMs");
@@ -784,6 +784,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         if (clearedLines <= 0) {
             return;
         }
+        int previousTotal = totalClearedLines;
         totalClearedLines += clearedLines;
         notifyMultiplayerLineClear();
         updateGravityProgress();
@@ -791,10 +792,13 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         if (currentMode != GameMode.ITEM) {
             return;
         }
-        if (itemSpawnIntervalLines > 0 && totalClearedLines % itemSpawnIntervalLines == 0) {
-            nextBlockIsItem = true;
-            System.out.println("[GameModel] Item spawn triggered! totalClearedLines=" + totalClearedLines + 
-                ", interval=" + itemSpawnIntervalLines + ", nextBlockIsItem=true");
+        if (itemSpawnIntervalLines > 0) {
+            int itemsPassed = totalClearedLines / itemSpawnIntervalLines - previousTotal / itemSpawnIntervalLines;
+            if (itemsPassed > 0) {
+                nextBlockIsItem = true;
+                System.out.println("[GameModel] Item spawn triggered! totalClearedLines=" + totalClearedLines + 
+                    ", interval=" + itemSpawnIntervalLines + ", itemsPassed=" + itemsPassed + ", nextBlockIsItem=true");
+            }
         }
         itemManager.onLineClear(itemContext, null);
 
@@ -825,7 +829,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         String key = behaviorId.toLowerCase(Locale.ROOT);
         return switch (key) {
             case "line_clear", "lineclear", "line-clear" -> LineClearBehavior::new;
-            case "double_score", "doublescore", "double-score", "double" -> () -> new DoubleScoreBehavior(600, 2.0);
+            case "double_score", "doublescore", "double-score", "double" -> DoubleScoreBehavior::new;
             case "time_slow", "timeslow", "slow" -> TimeSlowBehavior::new;
             case "bomb" -> () -> new BombBehavior();
             case "weight", "weight_drop", "weight-drop" -> WeightBehavior::new;
@@ -838,15 +842,15 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
             return behaviorOverride.get();
         }
         if (behaviorFactories.isEmpty()) {
-            return new DoubleScoreBehavior(600, 2.0);
+            return new DoubleScoreBehavior();
         }
         int index = itemRandom.nextInt(behaviorFactories.size());
         return behaviorFactories.get(index).get();
     }
 
     private void refreshBuffs(long tick) {
-        if (doubleScoreUntilTick > 0 && tick >= doubleScoreUntilTick) {
-            doubleScoreUntilTick = 0;
+        if (doubleScoreBuffExpiresAtMs > 0 && System.currentTimeMillis() >= doubleScoreBuffExpiresAtMs) {
+            doubleScoreBuffExpiresAtMs = 0;
             scoreMultiplier = 1.0;
             scoreEngine.setMultiplier(scoreMultiplier);
         }
@@ -933,7 +937,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         scoreMultiplier = 1.0;
         slowLevelOffset = 0;
         slowBuffExpiresAtMs = 0;
-        doubleScoreUntilTick = 0;
+        doubleScoreBuffExpiresAtMs = 0;
         gameplayEngine.setSpeedModifier(1.0);
         applyGravityLevel();
         gameplayEngine.setActiveBlock(null);
@@ -964,7 +968,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         timeLimitMillis = currentMode == GameMode.TIME_LIMIT ? DEFAULT_TIME_LIMIT_MS : 0L;
         currentTick = 0;
         scoreMultiplier = 1.0;
-        doubleScoreUntilTick = 0;
+        doubleScoreBuffExpiresAtMs = 0;
         slowLevelOffset = 0;
         slowBuffExpiresAtMs = 0;
         gameplayEngine.setActiveBlock(null);
