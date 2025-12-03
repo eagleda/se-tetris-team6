@@ -349,7 +349,7 @@ public final class NetworkMultiPlayerController {
                 attackLines = game.getPendingAttackLines(pid);
             }
             tetris.network.protocol.GameSnapshot snapshot = model.toSnapshot(pid, attackLines);
-            System.out.println("[NetCtrl] sendGameState: sending snapshot for playerId=" + pid + ", model=" + model);
+            // System.out.println("[NetCtrl] sendGameState: sending snapshot for playerId=" + pid + ", model=" + model);
             if (transportClient != null) {
                 transportClient.sendGameStateSnapshot(snapshot);
             } else if (transportServer != null) {

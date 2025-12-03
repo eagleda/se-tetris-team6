@@ -195,7 +195,7 @@ public class GameServer {
     public void broadcastGameStateSnapshot(tetris.network.protocol.GameSnapshot snapshot) {
         if (snapshot == null) return;
         try {
-            System.out.println("[GameServer] Broadcasting snapshot -> player=" + snapshot.playerId() + ", currentId=" + snapshot.currentBlockId() + ", nextId=" + snapshot.nextBlockId() + ", pending=" + snapshot.pendingGarbage());
+            // System.out.println("[GameServer] Broadcasting snapshot -> player=" + snapshot.playerId() + ", currentId=" + snapshot.currentBlockId() + ", nextId=" + snapshot.nextBlockId() + ", pending=" + snapshot.pendingGarbage());
         } catch (Exception ignore) {}
         GameMessage msg = new GameMessage(
             tetris.network.protocol.MessageType.GAME_STATE,

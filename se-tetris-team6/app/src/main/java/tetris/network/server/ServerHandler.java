@@ -97,7 +97,7 @@ import java.util.concurrent.atomic.AtomicInteger; // 추가: 스레드 안전한
                 outputStream.writeObject(message);
                 outputStream.flush();
             }
-            System.out.println("ServerHandler sent message: " + message.getType());
+            // System.out.println("ServerHandler sent message: " + message.getType());
             }
         } catch (IOException e) {
             System.err.println("Error sending message to client " + clientId + ": " + e.getMessage());

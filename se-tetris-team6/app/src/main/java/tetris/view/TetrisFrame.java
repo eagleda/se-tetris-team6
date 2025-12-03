@@ -351,7 +351,14 @@ public class TetrisFrame extends JFrame {
                         javax.swing.JRadioButton rTime = new javax.swing.JRadioButton("Time Limit");
                         javax.swing.ButtonGroup bg = new javax.swing.ButtonGroup();
                         bg.add(rNormal); bg.add(rItem); bg.add(rTime);
-                        rNormal.setSelected(true);
+                        // Set the radio button based on the mode selected in the first dialog
+                        if ("ITEM".equalsIgnoreCase(mode)) {
+                            rItem.setSelected(true);
+                        } else if ("TIME_LIMIT".equalsIgnoreCase(mode)) {
+                            rTime.setSelected(true);
+                        } else {
+                            rNormal.setSelected(true);
+                        }
                         javax.swing.JPanel modeRow = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.CENTER,8,0));
                         modeRow.add(rNormal); modeRow.add(rItem); modeRow.add(rTime);
                         center.add(modeRow);
@@ -412,7 +419,7 @@ public class TetrisFrame extends JFrame {
                                             // Start a networked session as host (host is Player-1)
                                             System.out.println("[UI][SERVER] Starting networked multiplayer as Player-1 (Host) with mode: " + gameMode + " (" + selectedMode + ")");
                                             gameController.setNetworkServer(hostedServer); // 서버 연결
-                                            gameController.startNetworkedMultiplayerGame(gameMode, true);
+                                            NetworkMultiplayerSession session = gameController.startNetworkedMultiplayerGame(gameMode, true);
                                             // 호스트는 서버를 통해 클라이언트 메시지를 받음
                                             TetrisFrame.this.setupHostNetworkListener();
                                             System.out.println("[UI][SERVER] Binding online panel to session");
@@ -421,6 +428,9 @@ public class TetrisFrame extends JFrame {
                                             TetrisFrame.this.displayPanel(onlineMultiGameLayout);
                                             // 네트워크 상태 오버레이 시작
                                             TetrisFrame.this.startNetworkStatusMonitoring();
+                                            // IMPORTANT: Server also needs to restart players with correct mode after GAME_START broadcast
+                                            System.out.println("[UI][SERVER] Re-starting players with mode: " + gameMode);
+                                            session.restartPlayers(gameMode);
                                         });
                                         break;
                                     }
@@ -863,7 +873,7 @@ public class TetrisFrame extends JFrame {
                                     tetris.domain.GameModel p2Model = session.playerTwoModel();
                                     tetris.network.protocol.GameSnapshot s1 = p1Model.toSnapshot(1);
                                     tetris.network.protocol.GameSnapshot s2 = p2Model.toSnapshot(2);
-                                    System.out.println("[Host][Listener] Broadcasting snapshots -> p1(currentId=" + s1.currentBlockId() + ",nextId=" + s1.nextBlockId() + ") p2(currentId=" + s2.currentBlockId() + ",nextId=" + s2.nextBlockId() + ")");
+                                    // System.out.println("[Host][Listener] Broadcasting snapshots -> p1(currentId=" + s1.currentBlockId() + ",nextId=" + s1.nextBlockId() + ") p2(currentId=" + s2.currentBlockId() + ",nextId=" + s2.nextBlockId() + ")");
                                     hostedServer.broadcastDualSnapshots(s1, s2);
                                 } catch (Exception ex) {
                                     System.err.println("[Host] Failed to broadcast snapshots after remote input: " + ex.getMessage());

@@ -6,7 +6,7 @@ import java.io.Serializable;
  * 전체 게임 상태 스냅샷 (네트워크 전송용 DTO)
  */
 public final class GameSnapshot implements Serializable {
-    private static final long serialVersionUID = 4L;
+    private static final long serialVersionUID = 5L; // 필드 추가로 버전 업
 
     private final int playerId;       // 스냅샷 대상 플레이어 (1 또는 2)
     private final int[][] board;      // [y][x] 셀 값(0=빈칸, >0=블록 id)
@@ -19,6 +19,8 @@ public final class GameSnapshot implements Serializable {
     private final int blockY;         // 현재 블록 Y 위치
     private final int blockRotation;  // 현재 블록 회전 상태 (0-3)
     private final boolean[][] attackLines; // 공격 대기열 [줄 인덱스][x] (true=구멍, false=블록)
+    // 게임 모드 정보
+    private final String gameMode;           // 게임 모드 (STANDARD, ITEM, TIME_LIMIT)
     // 아이템 모드 전송용
     private final String activeItemLabel;    // 현재 활성 아이템 id (없으면 null)
     private final int itemCellX;             // 아이템 셀의 블록 내 X (없으면 -1)
@@ -37,6 +39,7 @@ public final class GameSnapshot implements Serializable {
                         int blockY,
                         int blockRotation,
                         boolean[][] attackLines,
+                        String gameMode,
                         String activeItemLabel,
                         int itemCellX,
                         int itemCellY,
@@ -52,6 +55,7 @@ public final class GameSnapshot implements Serializable {
         this.blockY = blockY;
         this.blockRotation = blockRotation;
         this.attackLines = attackLines;
+        this.gameMode = gameMode;
         this.activeItemLabel = activeItemLabel;
         this.itemCellX = itemCellX;
         this.itemCellY = itemCellY;
@@ -69,6 +73,7 @@ public final class GameSnapshot implements Serializable {
     public int blockY() { return blockY; }
     public int blockRotation() { return blockRotation; }
     public boolean[][] attackLines() { return attackLines; }
+    public String gameMode() { return gameMode; }
     public String activeItemLabel() { return activeItemLabel; }
     public int itemCellX() { return itemCellX; }
     public int itemCellY() { return itemCellY; }

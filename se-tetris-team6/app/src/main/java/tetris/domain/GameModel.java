@@ -692,6 +692,9 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         snapshotItemInfo = null;
         totalSpawnedBlocks++;
         updateGravityProgress();
+        
+        System.out.println("[GameModel] onBlockSpawned - currentMode: " + currentMode + ", nextBlockIsItem: " + nextBlockIsItem + ", totalSpawnedBlocks: " + totalSpawnedBlocks);
+        
         if (currentMode != GameMode.ITEM) {
             activeItemBlock = null;
             nextBlockIsItem = false;
@@ -701,7 +704,7 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
             ItemBehavior behavior = rollBehavior();
             String behaviorId = behavior.id();
             
-            System.out.println("[GameModel] Spawning ITEM block! behaviorId=" + behaviorId);
+            System.out.println("[GameModel] *** SPAWNING ITEM BLOCK *** behaviorId=" + behaviorId + ", blockKind=" + block.getKind());
             
             // Weight나 Bomb 아이템인 경우 블록 형태 강제
             if ("weight".equals(behaviorId) && block.getKind() != BlockKind.W) {
@@ -950,6 +953,8 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         activeItemBlock = null;
         nextBlockIsItem = false;
         totalClearedLines = 0;
+        
+        System.out.println("[GameModel] resetGameplayState - currentMode: " + currentMode + ", itemSpawnIntervalLines: " + itemSpawnIntervalLines);
         totalSpawnedBlocks = 0;
         currentGravityLevel = 0;
         inactivityPenaltyStage = 0;
@@ -1097,7 +1102,10 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
             }
         }
         
-        return new tetris.network.protocol.GameSnapshot(playerId, copy, currentId, nextId, pts, elapsed, pending, blockX, blockY, blockRotation, null, itemLabel, itemCellX, itemCellY, clearedLinesArray);
+        // 게임 모드 정보 포함
+        String gameModeStr = currentMode != null ? currentMode.name() : "STANDARD";
+        
+        return new tetris.network.protocol.GameSnapshot(playerId, copy, currentId, nextId, pts, elapsed, pending, blockX, blockY, blockRotation, null, gameModeStr, itemLabel, itemCellX, itemCellY, clearedLinesArray);
     }
     
     /**
@@ -1163,7 +1171,10 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
             }
         }
         
-        return new tetris.network.protocol.GameSnapshot(playerId, copy, currentId, nextId, pts, elapsed, pending, blockX, blockY, blockRotation, attackLinesData, itemLabel, itemCellX, itemCellY, clearedLinesArray);
+        // 게임 모드 정보 포함
+        String gameModeStr = currentMode != null ? currentMode.name() : "STANDARD";
+        
+        return new tetris.network.protocol.GameSnapshot(playerId, copy, currentId, nextId, pts, elapsed, pending, blockX, blockY, blockRotation, attackLinesData, gameModeStr, itemLabel, itemCellX, itemCellY, clearedLinesArray);
     }
 
     /** 스냅샷을 적용 (클라이언트 렌더링 전용) */
@@ -1187,12 +1198,26 @@ public final class GameModel implements tetris.domain.engine.GameplayEngine.Game
         // 스냅샷에서 받은 아이템 정보 초기화
         snapshotItemInfo = null;
         
+        // 게임 모드 동기화 - 스냅샷에 모드 정보가 있으면 적용
+        if (snapshot.gameMode() != null && !snapshot.gameMode().isEmpty()) {
+            try {
+                GameMode snapshotMode = GameMode.valueOf(snapshot.gameMode());
+                if (this.currentMode != snapshotMode) {
+                    System.out.println("[GameModel] Syncing game mode from snapshot: " + this.currentMode + " -> " + snapshotMode);
+                    this.currentMode = snapshotMode;
+                }
+            } catch (IllegalArgumentException e) {
+                System.err.println("[GameModel] Invalid game mode in snapshot: " + snapshot.gameMode());
+            }
+        }
+        
         // 공격 대기열 정보 로깅
         int attackLineCount = snapshot.attackLines() != null ? snapshot.attackLines().length : 0;
         try {
             System.out.println("[GameModel] Applying snapshot -> player=" + snapshot.playerId() 
                 + ", currentId=" + snapshot.currentBlockId() 
                 + ", nextId=" + snapshot.nextBlockId() 
+                + ", gameMode=" + snapshot.gameMode()
                 + ", pending=" + snapshot.pendingGarbage()
                 + ", attackLines=" + attackLineCount);
         } catch (Exception ignore) {}

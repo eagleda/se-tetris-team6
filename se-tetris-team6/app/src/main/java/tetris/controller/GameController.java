@@ -12,7 +12,7 @@ import tetris.domain.model.GameState;
 import tetris.domain.setting.Setting;
 import tetris.multiplayer.handler.MultiplayerHandler;
 import tetris.multiplayer.session.LocalMultiplayerSession;
-import tetris.multiplayer.session.LocalMultiplayerSessionFactory;
+import tetris.multiplayer.session.MultiplayerSessionFactory;
 import tetris.multiplayer.session.NetworkMultiplayerSession;
 // 이제부터 모델의 좌우 움직임이 안 되는 이유를 해결합니다.
 
@@ -396,7 +396,7 @@ public class GameController {
      */
     public LocalMultiplayerSession startLocalMultiplayerGame(GameMode mode) {
         deactivateLocalMultiplayer();
-        LocalMultiplayerSession session = LocalMultiplayerSessionFactory.create(mode);
+        LocalMultiplayerSession session = MultiplayerSessionFactory.create(mode);
         localSession = session;
         gameModel.enableLocalMultiplayer(session);
         startLocalMultiplayerTick();
@@ -442,7 +442,7 @@ public class GameController {
         };
         
         System.out.println("[GameController] Creating networked session");
-        NetworkMultiplayerSession session = LocalMultiplayerSessionFactory.createNetworkedSession(mode, localIsPlayerOne, sendGameEndCallback);
+        NetworkMultiplayerSession session = MultiplayerSessionFactory.createNetworkedSession(mode, localIsPlayerOne, sendGameEndCallback);
         networkSession = session;
         System.out.println("[GameController] Session created - " + (session != null ? "SUCCESS" : "FAILED"));
         
@@ -495,7 +495,7 @@ public class GameController {
         };
 
         System.out.println("[GameController] Creating networked session with seed=" + seed);
-        NetworkMultiplayerSession session = LocalMultiplayerSessionFactory.createNetworkedSession(mode, localIsPlayerOne, sendGameEndCallback, seed);
+        NetworkMultiplayerSession session = MultiplayerSessionFactory.createNetworkedSession(mode, localIsPlayerOne, sendGameEndCallback, seed);
         networkSession = session;
 
         tetris.multiplayer.controller.NetworkMultiPlayerController networkController = session.networkController();

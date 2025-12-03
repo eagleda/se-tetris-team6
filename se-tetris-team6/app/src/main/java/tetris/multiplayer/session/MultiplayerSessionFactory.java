@@ -16,9 +16,9 @@ import tetris.multiplayer.model.VersusRules;
  * - GameModelFactory 를 재사용해 싱글 모드와 동일한 규칙을 가져온다.
  * - 로컬 멀티플레이는 LocalMultiplayerSession을, 네트워크 멀티플레이는 NetworkMultiplayerSession을 반환한다.
  */
-public final class LocalMultiplayerSessionFactory {
+public final class MultiplayerSessionFactory {
 
-    private LocalMultiplayerSessionFactory() {
+    private MultiplayerSessionFactory() {
     }
 
     /**
