@@ -76,16 +76,16 @@ Grouping by priority batches (10 items each). Classes already covered by tests a
 60) [o] tetris.multiplayer.session.NetworkMultiplayerSession
 
 7차 (멀티플레이 컨트롤러/핸들러)
-61) [x] tetris.multiplayer.controller.LocalMultiPlayerController
-62) [x] tetris.multiplayer.controller.NetworkMultiPlayerController
-63) [x] tetris.multiplayer.handler.LocalMultiplayerHandler
-64) [x] tetris.multiplayer.handler.MultiplayerHandler
-65) [x] tetris.multiplayer.handler.NetworkedMultiplayerHandler
-66) [x] tetris.multiplayer.controller (기타)
-67) [x] tetris.multiplayer.handler (기타)
-68) [x] tetris.multiplayer.session (기타)
-69) [x] tetris.multiplayer.model (중복 제외 기타)
-70) [x] tetris.infrastructure (기타)
+61) [o] tetris.multiplayer.controller.LocalMultiPlayerController
+62) [o] tetris.multiplayer.controller.NetworkMultiPlayerController
+63) [o] tetris.multiplayer.handler.LocalMultiplayerHandler
+64) [o] tetris.multiplayer.handler.MultiplayerHandler
+65) [o] tetris.multiplayer.handler.NetworkedMultiplayerHandler
+66) [o] tetris.multiplayer.controller (기타)
+67) [o] tetris.multiplayer.handler (기타)
+68) [o] tetris.multiplayer.session (기타)
+69) [o] tetris.multiplayer.model (중복 제외 기타)
+70) [o] tetris.infrastructure (기타)
 
 8차 (네트워크 프로토콜)
 71) [o] tetris.network.protocol.AttackLine
