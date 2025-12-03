@@ -28,15 +28,15 @@ Grouping by priority batches (10 items each). Classes already covered by tests a
 20) [o] tetris.infrastructure.GameModelFactory
 
 3차 (도메인 핸들러/게임 흐름)
-21) [x] tetris.domain.handler.AbstractGameHandler
+21) [o] tetris.domain.handler.AbstractGameHandler
 22) [x] tetris.domain.handler.GameHandler
-23) [x] tetris.domain.handler.GameOverHandler
-24) [x] tetris.domain.handler.GamePlayHandler
-25) [x] tetris.domain.handler.MenuHandler
-26) [x] tetris.domain.handler.NameInputHandler
-27) [x] tetris.domain.handler.PausedHandler
-28) [x] tetris.domain.handler.ScoreboardHandler
-29) [x] tetris.domain.handler.SettingsHandler
+23) [o] tetris.domain.handler.GameOverHandler
+24) [o] tetris.domain.handler.GamePlayHandler
+25) [o] tetris.domain.handler.MenuHandler
+26) [o] tetris.domain.handler.NameInputHandler
+27) [o] tetris.domain.handler.PausedHandler
+28) [o] tetris.domain.handler.ScoreboardHandler
+29) [o] tetris.domain.handler.SettingsHandler
 30) [x] tetris.domain.GameMode
 
 4차 (아이템/행동)
