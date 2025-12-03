@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
 import org.junit.jupiter.api.Test;
+import tetris.network.protocol.AttackLine;
 
 class GameThreadPojoExtraTest {
 
@@ -16,6 +17,18 @@ class GameThreadPojoExtraTest {
         GameThread.LineClearResult r = new GameThread.LineClearResult(0, null, 0);
         assertEquals(0, r.getLinesCleared());
         assertArrayEquals(null, r.getAttackLines());
+    }
+
+    @Test
+    void lineClearResult_withAttackLines_andPoints() {
+        AttackLine[] lines = new AttackLine[] {
+            new AttackLine(2),
+            new AttackLine(3)
+        };
+        GameThread.LineClearResult r = new GameThread.LineClearResult(2, lines, 250);
+        assertEquals(2, r.getLinesCleared());
+        assertEquals(250, r.getPoints());
+        assertArrayEquals(lines, r.getAttackLines());
     }
 
     @Test

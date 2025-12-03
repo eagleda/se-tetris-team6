@@ -57,6 +57,8 @@ class TetrisFrameNetworkAndUiBridgeTest {
         when(model.getScoreEngine()).thenReturn(new ScoreRuleEngine(repo));
         when(model.getLeaderboardRepository()).thenReturn(new InMemoryLeaderboardRepository());
         when(model.getCurrentState()).thenReturn(GameState.PLAYING);
+        when(model.getActiveNetworkMultiplayerSession()).thenReturn(java.util.Optional.empty());
+        when(model.getActiveLocalMultiplayerSession()).thenReturn(java.util.Optional.empty());
         frame = new TetrisFrame(model);
         frame.setVisible(false);
     }

@@ -28,4 +28,11 @@ class GameThreadPojoTest {
         assertEquals(100, r.getPoints());
         assertArrayEquals(null, r.getAttackLines());
     }
+
+    @Test
+    void gameEvent_tickType_hasData() {
+        GameEvent ev = new GameEvent(GameEvent.Type.LINE_CLEAR, 42L);
+        assertEquals(GameEvent.Type.LINE_CLEAR, ev.getType());
+        assertEquals(42L, ev.getPayload());
+    }
 }

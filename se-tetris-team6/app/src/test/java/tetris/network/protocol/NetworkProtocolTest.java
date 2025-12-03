@@ -51,4 +51,14 @@ class NetworkProtocolTest {
         assertEquals(2, NetworkProtocol.MAX_PLAYERS);
         assertTrue(NetworkProtocol.GAME_SYNC_INTERVAL > 0);
     }
+
+    @Test
+    @DisplayName("재시도 설정과 랙 임계값은 합리적 범위에 있다")
+    void retryAndLagThreshold_areReasonable() {
+        assertTrue(NetworkProtocol.MAX_RETRY_COUNT >= 1);
+        assertTrue(NetworkProtocol.RETRY_DELAY >= 100);
+        assertTrue(NetworkProtocol.MAX_LAG_THRESHOLD >= 50);
+        assertTrue(NetworkProtocol.CONNECTION_TIMEOUT > NetworkProtocol.RETRY_DELAY);
+        assertTrue(NetworkProtocol.READ_TIMEOUT < NetworkProtocol.CONNECTION_TIMEOUT);
+    }
 }
