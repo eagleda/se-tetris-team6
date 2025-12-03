@@ -19,12 +19,11 @@ import tetris.domain.item.model.ItemBlockModel;
  * 테스트 대상: tetris.domain.item.behavior.WeightBehavior
  *
  * 역할 요약:
- * - onLock 시 하강 공격을 요청하는 아이템으로, 위쪽 특정 영역에 블록을 추가하도록 요청한다.
+ * - onLock 시 지정 범위의 셀을 삭제(clear)하고 파티클/효과음을 재생하는 즉발 아이템.
  * - 동일 아이템이 두 번 이상 트리거되지 않도록 한다.
  *
  * 테스트 전략:
- * - onLock이 requestAddBlocks를 호출하는지 간단히 검증(빈 배열로 호출만 확인).
- * - spawnParticles/ playSfx 호출 여부 확인.
+ * - onLock 첫 호출에서 requestClearCells, spawnParticles, playSfx가 1회씩 실행되는지 확인.
  * - 두 번째 onLock 호출은 no-op인지 확인.
  *
  * - 사용 라이브러리:
@@ -47,11 +46,11 @@ class WeightBehaviorTest {
     }
 
     @Test
-    void onLock_firstTime_requestsAddBlocksAndEffects() {
+    void onLock_firstTime_requestsClearAndEffects() {
         WeightBehavior behavior = new WeightBehavior();
         behavior.onLock(ctx, block);
 
-        verify(ctx).requestAddBlocks(anyInt(), anyInt(), any(int[][].class));
+        verify(ctx).requestClearCells(0, 0, 4, 1000);
         verify(ctx).spawnParticles(0, 0, "weight");
         verify(ctx).playSfx("weight_drop");
     }
