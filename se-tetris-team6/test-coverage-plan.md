@@ -53,12 +53,12 @@ Grouping by priority batches (10 items each). Classes already covered by tests a
 
 5차 (모델/입력 상태)
 41) [o] tetris.domain.model.Block
-42) [x] tetris.domain.model.GameClock
-43) [x] tetris.domain.model.GameState
-44) [x] tetris.domain.model.InputState
-45) [x] tetris.domain.GameDifficulty
-46) [x] tetris.domain.GameModel.UiBridge
-47) [x] tetris.domain.GameModel.MultiplayerHook
+42) [o] tetris.domain.model.GameClock
+43) [o] tetris.domain.model.GameState
+44) [o] tetris.domain.model.InputState
+45) [o] tetris.domain.GameDifficulty
+46) [o] tetris.domain.GameModel.UiBridge
+47) [o] tetris.domain.GameModel.MultiplayerHook
 48) [o] tetris.domain.BlockShape
 49) [o] tetris.domain.setting.Setting
 50) [o] tetris.domain.item.model.ItemBlockModel
