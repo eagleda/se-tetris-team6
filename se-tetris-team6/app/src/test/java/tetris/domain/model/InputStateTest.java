@@ -76,4 +76,5 @@ class InputStateTest {
         assertFalse(state.popRotateCCW());
         assertFalse(state.popHold());
     }
+
 }

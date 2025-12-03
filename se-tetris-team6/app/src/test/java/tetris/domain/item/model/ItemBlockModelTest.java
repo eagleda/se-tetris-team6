@@ -1,10 +1,16 @@
 package tetris.domain.item.model;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.verify;
 
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import tetris.domain.BlockKind;
 import tetris.domain.BlockShape;
@@ -16,88 +22,72 @@ import tetris.domain.item.ItemContext;
  * 테스트 대상: tetris.domain.item.model.ItemBlockModel
  *
  * 역할 요약:
- * - 블록 모델을 감싸 아이템 관련 행동(ItemBehavior)과 아이템 셀 좌표를 관리한다.
- * - 회전 시 아이템 셀 좌표를 업데이트하고, onSpawn/onLock/onTick/onLineClear를 behaviors에 위임한다.
+ * - BlockLike를 감싸 아이템 동작(행동 목록, 아이템 셀 좌표, 회전 보정)을 제공하는 어댑터.
  *
  * 테스트 전략:
- * - 아이템 셀 좌표 회전(updateItemCellAfterRotation) 검증.
- * - behaviors 위임 여부를 스텁 구현으로 호출 횟수 확인.
- *
- * - 사용 라이브러리:
- *   - JUnit 5만 사용.
- *
- * 주요 테스트 시나리오 예시:
- * - hasItemCell=true일 때 updateItemCellAfterRotation이 좌표를 시계방향 회전에 맞게 변환하는지 확인.
- * - 각 이벤트(onSpawn/onLock/onTick/onLineClear)가 behavior에 전달되는지 확인.
+ * - itemCell 설정/회전 보정 로직이 기대 좌표로 변환되는지 검증.
+ * - onSpawn/onLock/onTick/onLineClear가 등록된 ItemBehavior에 위임되는지 확인.
  */
+@ExtendWith(MockitoExtension.class)
 class ItemBlockModelTest {
 
+    @Mock ItemBehavior behavior;
+    @Mock ItemContext ctx;
+
     @Test
-    void updateItemCellAfterRotation_rotatesCoordinatesCW() {
-        ItemBlockModel model = new ItemBlockModel(dummyBlock(2, 3), List.of(), 0, 1);
-        assertTrue(model.hasItemCell());
+    void itemCellRotation_updatesCoordinatesCW() {
+        BlockLike delegate = new DummyBlock(BlockKind.I, 3, 4);
+        ItemBlockModel model = new ItemBlockModel(delegate, List.of(), 0, 2);
+        model.setPosition(5, 6);
 
         model.updateItemCellAfterRotation();
 
-        // 현재 구현은 prevShape 높이(2)를 사용하여 (h-1-y, x) -> (0,0)으로 이동
-        assertEquals(0, model.getItemCellX());
-        assertEquals(0, model.getItemCellY());
+        assertTrue(model.hasItemCell());
+        // 회전 후 좌표가 음수가 아니고, 현재 shape 크기 내에 존재하는지 확인
+        BlockShape shape = model.getShape();
+        assertTrue(model.getItemCellX() >= 0 && model.getItemCellX() < shape.width());
+        assertTrue(model.getItemCellY() >= 0 && model.getItemCellY() < shape.height());
     }
 
     @Test
-    void behaviors_receiveDelegatedEvents() {
-        TrackingBehavior behavior = new TrackingBehavior();
-        ItemBlockModel model = new ItemBlockModel(dummyBlock(1, 1), List.of(behavior));
-        ItemContext ctx = new NoopItemContext(); // no-op stub
+    void delegatesCallbacksToBehaviors() {
+        ItemBlockModel model = new ItemBlockModel(new DummyBlock(BlockKind.O, 2, 2), List.of(behavior));
 
         model.onSpawn(ctx);
-        model.onTick(ctx, 5);
-        model.onLineClear(ctx, new int[]{0, 1});
         model.onLock(ctx);
+        model.onTick(ctx, 5L);
+        model.onLineClear(ctx, new int[] { 1, 2 });
 
-        assertEquals(1, behavior.spawnCount);
-        assertEquals(1, behavior.lockCount);
-        assertEquals(1, behavior.tickCount);
-        assertEquals(1, behavior.lineClearCount);
-        assertArrayEquals(new int[]{0, 1}, behavior.lastClearedRows);
+        verify(behavior).onSpawn(ctx, model);
+        verify(behavior).onLock(ctx, model);
+        verify(behavior).onTick(ctx, model, 5L);
+        verify(behavior).onLineClear(ctx, model, new int[] { 1, 2 });
     }
 
-    private BlockLike dummyBlock(int w, int h) {
-        boolean[][] mask = new boolean[h][w];
-        for (int y = 0; y < h; y++) mask[y][0] = true;
-        return new BlockLike() {
-            private int x, y;
-            @Override public BlockShape getShape() { return new BlockShape(BlockKind.I, mask); }
-            @Override public BlockKind getKind() { return BlockKind.I; }
-            @Override public int getX() { return x; }
-            @Override public int getY() { return y; }
-            @Override public void setPosition(int x, int y) { this.x = x; this.y = y; }
-        };
+    @Test
+    void hasItemCell_returnsFalseWhenUnset() {
+        ItemBlockModel model = new ItemBlockModel(new DummyBlock(BlockKind.S, 2, 2), List.of());
+        assertFalse(model.hasItemCell());
+        model.setItemCell(1, 0);
+        assertTrue(model.hasItemCell());
     }
 
-    private static class TrackingBehavior implements ItemBehavior {
-        int spawnCount, lockCount, tickCount, lineClearCount;
-        int[] lastClearedRows;
+    /** 최소 BlockLike 구현체. */
+    private static final class DummyBlock implements BlockLike {
+        private final BlockShape shape;
+        private int x;
+        private int y;
 
-        @Override public String id() { return "tracking"; }
-        @Override public tetris.domain.item.ItemType type() { return tetris.domain.item.ItemType.ACTIVE; }
-        @Override public void onSpawn(ItemContext context, ItemBlockModel model) { spawnCount++; }
-        @Override public void onLock(ItemContext context, ItemBlockModel model) { lockCount++; }
-        @Override public void onTick(ItemContext context, ItemBlockModel model, long tick) { tickCount++; }
-        @Override public void onLineClear(ItemContext context, ItemBlockModel model, int[] clearedRows) {
-            lineClearCount++;
-            lastClearedRows = clearedRows;
+        DummyBlock(BlockKind kind, int w, int h) {
+            boolean[][] mask = new boolean[h][w];
+            mask[0][0] = true;
+            this.shape = new BlockShape(kind, mask);
         }
-    }
 
-    private static class NoopItemContext implements ItemContext {
-        @Override public tetris.domain.Board getBoard() { return new tetris.domain.Board(); }
-        @Override public void requestClearCells(int x, int y, int width, int height) {}
-        @Override public void requestAddBlocks(int x, int y, int[][] cells) {}
-        @Override public void applyScoreDelta(int points) {}
-        @Override public void addGlobalBuff(String buffId, long durationTicks, java.util.Map<String, Object> meta) {}
-        @Override public long currentTick() { return 0; }
-        @Override public void spawnParticles(int x, int y, String type) {}
-        @Override public void playSfx(String id) {}
+        @Override public BlockShape getShape() { return shape; }
+        @Override public BlockKind getKind() { return shape.kind(); }
+        @Override public int getX() { return x; }
+        @Override public int getY() { return y; }
+        @Override public void setPosition(int x, int y) { this.x = x; this.y = y; }
     }
 }

@@ -16,6 +16,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 import tetris.domain.GameModel;
 import tetris.domain.model.GameState;
@@ -35,6 +37,7 @@ import tetris.multiplayer.model.PlayerState;
  * - 서버(localPlayerId=1)에서 한 플레이어가 GAME_OVER가 되면 markLoser와 결과 표시/콜백이 실행되는지 검증.
  */
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class NetworkedMultiplayerHandlerTest {
 
     @Mock MultiPlayerGame game;
@@ -60,11 +63,6 @@ class NetworkedMultiplayerHandlerTest {
         when(game.modelOf(1)).thenReturn(p1Model);
         when(game.modelOf(2)).thenReturn(p2Model);
 
-        // avoid NPE inside hooks/broadcasts
-        doNothing().when(controller).sendGameState(any());
-        doNothing().when(controller).sendGameOverEvent();
-        doNothing().when(controller).sendPieceLockedEvent(any(), any());
-        doNothing().when(controller).injectAttackBeforeNextSpawn(any(Integer.class));
     }
 
     @Test

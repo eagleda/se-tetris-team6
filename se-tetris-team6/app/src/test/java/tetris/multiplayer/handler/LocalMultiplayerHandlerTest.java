@@ -7,12 +7,15 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.anyInt;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 import tetris.domain.GameModel;
 import tetris.domain.GameModel.MultiplayerHook;
@@ -33,6 +36,7 @@ import tetris.multiplayer.model.PlayerState;
  * - game이 이미 종료된 상태에서 update를 호출하면 두 플레이어와 상위 모델을 GAME_OVER로 전환하는지 검증.
  */
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class LocalMultiplayerHandlerTest {
 
     @Mock MultiPlayerGame game;
@@ -82,6 +86,6 @@ class LocalMultiplayerHandlerTest {
         verify(hostModel).changeState(GameState.GAME_OVER);
         verify(hostModel).showLocalMultiplayerResult(2);
         // game over already true, so markLoser should not be called
-        verify(game, never()).markLoser(any());
+        verify(game, never()).markLoser(anyInt());
     }
 }

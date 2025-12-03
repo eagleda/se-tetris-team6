@@ -12,6 +12,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.mockito.Mockito;
 
 import tetris.domain.GameModel;
@@ -32,6 +34,7 @@ import tetris.multiplayer.model.Cell;
  * - injectAttackBeforeNextSpawn에서 대기 줄이 없으면 모델 접근 없이 반환되는지 확인(빈 리스트 stub).
  */
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class LocalMultiPlayerControllerTest {
 
     @Mock MultiPlayerGame game;

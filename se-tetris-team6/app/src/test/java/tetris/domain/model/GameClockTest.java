@@ -122,6 +122,7 @@ class GameClockTest {
         assertFalse(lockTimer.isRunning());
     }
 
+
     private Timer getGravityTimer(GameClock target) throws Exception {
         Field f = GameClock.class.getDeclaredField("gravityTimer");
         f.setAccessible(true);

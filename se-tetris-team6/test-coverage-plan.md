@@ -88,38 +88,38 @@ Grouping by priority batches (10 items each). Classes already covered by tests a
 70) [o] tetris.infrastructure (기타)
 
 8차 (네트워크 프로토콜)
-71) [x] tetris.network.protocol.AttackLine
+71) [o] tetris.network.protocol.AttackLine
 72) [o] tetris.network.protocol.GameMessage
-73) [x] tetris.network.protocol.GameSnapshot
-74) [x] tetris.network.protocol.InputType
-75) [x] tetris.network.protocol.MessageType
-76) [x] tetris.network.protocol.NetworkProtocol
-77) [x] tetris.network.protocol.PlayerInput
+73) [o] tetris.network.protocol.GameSnapshot
+74) [o] tetris.network.protocol.InputType
+75) [o] tetris.network.protocol.MessageType
+76) [o] tetris.network.protocol.NetworkProtocol
+77) [o] tetris.network.protocol.PlayerInput
 78) [o] tetris.network.protocol.GameMessage 직렬화/동등성
-79) [x] tetris.network.protocol.AttackLine 직렬화
-80) [x] tetris.network.protocol (기타 보조 타입)
+79) [o] tetris.network.protocol.AttackLine 직렬화
+80) [o] tetris.network.protocol (기타 보조 타입)
 
 9차 (네트워크/컨커런시 인프라)
-81) [x] tetris.network.NetworkManager
-82) [x] tetris.network.NetworkMode
+81) [o] tetris.network.NetworkManager
+82) [o] tetris.network.NetworkMode
 83) [x] tetris.network.GameDataListener
 84) [x] tetris.network.GameEventListener
 85) [x] tetris.network.INetworkThreadCallback
 86) [x] tetris.network.NetworkEventListener
-87) [x] tetris.concurrent.GameEvent
+87) [o] tetris.concurrent.GameEvent
 88) [x] tetris.concurrent.GameEventListener
 89) [x] tetris.concurrent.GameThread
 90) [x] tetris.concurrent.NetworkThread
 
 10차 (네트워크 서버/클라이언트)
-91) [x] tetris.network.client.GameClient
-92) [x] tetris.network.client.ClientHandler
+91) [o] tetris.network.client.GameClient
+92) [o] tetris.network.client.ClientHandler
 93) [x] tetris.network.client.GameStateListener
 94) [x] tetris.network.server.GameServer
 95) [x] tetris.network.server.ServerHandler
 96) [x] tetris.network.server.ServerStatus
 97) [x] tetris.concurrent.NetworkManager
-98) [x] tetris.concurrent.NetworkStats
+98) [o] tetris.concurrent.NetworkStats
 99) [x] tetris.concurrent.NetworkThread (동기 메서드)
 100) [x] tetris.network (기타 동기 메서드 대상)
 
@@ -128,21 +128,23 @@ Grouping by priority batches (10 items each). Classes already covered by tests a
 102) [o] tetris.controller.GameOverController
 103) [o] tetris.controller.ScoreController
 104) [o] tetris.controller.SettingController
-105) [x] tetris.controller (기타)
+105) [o] tetris.controller (기타)
 106) [o] tetris.view.ScoreboardPanel
-107) [x] tetris.view.SettingPanel
-108) [x] tetris.view.NetworkStatusOverlay
-109) [x] tetris.view.ScoreView
-110) [x] tetris.view.palette.ColorPaletteProvider
+107) [o] tetris.view.SettingPanel
+108) [o] tetris.view.NetworkStatusOverlay
+109) [o] tetris.view.ScoreView
+110) [o] tetris.view.palette.ColorPaletteProvider
 
 12차 (나머지 UI/엔트리 — 필요 시)
 111) [o] tetris.App
-112) [x] tetris.view.MainPanel
-113) [x] tetris.view.GameComponent.AttackQueuePanel
-114) [x] tetris.view.GameComponent.GameOverPanel
-115) [x] tetris.view.GameComponent.GamePanel
+112) [o] tetris.view.MainPanel
+113) [o] tetris.view.GameComponent.AttackQueuePanel
+114) [o] tetris.view.GameComponent.GameOverPanel
+115) [o] tetris.view.GameComponent.GamePanel
 116) [x] tetris.view.GameComponent.GamePanelImpl
-117) [x] tetris.view.GameComponent.LocalPlayerPanel
-118) [x] tetris.view.GameComponent.MultiGameLayout
-119) [x] tetris.view.GameComponent.NetworkMultiGameLayout
-120) [x] tetris.view.GameComponent.RemotePlayerPanel
+117) [o] tetris.view.GameComponent.LocalPlayerPanel
+118) [o] tetris.view.GameComponent.MultiGameLayout
+119) [o] tetris.view.GameComponent.NetworkMultiGameLayout
+120) [o] tetris.view.GameComponent.RemotePlayerPanel
+121) [o] tetris.view.GameComponent.NextBlockPanel
+122) [o] tetris.view.GameComponent.TimerPanel

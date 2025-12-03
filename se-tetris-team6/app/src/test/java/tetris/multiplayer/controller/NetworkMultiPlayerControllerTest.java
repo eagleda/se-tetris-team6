@@ -14,6 +14,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.mockito.Mockito;
 
 import tetris.domain.GameModel;
@@ -32,6 +34,7 @@ import tetris.multiplayer.model.MultiPlayerGame;
  * - injectAttackBeforeNextSpawn가 대기 줄 조회 후 sendGameState를 호출하는지 검증(빈 리스트이면 조기 종료).
  */
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class NetworkMultiPlayerControllerTest {
 
     @Mock MultiPlayerGame game;
@@ -49,7 +52,6 @@ class NetworkMultiPlayerControllerTest {
         controller = Mockito.spy(new NetworkMultiPlayerController(game, 1));
         doNothing().when(controller).sendPieceLockedEvent(any(), any());
         doNothing().when(controller).sendGameState(any());
-        doNothing().when(controller).sendGameOverEvent();
     }
 
     @Test
@@ -62,10 +64,13 @@ class NetworkMultiPlayerControllerTest {
     @Test
     void onLocalPieceLocked_delegatesAndSends() {
         int[] cleared = { 0 };
-        controller.onLocalPieceLocked(null, cleared);
+        tetris.multiplayer.model.LockedPieceSnapshot snap = tetris.multiplayer.model.LockedPieceSnapshot.of(
+                java.util.List.of(new tetris.multiplayer.model.Cell(0, 0)));
 
-        verify(game).onPieceLocked(1, null, cleared, tetris.domain.Board.W);
-        verify(controller).sendPieceLockedEvent(null, cleared);
+        controller.onLocalPieceLocked(snap, cleared);
+
+        verify(game).onPieceLocked(1, snap, cleared, tetris.domain.Board.W);
+        verify(controller).sendPieceLockedEvent(snap, cleared);
         verify(controller).sendGameState(modelP1);
     }
 
