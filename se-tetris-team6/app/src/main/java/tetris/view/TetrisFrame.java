@@ -205,30 +205,6 @@ public class TetrisFrame extends JFrame {
                 gameModel.getLeaderboardRepository(),
                 gameOverPanel,
                 this);
-        
-        // Back to Menu 버튼 클릭 시 네트워크 세션 정리
-        gameOverPanel.setListener(new GameOverPanel.Listener() {
-            @Override
-            public void onSave(String name) {
-                // GameOverController가 이미 listener를 설정함
-            }
-            
-            @Override
-            public void onSkip() {
-                gameOverPanel.hidePanel();
-                TetrisFrame.this.cleanupNetworkSession();
-                displayPanel(mainPanel);
-                gameModel.quitToMenu();
-            }
-            
-            @Override
-            public void onBackToMenu() {
-                gameOverPanel.hidePanel();
-                TetrisFrame.this.cleanupNetworkSession();
-                displayPanel(mainPanel);
-                gameModel.quitToMenu();
-            }
-        });
     }
     
     /**
@@ -322,6 +298,13 @@ public class TetrisFrame extends JFrame {
             System.err.println("[UI] Error during network cleanup: " + e.getMessage());
             e.printStackTrace();
         }
+    }
+    
+    /**
+     * 네트워크 세션 정리를 위한 public 메서드 (GameOverController에서 호출용)
+     */
+    public void cleanupNetworkSessionPublic() {
+        cleanupNetworkSession();
     }
 
     /**
