@@ -16,7 +16,6 @@ import java.util.concurrent.TimeUnit;
  */
 public class NetworkIntegrationTest {
 
-    private static final int TEST_PORT = 55555;
     private static final String TEST_IP = "127.0.0.1";
 
     /**
@@ -29,6 +28,7 @@ public class NetworkIntegrationTest {
         GameServer server = new GameServer();
         GameClient client = new GameClient();
         Thread serverThread = null;
+        int port = findFreePort();
 
         // 1. 핸드셰이크 완료를 기다리기 위한 Latch 생성 (카운트 1)
         CountDownLatch handshakeLatch = new CountDownLatch(1);
@@ -37,7 +37,7 @@ public class NetworkIntegrationTest {
             // 1. 서버 시작 스레드
             serverThread = new Thread(() -> {
                 try {
-                    server.startServer(TEST_PORT);
+                    server.startServer(port);
                 } catch (IOException e) {
                     System.err.println("[TEST ERROR] Server failed to start: " + e.getMessage());
                 }
@@ -51,7 +51,7 @@ public class NetworkIntegrationTest {
             TimeUnit.MILLISECONDS.sleep(500);
 
             // 2. 클라이언트 연결 시도
-            boolean connected = client.connectToServer(TEST_IP, TEST_PORT, handshakeLatch);
+            boolean connected = client.connectToServer(TEST_IP, port, handshakeLatch);
 
             assertTrue(connected, "클라이언트가 서버에 연결해야 합니다.");
 
@@ -99,6 +99,15 @@ public class NetworkIntegrationTest {
                 }
             }
             System.out.println("--- 네트워크 통합 테스트 종료 ---");
+        }
+    }
+
+    /** 사용 가능한 임시 포트를 할당한다. 실패 시 55555 반환. */
+    private int findFreePort() {
+        try (java.net.ServerSocket socket = new java.net.ServerSocket(0)) {
+            return socket.getLocalPort();
+        } catch (IOException e) {
+            return 55555;
         }
     }
 }

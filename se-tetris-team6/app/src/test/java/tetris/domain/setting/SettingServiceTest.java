@@ -26,7 +26,7 @@ class SettingServiceTest {
     void resetScoreboard_delegatesToScoreRepository() {
         InMemoryScoreRepo scoreRepo = new InMemoryScoreRepo();
         SettingService service = new SettingService(new InMemorySettingRepo(), scoreRepo);
-        scoreRepo.save(tetris.domain.score.Score.of(100));
+        scoreRepo.save(tetris.domain.score.Score.of(100, 1, 0));
 
         service.resetScoreboard();
 

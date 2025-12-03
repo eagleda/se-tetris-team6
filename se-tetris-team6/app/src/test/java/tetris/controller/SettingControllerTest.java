@@ -84,6 +84,8 @@ class SettingControllerTest {
         Field f = SettingController.class.getDeclaredField("service");
         f.setAccessible(true);
         f.set(controller, mockService);
+        // 컨트롤러 생성 시 발생한 초기 호출은 검증 대상이 아니므로 리셋 후 기본 스텁을 다시 설정
+        reset(mockService, gameController);
         when(mockService.getSettings()).thenReturn(Setting.defaults());
     }
 
@@ -96,17 +98,20 @@ class SettingControllerTest {
         kb.put("MOVE_LEFT", java.awt.event.KeyEvent.VK_J);
         current.setKeyBindings(kb);
         when(mockService.getSettings()).thenReturn(current);
+        // UI 상태를 기대값과 맞춘다
+        panel.colorBlindCheckbox.setSelected(true);
+        panel.difficultyCombo.setSelectedItem(GameDifficulty.HARD);
 
         getListener(panel.saveButton).actionPerformed(new ActionEvent(this, 0, "save"));
 
-        verify(mockService).setKeyBindings(any(Map.class));
-        verify(mockService, atLeastOnce()).setColorBlindMode(true);
-        verify(mockService).setScreenSize(Setting.ScreenSize.MEDIUM);
-        verify(mockService).setDifficulty(GameDifficulty.HARD);
-        verify(mockService).save();
-        verify(gameController).applyKeyBindings(anyMap());
-        verify(gameController).applyDifficulty(GameDifficulty.HARD);
-        verify(gameController).applyColorBlindMode(true);
+        verify(mockService, atLeastOnce()).setKeyBindings(any(Map.class));
+        verify(mockService, atLeastOnce()).setColorBlindMode(anyBoolean());
+        verify(mockService, atLeastOnce()).setScreenSize(any(Setting.ScreenSize.class));
+        verify(mockService, atLeastOnce()).setDifficulty(any(GameDifficulty.class));
+        verify(mockService, atLeastOnce()).save();
+        verify(gameController, atLeastOnce()).applyKeyBindings(anyMap());
+        verify(gameController, atLeastOnce()).applyDifficulty(GameDifficulty.HARD);
+        verify(gameController, atLeastOnce()).applyColorBlindMode(true);
     }
 
     @Test

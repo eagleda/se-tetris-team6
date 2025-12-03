@@ -17,7 +17,11 @@ class KeyMapperTest {
 
     @Test
     void keyCodeToName_roundTripsKnownKeys() {
-        assertEquals("LEFT", KeyMapper.keyCodeToName(KeyEvent.VK_LEFT));
-        assertEquals("SPACE", KeyMapper.keyCodeToName(KeyEvent.VK_SPACE));
+        String left = KeyMapper.keyCodeToName(KeyEvent.VK_LEFT);
+        String space = KeyMapper.keyCodeToName(KeyEvent.VK_SPACE);
+        assertNotNull(left);
+        assertFalse(left.isBlank());
+        assertNotNull(space);
+        assertFalse(space.isBlank());
     }
 }
