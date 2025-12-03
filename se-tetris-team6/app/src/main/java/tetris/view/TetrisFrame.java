@@ -233,7 +233,7 @@ public class TetrisFrame extends JFrame {
     
     /**
      * 네트워크 멀티플레이 세션을 정리하고 연결을 해제합니다.
-     * 게임 진행 중이라면 상대방에게 패배 처리 신호를 보냅니다.
+     * 게임 진행 중이라면 상대방에게 승리 신호를 보내고, 본인은 패배 처리합니다.
      */
     private void cleanupNetworkSession() {
         try {
@@ -242,10 +242,10 @@ public class TetrisFrame extends JFrame {
                 System.out.println("[UI] Cleaning up network multiplayer session...");
                 NetworkMultiplayerSession session = gameModel.getActiveNetworkMultiplayerSession().get();
                 
-                // 게임 진행 중이라면 상대방에게 게임 종료 신호 보내기
+                // 게임 진행 중이라면 게임 종료 처리
                 tetris.domain.GameModel localModel = session.game().modelOf(session.networkController().getLocalPlayerId());
                 if (localModel != null && localModel.getCurrentState() == tetris.domain.model.GameState.PLAYING) {
-                    System.out.println("[UI] Game is in progress. Sending forfeit signal to opponent...");
+                    System.out.println("[UI] Game is in progress. Player forfeited the game.");
                     
                     // 본인 ID와 상대방 ID 결정
                     int localPlayerId = session.networkController().getLocalPlayerId();
@@ -253,6 +253,13 @@ public class TetrisFrame extends JFrame {
                     
                     // 본인을 패자로, 상대방을 승자로 설정
                     session.game().markLoser(localPlayerId);
+                    
+                    // 양쪽 모델 모두 게임 오버 상태로 변경
+                    tetris.domain.GameModel opponentModel = session.game().modelOf(opponentPlayerId);
+                    localModel.changeState(tetris.domain.model.GameState.GAME_OVER);
+                    if (opponentModel != null) {
+                        opponentModel.changeState(tetris.domain.model.GameState.GAME_OVER);
+                    }
                     
                     // 상대방에게 GAME_END 메시지 전송 (상대방이 승리)
                     java.util.Map<String, Object> payload = new java.util.HashMap<>();
@@ -276,16 +283,29 @@ public class TetrisFrame extends JFrame {
                         System.out.println("[UI][CLIENT] Sent GAME_END signal (opponent wins) to server");
                     }
                     
-                    // 약간의 지연을 주어 메시지가 전송되도록 함
+                    // 본인 화면에 패배 표시
+                    gameModel.showMultiplayerResult(opponentPlayerId, localPlayerId);
+                    System.out.println("[UI] Showing defeat screen for local player");
+                    
+                    // 약간의 지연을 주어 메시지가 전송되고 화면이 표시되도록 함
                     try {
-                        Thread.sleep(100);
+                        Thread.sleep(200);
                     } catch (InterruptedException ie) {
                         Thread.currentThread().interrupt();
                     }
                 }
                 
+                // 클라이언트 연결 종료 (DISCONNECT 메시지 전송)
+                if (session.networkClient() != null) {
+                    System.out.println("[UI][CLIENT] Disconnecting from server...");
+                    session.networkClient().disconnect();
+                }
+                
                 session.shutdown();
             }
+            
+            // 게임 컨트롤러의 네트워크 세션 정리 (중요: 네트워크 클라이언트 참조 해제)
+            gameController.cleanupNetworkSession();
             
             // 서버 종료
             if (hostedServer != null) {
