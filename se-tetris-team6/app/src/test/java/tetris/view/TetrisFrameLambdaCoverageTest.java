@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import static org.mockito.Mockito.when;
 
+import tetris.HeadlessTestSupport;
 import tetris.domain.GameModel;
 import tetris.domain.RandomBlockGenerator;
 import tetris.network.protocol.GameMessage;
@@ -31,6 +32,7 @@ class TetrisFrameLambdaCoverageTest {
 
     @BeforeEach
     void setup() {
+        HeadlessTestSupport.skipInHeadless();
         // 실제 GameModel을 사용해 NPE를 방지
         tetris.domain.score.ScoreRepository scoreRepo = new tetris.data.score.InMemoryScoreRepository();
         tetris.domain.leaderboard.LeaderboardRepository lbRepo = new tetris.data.leaderboard.InMemoryLeaderboardRepository();

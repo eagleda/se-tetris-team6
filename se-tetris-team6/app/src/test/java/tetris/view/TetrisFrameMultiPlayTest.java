@@ -23,6 +23,7 @@ import tetris.data.leaderboard.InMemoryLeaderboardRepository;
 import tetris.data.score.InMemoryScoreRepository;
 import tetris.domain.GameModel;
 import tetris.domain.score.ScoreRuleEngine;
+import tetris.HeadlessTestSupport;
 
 class TetrisFrameMultiPlayTest {
 
@@ -31,6 +32,7 @@ class TetrisFrameMultiPlayTest {
 
     @BeforeEach
     void setUp() {
+        HeadlessTestSupport.skipInHeadless();
         model = Mockito.mock(GameModel.class, Mockito.withSettings().lenient());
         var repo = new InMemoryScoreRepository();
         Mockito.when(model.getScoreRepository()).thenReturn(repo);

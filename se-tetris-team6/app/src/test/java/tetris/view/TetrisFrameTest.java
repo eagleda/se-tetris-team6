@@ -25,6 +25,7 @@ import tetris.domain.score.ScoreRepository;
 import tetris.domain.setting.Setting;
 import tetris.domain.setting.SettingRepository;
 import tetris.domain.setting.SettingService;
+import tetris.HeadlessTestSupport;
 
 /*
  * 테스트 대상: tetris.view.TetrisFrame
@@ -159,6 +160,7 @@ class TetrisFrameTest {
 
     @Test
     void setPendingLeaderboard_storesResult() throws Exception {
+        HeadlessTestSupport.skipInHeadless();
         DummyLeaderboardRepo lbRepo = new DummyLeaderboardRepo();
         GameModel model = new GameModel(new ConstGenerator(), new DummyScoreRepo(),
                 lbRepo, new SettingService(new InMemorySettingRepository(), new DummyScoreRepo()));
