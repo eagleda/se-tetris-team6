@@ -25,22 +25,23 @@ jobs:
           cache: 'gradle'
 
       - name: Grant execute permission for gradlew
-        run: chmod +x ./gradlew
+        run: chmod +x ./se-tetris-team6/gradlew
 
       - name: Run Tests with JaCoCo
         run: |
+          cd se-tetris-team6
           ./gradlew clean test jacocoTestReport
 
       - name: Upload HTML coverage report
         uses: actions/upload-artifact@v4
         with:
           name: jacoco-html-report
-          path: app/build/reports/jacoco/test/html
+          path: se-tetris-team6/app/build/reports/jacoco/test/html
           retention-days: 7
 
       - name: Upload XML coverage report
         uses: actions/upload-artifact@v4
         with:
           name: jacoco-xml-report
-          path: app/build/reports/jacoco/test/jacocoTestReport.xml
+          path: se-tetris-team6/app/build/reports/jacoco/test/jacocoTestReport.xml
           retention-days: 7
