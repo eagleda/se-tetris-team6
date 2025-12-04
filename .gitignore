@@ -24,3 +24,6 @@ hs_err_pid*
 replay_pid*
 se-tetris-team6/.vscode/monitoring.json
 se-tetris-team6/.vscode/settings.json
+
+# Allow Gradle wrapper jar for CI
+!se-tetris-team6/gradle/wrapper/gradle-wrapper.jar

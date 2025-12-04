@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
 import org.junit.jupiter.api.Test;
 
+import tetris.HeadlessTestSupport;
+
 /*
  * 테스트 대상: tetris.App
  *
@@ -17,6 +19,7 @@ class AppSmokeTest {
 
     @Test
     void mainRunsWithoutException() {
+        HeadlessTestSupport.skipInHeadless();
         assertDoesNotThrow(() -> App.main(new String[]{}));
     }
 }
